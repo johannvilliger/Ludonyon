@@ -64,10 +64,14 @@ model Vacation {
   @@index([userId])
 }
 
+// audience : chaîne validée côté application ("ALL" | "ORGANISATION").
+// "ORGANISATION" = visible uniquement des responsables/comité (ex. relais
+// d'une notification envoyée à ce public restreint).
 model Announcement {
   id        String   @id @default(cuid())
   title     String
   body      String
+  audience  String   @default("ALL")
   authorId  String
   author    User     @relation(fields: [authorId], references: [id])
   createdAt DateTime @default(now())

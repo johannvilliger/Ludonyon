@@ -1,11 +1,15 @@
 import { requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/format";
+import { isOrganisationRole } from "@/lib/roles";
 
 export default async function AnnoncesPage() {
-  await requireUser();
+  const user = await requireUser();
 
   const announcements = await prisma.announcement.findMany({
+    where: isOrganisationRole(user.role)
+      ? undefined
+      : { audience: "ALL" },
     orderBy: { createdAt: "desc" },
     include: { author: { select: { name: true } } },
   });
@@ -28,7 +32,14 @@ export default async function AnnoncesPage() {
               key={a.id}
               className="rounded-2xl border-2 border-dashed border-brand-blue bg-white p-4"
             >
-              <p className="font-medium text-stone-900">{a.title}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-medium text-stone-900">{a.title}</p>
+                {a.audience === "ORGANISATION" && (
+                  <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
+                    Responsables/comité
+                  </span>
+                )}
+              </div>
               <p className="mt-2 text-sm text-stone-600 whitespace-pre-wrap">
                 {a.body}
               </p>

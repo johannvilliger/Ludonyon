@@ -477,7 +477,7 @@ const notificationSchema = z.object({
 });
 
 export async function sendManualNotification(formData: FormData) {
-  await requireOrganisationUser();
+  const currentUser = await requireOrganisationUser();
 
   const parsed = notificationSchema.safeParse({
     title: formData.get("title"),
@@ -488,16 +488,36 @@ export async function sendManualNotification(formData: FormData) {
     throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
   }
 
+  const isOrganisationOnly = parsed.data.target === "organisation";
+
   const users = await prisma.user.findMany({
-    where:
-      parsed.data.target === "organisation"
+    where: {
+      active: true,
+      ...(isOrganisationOnly
         ? { role: { in: ["RESPONSABLE", "COMITE"] } }
-        : undefined,
+        : {}),
+    },
     select: { id: true },
+  });
+
+  // La notification est aussi relayée dans les annonces, avec la même
+  // audience : un·e bénévole ne doit jamais voir une annonce destinée
+  // uniquement aux responsables/comité.
+  await prisma.announcement.create({
+    data: {
+      title: parsed.data.title,
+      body: parsed.data.body,
+      audience: isOrganisationOnly ? "ORGANISATION" : "ALL",
+      authorId: currentUser.id,
+    },
   });
 
   await sendPushToUsers(
     users.map((u) => u.id),
-    { title: parsed.data.title, body: parsed.data.body, url: "/" }
+    { title: parsed.data.title, body: parsed.data.body, url: "/annonces" }
   );
+
+  revalidatePath("/annonces");
+  revalidatePath("/organisation/annonces");
+  revalidatePath("/");
 }

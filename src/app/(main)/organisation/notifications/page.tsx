@@ -12,7 +12,8 @@ export default async function OrganisationNotificationsPage() {
       </h2>
       <p className="mt-1 text-sm text-stone-500">
         Reçue par les personnes ayant activé les notifications sur leur
-        appareil (voir Mon profil).
+        appareil (voir Mon profil), et publiée dans les Annonces — visible
+        uniquement par le public choisi ci-dessous.
       </p>
 
       {!pushConfigured() && (

@@ -63,7 +63,14 @@ export default async function OrganisationAnnoncesPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium text-stone-900">{a.title}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-stone-900">{a.title}</p>
+                    {a.audience === "ORGANISATION" && (
+                      <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
+                        Responsables/comité
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-1 text-sm text-stone-600 whitespace-pre-wrap">
                     {a.body}
                   </p>

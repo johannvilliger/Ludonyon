@@ -2,12 +2,14 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatEventDate, formatDateTime } from "@/lib/format";
+import { isOrganisationRole } from "@/lib/roles";
 
 export default async function HomePage() {
   const user = await requireUser();
 
   const [announcements, events] = await Promise.all([
     prisma.announcement.findMany({
+      where: isOrganisationRole(user.role) ? undefined : { audience: "ALL" },
       orderBy: { createdAt: "desc" },
       take: 3,
       include: { author: { select: { name: true } } },
