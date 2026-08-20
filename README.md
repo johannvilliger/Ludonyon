@@ -99,6 +99,15 @@ ensuite depuis **Mon profil**).
    supprimer ensuite, voir ci-dessous).
 5. Redémarrez le site depuis le Manager si nécessaire.
 
+### Photos de profil
+
+Les photos uploadées par les bénévoles sont stockées comme fichiers dans
+`public/uploads/photos/` sur le serveur (pas dans la base de données, pas
+dans le dépôt Git — ce dossier est volontairement ignoré par git). Elles
+survivent aux `git pull` et rebuilds normaux. Seule l'action **« Réinitialiser
+le site »** dans le Manager Infomaniak les effacerait (avec le reste du
+site) : à éviter une fois en production.
+
 ### Mises à jour
 
 - **Avec accès SSH** (inclus sur la plupart des offres Infomaniak) : sur

@@ -13,21 +13,40 @@ datasource db {
 // Role est une chaîne validée côté application (voir src/lib/roles.ts)
 // parmi "BENEVOLE" | "RESPONSABLE" | "COMITE".
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         String   @default("BENEVOLE")
-  phone        String?
-  skills       String? // compétences / disponibilités en texte libre
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  name                   String
+  email                  String   @unique
+  passwordHash           String
+  role                   String   @default("BENEVOLE")
+  phone                  String?
+  skills                 String? // compétences / disponibilités en texte libre
+  photoPath              String? // nom de fichier dans le dossier de stockage des photos, hors dépôt git
+  calendarToken          String   @unique @default(cuid())
+  wantsOpeningReminders  Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   announcements Announcement[]
   events        Event[]
   signups       EventSignup[]
+  vacations     Vacation[]
+  taskAssignees TaskAssignee[]
 
   @@index([role])
+}
+
+// Périodes d'indisponibilité déclarées par le bénévole lui-même,
+// visibles par les responsables/comité sur sa fiche.
+model Vacation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate DateTime
+  endDate   DateTime
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Announcement {
@@ -52,19 +71,47 @@ model Event {
   createdAt   DateTime @default(now())
 
   signups EventSignup[]
+  tasks   Task[]
 }
 
 model EventSignup {
-  id        String   @id @default(cuid())
-  eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  id                 String   @id @default(cuid())
+  eventId            String
+  event              Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wantsReminder      Boolean  @default(false)
+  seekingReplacement Boolean  @default(false)
+  createdAt          DateTime @default(now())
 
   attendanceSessions AttendanceSession[]
 
   @@unique([eventId, userId])
+}
+
+// Tâche optionnelle liée à un événement (pas tous les événements n'en ont).
+model Task {
+  id        String    @id @default(cuid())
+  eventId   String
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  title     String
+  dueDate   DateTime
+  done      Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  assignees TaskAssignee[]
+
+  @@index([eventId])
+}
+
+model TaskAssignee {
+  id     String @id @default(cuid())
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
 }
 
 // Un bénévole peut arriver/repartir plusieurs fois pendant un même

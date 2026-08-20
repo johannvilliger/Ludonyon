@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { requireOrganisationUser } from "@/lib/session";
+import { requireOrganisationUser, requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { ROLES } from "@/lib/roles";
+import { ROLES, isOrganisationRole } from "@/lib/roles";
+import { savePhoto, deletePhoto } from "@/lib/photoStorage";
 
 // ---------- Annonces ----------
 
@@ -339,4 +340,100 @@ export async function resetVolunteerPassword(formData: FormData) {
   });
 
   revalidatePath("/organisation/benevoles");
+}
+
+export async function updateVolunteerPhoto(formData: FormData) {
+  await requireOrganisationUser();
+  const id = String(formData.get("id"));
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("Aucune image sélectionnée");
+  }
+
+  const current = await prisma.user.findUniqueOrThrow({
+    where: { id },
+    select: { photoPath: true },
+  });
+
+  const filename = await savePhoto(id, file);
+  await prisma.user.update({ where: { id }, data: { photoPath: filename } });
+  await deletePhoto(current.photoPath);
+
+  revalidatePath("/annuaire");
+  revalidatePath("/organisation/benevoles");
+}
+
+// ---------- Tâches ----------
+
+const taskSchema = z.object({
+  eventId: z.string().min(1),
+  title: z.string().trim().min(1, "Le titre est requis").max(200),
+  dueDate: z.string().min(1, "La date limite est requise"),
+  assigneeIds: z.array(z.string().min(1)).min(1, "Choisissez au moins une personne"),
+});
+
+export async function createTask(formData: FormData) {
+  await requireOrganisationUser();
+
+  const parsed = taskSchema.safeParse({
+    eventId: formData.get("eventId"),
+    title: formData.get("title"),
+    dueDate: formData.get("dueDate"),
+    assigneeIds: formData.getAll("assigneeIds"),
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
+  }
+
+  const dueDate = new Date(parsed.data.dueDate);
+  if (Number.isNaN(dueDate.getTime())) {
+    throw new Error("Date limite invalide");
+  }
+
+  await prisma.task.create({
+    data: {
+      eventId: parsed.data.eventId,
+      title: parsed.data.title,
+      dueDate,
+      assignees: {
+        create: parsed.data.assigneeIds.map((userId) => ({ userId })),
+      },
+    },
+  });
+
+  revalidatePath(`/organisation/evenements/${parsed.data.eventId}`);
+  revalidatePath("/profil");
+}
+
+export async function deleteTask(formData: FormData) {
+  await requireOrganisationUser();
+  const id = String(formData.get("id"));
+  const eventId = String(formData.get("eventId"));
+
+  await prisma.task.delete({ where: { id } });
+
+  revalidatePath(`/organisation/evenements/${eventId}`);
+  revalidatePath("/profil");
+}
+
+export async function toggleTaskDone(formData: FormData) {
+  const user = await requireUser();
+  const id = String(formData.get("id"));
+
+  const task = await prisma.task.findUniqueOrThrow({
+    where: { id },
+    include: { assignees: true },
+  });
+  const isAssignee = task.assignees.some((a) => a.userId === user.id);
+  if (!isAssignee && !isOrganisationRole(user.role)) {
+    throw new Error("Vous n'êtes pas autorisé·e à modifier cette tâche");
+  }
+
+  await prisma.task.update({
+    where: { id },
+    data: { done: !task.done },
+  });
+
+  revalidatePath(`/organisation/evenements/${task.eventId}`);
+  revalidatePath("/profil");
 }

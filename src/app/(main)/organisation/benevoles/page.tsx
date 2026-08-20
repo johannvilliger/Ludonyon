@@ -1,11 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { requireOrganisationUser } from "@/lib/session";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/roles";
+import { formatDateOnly } from "@/lib/format";
+import Avatar from "@/components/Avatar";
 import {
   createVolunteer,
   updateVolunteerRole,
   deleteVolunteer,
   resetVolunteerPassword,
+  updateVolunteerPhoto,
 } from "@/lib/actions/organisation";
 
 export default async function OrganisationBenevolesPage() {
@@ -13,6 +16,7 @@ export default async function OrganisationBenevolesPage() {
 
   const users = await prisma.user.findMany({
     orderBy: { name: "asc" },
+    include: { vacations: { orderBy: { startDate: "asc" } } },
   });
 
   return (
@@ -124,9 +128,12 @@ export default async function OrganisationBenevolesPage() {
                 className="rounded-xl border border-stone-200 bg-white p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-stone-900">{u.name}</p>
-                    <p className="text-sm text-stone-600">{u.email}</p>
+                  <div className="flex items-start gap-3">
+                    <Avatar name={u.name} photoPath={u.photoPath} />
+                    <div>
+                      <p className="font-medium text-stone-900">{u.name}</p>
+                      <p className="text-sm text-stone-600">{u.email}</p>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
@@ -193,6 +200,47 @@ export default async function OrganisationBenevolesPage() {
                       className="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
                     >
                       Réinitialiser
+                    </button>
+                  </form>
+                </details>
+
+                {u.vacations.length > 0 && (
+                  <details className="mt-2" open>
+                    <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
+                      Vacances / indisponibilités déclarées
+                    </summary>
+                    <ul className="mt-2 space-y-1 text-sm text-stone-600">
+                      {u.vacations.map((v) => (
+                        <li key={v.id}>
+                          {formatDateOnly(v.startDate)} –{" "}
+                          {formatDateOnly(v.endDate)}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
+                    Changer la photo
+                  </summary>
+                  <form
+                    action={updateVolunteerPhoto}
+                    className="mt-2 flex flex-wrap items-center gap-2"
+                  >
+                    <input type="hidden" name="id" value={u.id} />
+                    <input
+                      type="file"
+                      name="photo"
+                      accept="image/jpeg,image/png,image/webp"
+                      required
+                      className="text-sm"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
+                    >
+                      Enregistrer
                     </button>
                   </form>
                 </details>

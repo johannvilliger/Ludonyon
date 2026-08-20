@@ -47,6 +47,10 @@ next-env.d.ts
 /dev.db
 /dev.db-journal
 
+# photos de profil uploadées à l'exécution — stockage disque persistant
+# sur le serveur, ne doit pas être versionné
+/public/uploads/
+
 # reference docs auto-installed by `prisma init` for AI coding assistants
 # (regenerate with `npx prisma init` skills installer if needed)
 /.agents/

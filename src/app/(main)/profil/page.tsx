@@ -1,21 +1,159 @@
+import { headers } from "next/headers";
 import { requireUser } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
 import { ROLE_LABELS, type Role } from "@/lib/roles";
+import { formatEventDate, formatDateOnly } from "@/lib/format";
+import Avatar from "@/components/Avatar";
+import { toggleOpeningReminders } from "@/lib/actions/profile";
+import { toggleTaskDone } from "@/lib/actions/organisation";
 import ChangePasswordForm from "./ChangePasswordForm";
+import PhotoForm from "./PhotoForm";
+import VacationsForm from "./VacationsForm";
+import CalendarSubscribeLink from "./CalendarSubscribeLink";
 
 export default async function ProfilPage() {
-  const user = await requireUser();
+  const authUser = await requireUser();
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: authUser.id },
+  });
+  const vacations = await prisma.vacation.findMany({
+    where: { userId: authUser.id },
+    orderBy: { startDate: "asc" },
+  });
+  const upcomingSignups = await prisma.eventSignup.findMany({
+    where: { userId: authUser.id, event: { startsAt: { gte: new Date() } } },
+    include: { event: true },
+    orderBy: { event: { startsAt: "asc" } },
+  });
+  const myTasks = await prisma.taskAssignee.findMany({
+    where: { userId: authUser.id },
+    include: { task: { include: { event: { select: { title: true } } } } },
+    orderBy: { task: { dueDate: "asc" } },
+  });
+
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("host");
+  const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
+  const calendarUrl = `${protocol}://${host}/api/calendrier/${user.calendarToken}`;
 
   return (
     <div className="max-w-md">
       <h1 className="text-2xl font-semibold text-stone-900">Mon profil</h1>
 
-      <div className="mt-6 rounded-xl border border-stone-200 bg-white p-4">
-        <p className="font-medium text-stone-900">{user.name}</p>
-        <p className="text-sm text-stone-600">{user.email}</p>
-        <p className="mt-1 text-xs text-stone-400">
-          Rôle : {ROLE_LABELS[user.role as Role] ?? user.role}
-        </p>
+      <div className="mt-6 flex items-center gap-4 rounded-xl border border-stone-200 bg-white p-4">
+        <Avatar name={user.name} photoPath={user.photoPath} size={56} />
+        <div>
+          <p className="font-medium text-stone-900">{user.name}</p>
+          <p className="text-sm text-stone-600">{user.email}</p>
+          <p className="mt-1 text-xs text-stone-400">
+            Rôle : {ROLE_LABELS[user.role as Role] ?? user.role}
+          </p>
+        </div>
       </div>
+
+      <h2 className="mt-8 text-lg font-medium text-stone-900">
+        Mes prochains événements
+      </h2>
+      {upcomingSignups.length === 0 ? (
+        <p className="mt-2 text-sm text-stone-400">
+          Aucune inscription à venir.
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {upcomingSignups.map(({ event }) => (
+            <li
+              key={event.id}
+              className="rounded-xl border border-stone-200 bg-white p-3 text-sm"
+            >
+              <p className="font-medium text-stone-900">{event.title}</p>
+              <p className="text-stone-500">
+                {formatEventDate(event.startsAt, event.endsAt)}
+                {event.location ? ` · ${event.location}` : ""}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h2 className="mt-8 text-lg font-medium text-stone-900">Mes tâches</h2>
+      {myTasks.length === 0 ? (
+        <p className="mt-2 text-sm text-stone-400">
+          Aucune tâche assignée pour l’instant.
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {myTasks.map(({ task }) => (
+            <li
+              key={task.id}
+              className="flex items-center justify-between gap-2 rounded-xl border border-stone-200 bg-white p-3 text-sm"
+            >
+              <div>
+                <p
+                  className={
+                    task.done
+                      ? "font-medium text-stone-400 line-through"
+                      : "font-medium text-stone-900"
+                  }
+                >
+                  {task.title}
+                </p>
+                <p className="text-xs text-stone-500">
+                  {task.event.title} · échéance {formatDateOnly(task.dueDate)}
+                </p>
+              </div>
+              <form action={toggleTaskDone}>
+                <input type="hidden" name="id" value={task.id} />
+                <button
+                  type="submit"
+                  className="shrink-0 rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
+                >
+                  {task.done ? "À faire" : "Fait"}
+                </button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h2 className="mt-8 text-lg font-medium text-stone-900">Ma photo</h2>
+      <PhotoForm hasPhoto={!!user.photoPath} />
+
+      <h2 className="mt-8 text-lg font-medium text-stone-900">
+        Mon calendrier
+      </h2>
+      <CalendarSubscribeLink url={calendarUrl} />
+
+      <h2 className="mt-8 text-lg font-medium text-stone-900">
+        Rappels pour les ouvertures
+      </h2>
+      <form
+        action={toggleOpeningReminders}
+        className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white p-4"
+      >
+        <label className="flex items-center gap-2 text-sm text-stone-700">
+          <input
+            type="checkbox"
+            name="wantsOpeningReminders"
+            defaultChecked={user.wantsOpeningReminders}
+            className="h-4 w-4 rounded border-stone-300 text-brand-blue focus:ring-brand-blue"
+          />
+          Je veux être notifié·e avant mes créneaux d’ouverture
+        </label>
+        <button
+          type="submit"
+          className="shrink-0 rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100"
+        >
+          Enregistrer
+        </button>
+      </form>
+
+      <h2 className="mt-8 text-lg font-medium text-stone-900">
+        Mes indisponibilités / vacances
+      </h2>
+      <p className="mt-1 text-sm text-stone-500">
+        Visibles par les responsables et le comité.
+      </p>
+      <VacationsForm vacations={vacations} />
 
       <h2 className="mt-8 text-lg font-medium text-stone-900">
         Changer mon mot de passe

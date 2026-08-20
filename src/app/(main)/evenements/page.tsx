@@ -1,7 +1,8 @@
 import { requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatEventDate } from "@/lib/format";
-import SignupButton from "./SignupButton";
+import { fulfillReplacement } from "@/lib/actions/events";
+import MySignupControls from "./MySignupControls";
 
 export default async function EvenementsPage() {
   const user = await requireUser();
@@ -30,8 +31,9 @@ export default async function EvenementsPage() {
       ) : (
         <ul className="mt-6 space-y-4">
           {events.map((event) => {
-            const isSignedUp = event.signups.some(
-              (s) => s.userId === user.id
+            const mySignup = event.signups.find((s) => s.userId === user.id);
+            const replacementNeeded = event.signups.filter(
+              (s) => s.seekingReplacement && s.userId !== user.id
             );
             return (
               <li
@@ -52,10 +54,18 @@ export default async function EvenementsPage() {
                         {event.description}
                       </p>
                     )}
+                    <a
+                      href={`/api/evenements/${event.id}/ics`}
+                      className="mt-2 inline-block text-xs text-brand-blue hover:underline"
+                    >
+                      Ajouter à mon calendrier
+                    </a>
                   </div>
-                  <SignupButton
+                  <MySignupControls
                     eventId={event.id}
-                    isSignedUp={isSignedUp}
+                    isSignedUp={!!mySignup}
+                    wantsReminder={mySignup?.wantsReminder ?? false}
+                    seekingReplacement={mySignup?.seekingReplacement ?? false}
                   />
                 </div>
                 {event.signups.length > 0 && (
@@ -63,6 +73,30 @@ export default async function EvenementsPage() {
                     Inscrit·e·s :{" "}
                     {event.signups.map((s) => s.user.name).join(", ")}
                   </p>
+                )}
+                {replacementNeeded.length > 0 && (
+                  <ul className="mt-3 space-y-1.5 border-t border-stone-100 pt-3">
+                    {replacementNeeded.map((s) => (
+                      <li
+                        key={s.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm"
+                      >
+                        <span className="text-red-700">
+                          {s.user.name} cherche un·e remplaçant·e
+                        </span>
+                        <form action={fulfillReplacement}>
+                          <input type="hidden" name="eventId" value={event.id} />
+                          <input type="hidden" name="signupId" value={s.id} />
+                          <button
+                            type="submit"
+                            className="rounded-lg border-2 border-black bg-brand-yellow px-2.5 py-1 text-xs font-semibold text-black hover:bg-brand-yellow-dark"
+                          >
+                            Je remplace
+                          </button>
+                        </form>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </li>
             );

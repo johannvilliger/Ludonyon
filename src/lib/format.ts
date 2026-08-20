@@ -17,6 +17,16 @@ const dateTimeFormatter = new Intl.DateTimeFormat("fr-CH", {
   minute: "2-digit",
 });
 
+const dateOnlyFormatter = new Intl.DateTimeFormat("fr-CH", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
+export function formatDateOnly(date: Date): string {
+  return dateOnlyFormatter.format(date);
+}
+
 export function formatEventDate(start: Date, end?: Date | null): string {
   const day = dateFormatter.format(start);
   const from = timeFormatter.format(start);

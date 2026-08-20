@@ -2,7 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireOrganisationUser } from "@/lib/session";
-import { formatEventDate, formatTime, formatDuration } from "@/lib/format";
+import {
+  formatEventDate,
+  formatTime,
+  formatDuration,
+  formatDateOnly,
+} from "@/lib/format";
+import Avatar from "@/components/Avatar";
 import {
   addVolunteerToEvent,
   removeEventSignup,
@@ -10,6 +16,9 @@ import {
   markDeparture,
   addManualTime,
   toggleEventPaid,
+  createTask,
+  deleteTask,
+  toggleTaskDone,
 } from "@/lib/actions/organisation";
 
 function sessionMinutes(arrivedAt: Date, leftAt: Date | null): number {
@@ -30,7 +39,9 @@ export default async function OrganisationEvenementDetailPage({
     include: {
       signups: {
         include: {
-          user: { select: { id: true, name: true, email: true } },
+          user: {
+            select: { id: true, name: true, email: true, photoPath: true },
+          },
           attendanceSessions: { orderBy: { arrivedAt: "asc" } },
         },
         orderBy: { createdAt: "asc" },
@@ -43,6 +54,17 @@ export default async function OrganisationEvenementDetailPage({
     where: { id: { notIn: event.signups.map((s) => s.userId) } },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
+  });
+
+  const allUsers = await prisma.user.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+
+  const tasks = await prisma.task.findMany({
+    where: { eventId: id },
+    include: { assignees: { include: { user: { select: { id: true, name: true } } } } },
+    orderBy: { dueDate: "asc" },
   });
 
   const totalEventMinutes = event.signups.reduce(
@@ -131,13 +153,19 @@ export default async function OrganisationEvenementDetailPage({
                 className="rounded-xl border border-stone-200 bg-white p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-stone-900">
-                      {signup.user.name}
-                    </p>
-                    <p className="text-xs text-stone-500">
-                      {signup.user.email}
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <Avatar
+                      name={signup.user.name}
+                      photoPath={signup.user.photoPath}
+                    />
+                    <div>
+                      <p className="font-medium text-stone-900">
+                        {signup.user.name}
+                      </p>
+                      <p className="text-xs text-stone-500">
+                        {signup.user.email}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span
@@ -244,6 +272,127 @@ export default async function OrganisationEvenementDetailPage({
             );
           })}
         </ul>
+      </section>
+
+      <section>
+        <h3 className="text-sm font-medium text-stone-700">Tâches</h3>
+        <p className="mt-1 text-xs text-stone-400">
+          Optionnel — laissez vide si cet événement n’en a pas besoin.
+        </p>
+
+        {tasks.length > 0 && (
+          <ul className="mt-3 space-y-2">
+            {tasks.map((task) => (
+              <li
+                key={task.id}
+                className={`rounded-xl border bg-white p-4 ${
+                  task.done ? "border-stone-100" : "border-stone-200"
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p
+                      className={`font-medium ${
+                        task.done
+                          ? "text-stone-400 line-through"
+                          : "text-stone-900"
+                      }`}
+                    >
+                      {task.title}
+                    </p>
+                    <p className="mt-1 text-xs text-stone-500">
+                      Échéance : {formatDateOnly(task.dueDate)} ·{" "}
+                      {task.assignees.map((a) => a.user.name).join(", ")}
+                    </p>
+                    <a
+                      href={`/api/taches/${task.id}/ics`}
+                      className="mt-1 inline-block text-xs text-brand-blue hover:underline"
+                    >
+                      Ajouter à mon calendrier
+                    </a>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <form action={toggleTaskDone}>
+                      <input type="hidden" name="id" value={task.id} />
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
+                      >
+                        {task.done ? "Marquer à faire" : "Marquer fait"}
+                      </button>
+                    </form>
+                    <form action={deleteTask}>
+                      <input type="hidden" name="id" value={task.id} />
+                      <input type="hidden" name="eventId" value={event.id} />
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                      >
+                        Supprimer
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <form
+          action={createTask}
+          className="mt-3 space-y-3 rounded-xl border border-stone-200 bg-white p-4"
+        >
+          <input type="hidden" name="eventId" value={event.id} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-stone-700">
+                Titre
+              </label>
+              <input
+                type="text"
+                name="title"
+                required
+                maxLength={200}
+                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-stone-700">
+                Date limite
+              </label>
+              <input
+                type="date"
+                name="dueDate"
+                required
+                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-stone-700">
+              Assigné·e à (plusieurs choix possibles)
+            </label>
+            <select
+              name="assigneeIds"
+              multiple
+              required
+              size={Math.min(6, allUsers.length)}
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+            >
+              {allUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="submit"
+            className="rounded-lg border-2 border-black bg-brand-yellow px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand-yellow-dark"
+          >
+            Ajouter la tâche
+          </button>
+        </form>
       </section>
 
       <section>
