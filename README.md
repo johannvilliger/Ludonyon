@@ -90,6 +90,10 @@ ensuite depuis **Mon profil**).
    - `DATABASE_URL` — chaîne de connexion à votre base MySQL Infomaniak,
      au format `mysql://UTILISATEUR:MOTDEPASSE@HOTE:PORT/NOM_BASE`
    - `AUTH_SECRET` — générée avec `openssl rand -base64 32`
+   - `AUTH_URL` — l'adresse publique complète du site, ex.
+     `https://benevoles.ludo-gland.ch`. Sans ça, derrière le proxy
+     d'Infomaniak, les redirections de connexion/déconnexion peuvent
+     pointer vers l'adresse interne (`localhost`) au lieu du vrai domaine.
    - `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` —
      pour les notifications push. Générez une paire de clés dédiée à la
      production avec `npx web-push generate-vapid-keys` (ne réutilisez
