@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,7 +19,12 @@ export const metadata: Metadata = {
     "Espace communautaire des bénévoles de la Ludothèque Nyon Région.",
   icons: {
     icon: "/logo.png",
+    apple: "/icons/apple-touch-icon.png",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f6d915",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -28,6 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-stone-50 text-stone-900">
+        <ServiceWorkerRegister />
         {children}
       </body>
     </html>

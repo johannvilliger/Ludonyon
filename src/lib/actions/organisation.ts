@@ -7,6 +7,7 @@ import { requireOrganisationUser, requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { ROLES, isOrganisationRole } from "@/lib/roles";
 import { savePhoto, deletePhoto } from "@/lib/photoStorage";
+import { sendPushToUsers } from "@/lib/push";
 
 // ---------- Annonces ----------
 
@@ -436,4 +437,38 @@ export async function toggleTaskDone(formData: FormData) {
 
   revalidatePath(`/organisation/evenements/${task.eventId}`);
   revalidatePath("/profil");
+}
+
+// ---------- Notifications ----------
+
+const notificationSchema = z.object({
+  title: z.string().trim().min(1, "Le titre est requis").max(100),
+  body: z.string().trim().min(1, "Le message est requis").max(500),
+  target: z.enum(["all", "organisation"]),
+});
+
+export async function sendManualNotification(formData: FormData) {
+  await requireOrganisationUser();
+
+  const parsed = notificationSchema.safeParse({
+    title: formData.get("title"),
+    body: formData.get("body"),
+    target: formData.get("target"),
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
+  }
+
+  const users = await prisma.user.findMany({
+    where:
+      parsed.data.target === "organisation"
+        ? { role: { in: ["RESPONSABLE", "COMITE"] } }
+        : undefined,
+    select: { id: true },
+  });
+
+  await sendPushToUsers(
+    users.map((u) => u.id),
+    { title: parsed.data.title, body: parsed.data.body, url: "/" }
+  );
 }

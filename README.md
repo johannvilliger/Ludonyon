@@ -90,6 +90,11 @@ ensuite depuis **Mon profil**).
    - `DATABASE_URL` — chaîne de connexion à votre base MySQL Infomaniak,
      au format `mysql://UTILISATEUR:MOTDEPASSE@HOTE:PORT/NOM_BASE`
    - `AUTH_SECRET` — générée avec `openssl rand -base64 32`
+   - `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` —
+     pour les notifications push. Générez une paire de clés dédiée à la
+     production avec `npx web-push generate-vapid-keys` (ne réutilisez
+     pas celle du développement local). `VAPID_SUBJECT` est un
+     `mailto:` de contact, ex. `mailto:contact@ludonyonregion.ch`.
 4. Depuis le terminal SSH du site (bouton dans le Manager), lancez :
    ```bash
    npx prisma migrate deploy
@@ -107,6 +112,25 @@ dans le dépôt Git — ce dossier est volontairement ignoré par git). Elles
 survivent aux `git pull` et rebuilds normaux. Seule l'action **« Réinitialiser
 le site »** dans le Manager Infomaniak les effacerait (avec le reste du
 site) : à éviter une fois en production.
+
+### PWA et notifications push
+
+Le site est installable (icône sur l'écran d'accueil, mobile et
+ordinateur) et peut envoyer des notifications push aux bénévoles ayant
+activé l'option depuis **Mon profil**. Ça ne nécessite aucune app store.
+
+Trois usages :
+- Rappel automatique ~1h avant un événement pour les personnes ayant coché
+  "je veux être notifié·e" à l'inscription.
+- Envoi manuel depuis **Espace organisation → Notifications** (à tous les
+  bénévoles ou juste responsables/comité).
+- Le rappel "ouvertures" (case globale dans Mon profil) est prévu pour la
+  future page de planning, pas encore branché à un envoi réel.
+
+⚠️ **À tester obligatoirement sur un vrai téléphone une fois déployé** —
+l'activation des notifications (autorisation du navigateur, réception
+réelle) ne peut pas être vérifiée autrement. Sur iPhone, le site doit
+d'abord être ajouté à l'écran d'accueil (limite d'Apple, pas du site).
 
 ### Mises à jour
 

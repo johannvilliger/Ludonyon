@@ -10,6 +10,7 @@ import ChangePasswordForm from "./ChangePasswordForm";
 import PhotoForm from "./PhotoForm";
 import VacationsForm from "./VacationsForm";
 import CalendarSubscribeLink from "./CalendarSubscribeLink";
+import PushNotificationsToggle from "./PushNotificationsToggle";
 
 export default async function ProfilPage() {
   const authUser = await requireUser();
@@ -122,6 +123,11 @@ export default async function ProfilPage() {
         Mon calendrier
       </h2>
       <CalendarSubscribeLink url={calendarUrl} />
+
+      <h2 className="mt-8 text-lg font-medium text-stone-900">
+        Notifications
+      </h2>
+      <PushNotificationsToggle />
 
       <h2 className="mt-8 text-lg font-medium text-stone-900">
         Rappels pour les ouvertures

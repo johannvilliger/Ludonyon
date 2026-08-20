@@ -152,3 +152,32 @@ export async function removeMyPhoto() {
   revalidatePath("/profil");
   revalidatePath("/annuaire");
 }
+
+const pushSubscriptionSchema = z.object({
+  endpoint: z.string().min(1),
+  p256dh: z.string().min(1),
+  auth: z.string().min(1),
+});
+
+export async function subscribeToPush(input: {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}) {
+  const authUser = await requireUser();
+  const parsed = pushSubscriptionSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new Error("Abonnement invalide");
+  }
+
+  await prisma.pushSubscription.upsert({
+    where: { endpoint: parsed.data.endpoint },
+    update: { p256dh: parsed.data.p256dh, auth: parsed.data.auth, userId: authUser.id },
+    create: { ...parsed.data, userId: authUser.id },
+  });
+}
+
+export async function unsubscribeFromPush(endpoint: string) {
+  await requireUser();
+  await prisma.pushSubscription.deleteMany({ where: { endpoint } });
+}

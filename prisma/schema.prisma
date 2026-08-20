@@ -26,13 +26,27 @@ model User {
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
-  announcements Announcement[]
-  events        Event[]
-  signups       EventSignup[]
-  vacations     Vacation[]
-  taskAssignees TaskAssignee[]
+  announcements     Announcement[]
+  events            Event[]
+  signups           EventSignup[]
+  vacations         Vacation[]
+  taskAssignees     TaskAssignee[]
+  pushSubscriptions PushSubscription[]
 
   @@index([role])
+}
+
+// Un abonnement par navigateur/appareil ayant activé les notifications.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique @db.VarChar(500)
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // Périodes d'indisponibilité déclarées par le bénévole lui-même,
@@ -80,9 +94,10 @@ model EventSignup {
   event              Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   userId             String
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  wantsReminder      Boolean  @default(false)
-  seekingReplacement Boolean  @default(false)
-  createdAt          DateTime @default(now())
+  wantsReminder      Boolean   @default(false)
+  reminderSentAt     DateTime?
+  seekingReplacement Boolean   @default(false)
+  createdAt          DateTime  @default(now())
 
   attendanceSessions AttendanceSession[]
 
