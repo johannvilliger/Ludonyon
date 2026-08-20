@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatEventDate } from "@/lib/format";
 import { createEvent, deleteEvent } from "@/lib/actions/organisation";
@@ -78,6 +79,14 @@ export default async function OrganisationEvenementsPage() {
               className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
             />
           </div>
+          <label className="flex items-center gap-2 text-sm text-stone-700">
+            <input
+              type="checkbox"
+              name="paid"
+              className="h-4 w-4 rounded border-stone-300 text-amber-500 focus:ring-amber-500"
+            />
+            Événement rémunéré
+          </label>
           <button
             type="submit"
             className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600"
@@ -99,7 +108,16 @@ export default async function OrganisationEvenementsPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium text-stone-900">{event.title}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-stone-900">
+                      {event.title}
+                    </p>
+                    {event.paid && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        Rémunéré
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-1 text-sm text-stone-600">
                     {formatEventDate(event.startsAt, event.endsAt)}
                     {event.location ? ` · ${event.location}` : ""}
@@ -112,15 +130,23 @@ export default async function OrganisationEvenementsPage() {
                           .join(", ")}`}
                   </p>
                 </div>
-                <form action={deleteEvent}>
-                  <input type="hidden" name="id" value={event.id} />
-                  <button
-                    type="submit"
-                    className="shrink-0 text-sm text-red-600 hover:underline"
+                <div className="flex shrink-0 items-center gap-3">
+                  <Link
+                    href={`/organisation/evenements/${event.id}`}
+                    className="text-sm text-amber-700 hover:underline"
                   >
-                    Supprimer
-                  </button>
-                </form>
+                    Gérer
+                  </Link>
+                  <form action={deleteEvent}>
+                    <input type="hidden" name="id" value={event.id} />
+                    <button
+                      type="submit"
+                      className="text-sm text-red-600 hover:underline"
+                    >
+                      Supprimer
+                    </button>
+                  </form>
+                </div>
               </div>
             </li>
           ))}

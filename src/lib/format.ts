@@ -27,3 +27,14 @@ export function formatEventDate(start: Date, end?: Date | null): string {
 export function formatDateTime(date: Date): string {
   return dateTimeFormatter.format(date);
 }
+
+export function formatTime(date: Date): string {
+  return timeFormatter.format(date);
+}
+
+export function formatDuration(totalMinutes: number): string {
+  const minutes = Math.max(0, Math.round(totalMinutes));
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return `${hours}h${String(rest).padStart(2, "0")}`;
+}

@@ -53,6 +53,7 @@ const eventSchema = z.object({
   location: z.string().trim().max(200).optional(),
   startsAt: z.string().min(1, "La date de début est requise"),
   endsAt: z.string().optional(),
+  paid: z.coerce.boolean().optional(),
 });
 
 export async function createEvent(formData: FormData) {
@@ -64,6 +65,7 @@ export async function createEvent(formData: FormData) {
     location: formData.get("location") || undefined,
     startsAt: formData.get("startsAt"),
     endsAt: formData.get("endsAt") || undefined,
+    paid: formData.get("paid") === "on" ? true : undefined,
   });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
@@ -85,6 +87,7 @@ export async function createEvent(formData: FormData) {
       location: parsed.data.location ?? null,
       startsAt,
       endsAt,
+      paid: parsed.data.paid ?? false,
       createdById: user.id,
     },
   });
@@ -103,6 +106,90 @@ export async function deleteEvent(formData: FormData) {
   revalidatePath("/evenements");
   revalidatePath("/organisation/evenements");
   revalidatePath("/");
+}
+
+export async function toggleEventPaid(formData: FormData) {
+  const id = String(formData.get("id"));
+  await requireOrganisationUser();
+
+  const event = await prisma.event.findUniqueOrThrow({ where: { id } });
+  await prisma.event.update({
+    where: { id },
+    data: { paid: !event.paid },
+  });
+
+  revalidatePath("/evenements");
+  revalidatePath("/organisation/evenements");
+  revalidatePath(`/organisation/evenements/${id}`);
+}
+
+// ---------- Présences ----------
+
+export async function addVolunteerToEvent(formData: FormData) {
+  const eventId = String(formData.get("eventId"));
+  const userId = String(formData.get("userId"));
+  if (!eventId || !userId) {
+    throw new Error("Champs invalides");
+  }
+  await requireOrganisationUser();
+
+  await prisma.eventSignup.upsert({
+    where: { eventId_userId: { eventId, userId } },
+    update: {},
+    create: { eventId, userId },
+  });
+
+  revalidatePath(`/organisation/evenements/${eventId}`);
+  revalidatePath("/evenements");
+  revalidatePath("/");
+}
+
+export async function removeEventSignup(formData: FormData) {
+  const signupId = String(formData.get("signupId"));
+  const eventId = String(formData.get("eventId"));
+  await requireOrganisationUser();
+
+  await prisma.eventSignup.delete({ where: { id: signupId } });
+
+  revalidatePath(`/organisation/evenements/${eventId}`);
+  revalidatePath("/evenements");
+  revalidatePath("/");
+}
+
+export async function markArrival(formData: FormData) {
+  const eventSignupId = String(formData.get("eventSignupId"));
+  const eventId = String(formData.get("eventId"));
+  await requireOrganisationUser();
+
+  const openSession = await prisma.attendanceSession.findFirst({
+    where: { eventSignupId, leftAt: null },
+  });
+  if (!openSession) {
+    await prisma.attendanceSession.create({
+      data: { eventSignupId, arrivedAt: new Date() },
+    });
+  }
+
+  revalidatePath(`/organisation/evenements/${eventId}`);
+}
+
+export async function markDeparture(formData: FormData) {
+  const eventSignupId = String(formData.get("eventSignupId"));
+  const eventId = String(formData.get("eventId"));
+  await requireOrganisationUser();
+
+  const openSession = await prisma.attendanceSession.findFirst({
+    where: { eventSignupId, leftAt: null },
+    orderBy: { arrivedAt: "desc" },
+  });
+  if (openSession) {
+    await prisma.attendanceSession.update({
+      where: { id: openSession.id },
+      data: { leftAt: new Date() },
+    });
+  }
+
+  revalidatePath(`/organisation/evenements/${eventId}`);
 }
 
 // ---------- Bénévoles ----------

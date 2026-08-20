@@ -46,6 +46,7 @@ model Event {
   location    String?
   startsAt    DateTime
   endsAt      DateTime?
+  paid        Boolean  @default(false)
   createdById String
   createdBy   User     @relation(fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
@@ -61,5 +62,21 @@ model EventSignup {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
+  attendanceSessions AttendanceSession[]
+
   @@unique([eventId, userId])
+}
+
+// Un bénévole peut arriver/repartir plusieurs fois pendant un même
+// événement : chaque présence est une session distincte, et le temps
+// total est la somme des sessions.
+model AttendanceSession {
+  id            String      @id @default(cuid())
+  eventSignupId String
+  eventSignup   EventSignup @relation(fields: [eventSignupId], references: [id], onDelete: Cascade)
+  arrivedAt     DateTime
+  leftAt        DateTime?
+  createdAt     DateTime    @default(now())
+
+  @@index([eventSignupId])
 }
