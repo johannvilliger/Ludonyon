@@ -7,11 +7,11 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
 }
 
-// SQLite ne supporte pas les enums natifs : Role est une chaîne validée
-// côté application (voir src/lib/roles.ts) parmi "BENEVOLE" | "RESPONSABLE" | "COMITE".
+// Role est une chaîne validée côté application (voir src/lib/roles.ts)
+// parmi "BENEVOLE" | "RESPONSABLE" | "COMITE".
 model User {
   id           String   @id @default(cuid())
   name         String

@@ -33,22 +33,23 @@ Le modèle de rôles est déjà en place pour l'ajouter facilement plus tard.
 ## Stack technique
 
 - [Next.js 16](https://nextjs.org) (App Router, Turbopack)
-- [Prisma 7](https://www.prisma.io) + SQLite en développement
+- [Prisma 7](https://www.prisma.io) + MySQL
 - [NextAuth (Auth.js) v5](https://authjs.dev) — connexion par identifiants
 - [Tailwind CSS 4](https://tailwindcss.com)
 - TypeScript
 
 ## Démarrage local
 
-Prérequis : Node.js 20.9+.
+Prérequis : Node.js 20.9+ et un serveur MySQL/MariaDB accessible (local ou distant).
 
 ```bash
 npm install
 cp .env.example .env
-# générez une valeur pour AUTH_SECRET et collez-la dans .env :
+# renseignez DATABASE_URL (voir format dans .env.example) et générez
+# une valeur pour AUTH_SECRET :
 openssl rand -base64 32
 
-npx prisma migrate dev   # crée la base SQLite locale (dev.db)
+npx prisma migrate dev   # crée les tables dans la base MySQL
 npm run db:seed          # comptes de démonstration (voir ci-dessous)
 npm run dev
 ```
@@ -73,34 +74,39 @@ Une fois connecté·e avec un compte Responsable ou Comité, allez dans
 (un mot de passe provisoire à leur communiquer ; ils peuvent le changer
 ensuite depuis **Mon profil**).
 
-## Déploiement
+## Déploiement (Infomaniak, hébergement Node.js + MySQL)
 
-Le projet est prêt pour [Vercel](https://vercel.com) (gratuit pour ce
-volume d'usage).
+1. Dans le Manager Infomaniak, créez un site **Node.js** (Hébergement →
+   votre site → Ajouter un site) et choisissez **« Importer un projet
+   existant »** pour cloner ce dépôt Git (branche de production).
+2. Configurez le site :
+   - **Commande de build** : `npm install && npm run build`
+   - **Commande de démarrage** : `npm run start`
+   - **Dossier d'exécution** : la racine du dépôt (là où se trouve
+     `package.json`)
+   - Le port est géré automatiquement par Infomaniak via la variable
+     `PORT`, que `next start` lit tout seul.
+3. Dans les **variables d'environnement** du site, ajoutez :
+   - `DATABASE_URL` — chaîne de connexion à votre base MySQL Infomaniak,
+     au format `mysql://UTILISATEUR:MOTDEPASSE@HOTE:PORT/NOM_BASE`
+   - `AUTH_SECRET` — générée avec `openssl rand -base64 32`
+4. Depuis le terminal SSH du site (bouton dans le Manager), lancez :
+   ```bash
+   npx prisma migrate deploy
+   npm run db:seed
+   ```
+   Ça crée les tables et les comptes de démonstration (à changer/
+   supprimer ensuite, voir ci-dessous).
+5. Redémarrez le site depuis le Manager si nécessaire.
 
-**Important** : SQLite (fichier local) ne convient qu'au développement.
-Sur Vercel, le système de fichiers n'est pas persistant entre les
-requêtes : il faut une base de données hébergée. Options gratuites
-simples :
+### Mises à jour
 
-- [Vercel Postgres / Neon](https://vercel.com/marketplace/neon)
-- [Supabase](https://supabase.com) (Postgres gratuit)
-
-Étapes pour passer en production :
-
-1. Créez une base Postgres gratuite chez l'un des fournisseurs ci-dessus
-   et récupérez la chaîne de connexion.
-2. Dans `prisma/schema.prisma`, changez `provider = "sqlite"` en
-   `provider = "postgresql"`.
-3. Dans `src/lib/prisma.ts` (et `prisma/seed.ts`), remplacez l'adaptateur
-   `PrismaBetterSqlite3` par `PrismaPg` (package `@prisma/adapter-pg` +
-   `pg`, voir la [doc Prisma Postgres](https://www.prisma.io/docs)).
-4. Sur Vercel, définissez les variables d'environnement `DATABASE_URL`
-   (chaîne Postgres) et `AUTH_SECRET` (générée avec `openssl rand -base64
-   32`).
-5. Déployez, puis exécutez `npx prisma migrate deploy` et
-   `npm run db:seed` (ou créez le premier compte Comité directement en
-   base) contre la base de production.
+- **Avec accès SSH** (inclus sur la plupart des offres Infomaniak) : sur
+  le serveur, `git pull` puis relancez la commande de build et
+  redémarrez le site.
+- **Sans SSH** : reconstruisez le projet localement et transférez les
+  fichiers par SFTP, puis redémarrez le site manuellement depuis le
+  Manager.
 
 ## Structure du projet
 
