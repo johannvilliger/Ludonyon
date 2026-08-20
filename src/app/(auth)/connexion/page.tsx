@@ -22,9 +22,11 @@ export default async function ConnexionPage() {
               className="h-14 w-14 object-contain"
             />
           </div>
-          <h1 className="text-xl font-semibold text-stone-900">Ludonyon</h1>
+          <h1 className="text-xl font-semibold text-stone-900">
+            Ludothèque Nyon Région
+          </h1>
           <p className="mt-1 text-sm text-stone-500">
-            Espace des bénévoles de la Ludothèque Nyon Région
+            Espace des bénévoles
           </p>
         </div>
         <LoginForm />
