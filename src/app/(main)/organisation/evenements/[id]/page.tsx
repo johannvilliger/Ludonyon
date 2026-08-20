@@ -8,6 +8,7 @@ import {
   removeEventSignup,
   markArrival,
   markDeparture,
+  addManualTime,
   toggleEventPaid,
 } from "@/lib/actions/organisation";
 
@@ -205,15 +206,40 @@ export default async function OrganisationEvenementDetailPage({
                 {signup.attendanceSessions.length > 0 && (
                   <p className="mt-2 text-xs text-stone-400">
                     {signup.attendanceSessions
-                      .map(
-                        (s) =>
-                          `${formatTime(s.arrivedAt)}–${
-                            s.leftAt ? formatTime(s.leftAt) : "en cours"
-                          }`
+                      .map((s) =>
+                        s.manual
+                          ? `+${formatDuration(
+                              sessionMinutes(s.arrivedAt, s.leftAt)
+                            )} (ajout manuel)`
+                          : `${formatTime(s.arrivedAt)}–${
+                              s.leftAt ? formatTime(s.leftAt) : "en cours"
+                            }`
                       )
                       .join(", ")}
                   </p>
                 )}
+                <form
+                  action={addManualTime}
+                  className="mt-2 flex items-center gap-2"
+                >
+                  <input type="hidden" name="eventSignupId" value={signup.id} />
+                  <input type="hidden" name="eventId" value={event.id} />
+                  <input
+                    type="number"
+                    name="minutes"
+                    min={1}
+                    max={1440}
+                    placeholder="Minutes"
+                    required
+                    className="w-24 rounded-lg border border-stone-300 px-2 py-1 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
+                  >
+                    Ajouter du temps manuellement
+                  </button>
+                </form>
               </li>
             );
           })}

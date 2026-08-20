@@ -192,6 +192,37 @@ export async function markDeparture(formData: FormData) {
   revalidatePath(`/organisation/evenements/${eventId}`);
 }
 
+const manualTimeSchema = z.object({
+  eventSignupId: z.string().min(1),
+  eventId: z.string().min(1),
+  minutes: z.coerce.number().int().min(1).max(1440),
+});
+
+export async function addManualTime(formData: FormData) {
+  const parsed = manualTimeSchema.safeParse({
+    eventSignupId: formData.get("eventSignupId"),
+    eventId: formData.get("eventId"),
+    minutes: formData.get("minutes"),
+  });
+  if (!parsed.success) {
+    throw new Error("Durée invalide (entre 1 et 1440 minutes)");
+  }
+  await requireOrganisationUser();
+
+  const leftAt = new Date();
+  const arrivedAt = new Date(leftAt.getTime() - parsed.data.minutes * 60000);
+  await prisma.attendanceSession.create({
+    data: {
+      eventSignupId: parsed.data.eventSignupId,
+      arrivedAt,
+      leftAt,
+      manual: true,
+    },
+  });
+
+  revalidatePath(`/organisation/evenements/${parsed.data.eventId}`);
+}
+
 // ---------- Bénévoles ----------
 
 const volunteerSchema = z.object({

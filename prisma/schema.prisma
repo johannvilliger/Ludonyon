@@ -76,6 +76,7 @@ model AttendanceSession {
   eventSignup   EventSignup @relation(fields: [eventSignupId], references: [id], onDelete: Cascade)
   arrivedAt     DateTime
   leftAt        DateTime?
+  manual        Boolean     @default(false)
   createdAt     DateTime    @default(now())
 
   @@index([eventSignupId])
