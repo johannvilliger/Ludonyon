@@ -1,15 +1,23 @@
+// Fuseau horaire suisse — explicite ici en plus de la variable
+// d'environnement TZ, pour un affichage correct même si le serveur ne la
+// respecte pas (voir .env.example).
+const TIMEZONE = "Europe/Zurich";
+
 const dateFormatter = new Intl.DateTimeFormat("fr-CH", {
+  timeZone: TIMEZONE,
   weekday: "long",
   day: "numeric",
   month: "long",
 });
 
 const timeFormatter = new Intl.DateTimeFormat("fr-CH", {
+  timeZone: TIMEZONE,
   hour: "2-digit",
   minute: "2-digit",
 });
 
 const dateTimeFormatter = new Intl.DateTimeFormat("fr-CH", {
+  timeZone: TIMEZONE,
   day: "numeric",
   month: "short",
   year: "numeric",
@@ -18,6 +26,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat("fr-CH", {
 });
 
 const dateOnlyFormatter = new Intl.DateTimeFormat("fr-CH", {
+  timeZone: TIMEZONE,
   day: "numeric",
   month: "short",
   year: "numeric",

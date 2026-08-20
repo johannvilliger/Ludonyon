@@ -89,6 +89,10 @@ ensuite depuis **Mon profil**).
 3. Dans les **variables d'environnement** du site, ajoutez :
    - `DATABASE_URL` — chaîne de connexion à votre base MySQL Infomaniak,
      au format `mysql://UTILISATEUR:MOTDEPASSE@HOTE:PORT/NOM_BASE`
+   - `TZ="Europe/Zurich"` — sans ça, un serveur en UTC (le défaut le plus
+     courant) décale toutes les heures affichées, et surtout les horaires
+     saisis à la création d'un événement (le champ "Début" est interprété
+     dans le fuseau du serveur, pas celui de la personne qui le remplit).
    - `AUTH_SECRET` — générée avec `openssl rand -base64 32`
    - `AUTH_URL` — l'adresse publique complète du site, ex.
      `https://benevoles.ludo-gland.ch`. Sans ça, derrière le proxy
