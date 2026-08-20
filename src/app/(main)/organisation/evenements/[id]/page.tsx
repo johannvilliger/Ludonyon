@@ -51,12 +51,16 @@ export default async function OrganisationEvenementDetailPage({
   if (!event) notFound();
 
   const availableUsers = await prisma.user.findMany({
-    where: { id: { notIn: event.signups.map((s) => s.userId) } },
+    where: {
+      active: true,
+      id: { notIn: event.signups.map((s) => s.userId) },
+    },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
 
   const allUsers = await prisma.user.findMany({
+    where: { active: true },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });

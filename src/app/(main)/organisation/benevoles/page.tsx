@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireOrganisationUser } from "@/lib/session";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/roles";
@@ -6,15 +7,24 @@ import Avatar from "@/components/Avatar";
 import {
   createVolunteer,
   updateVolunteerRole,
+  archiveVolunteer,
+  unarchiveVolunteer,
   deleteVolunteer,
   resetVolunteerPassword,
   updateVolunteerPhoto,
 } from "@/lib/actions/organisation";
 
-export default async function OrganisationBenevolesPage() {
+export default async function OrganisationBenevolesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filtre?: string }>;
+}) {
   const currentUser = await requireOrganisationUser();
+  const { filtre } = await searchParams;
+  const showArchived = filtre === "archives";
 
   const users = await prisma.user.findMany({
+    where: { active: !showArchived },
     orderBy: { name: "asc" },
     include: { vacations: { orderBy: { startDate: "asc" } } },
   });
@@ -116,9 +126,38 @@ export default async function OrganisationBenevolesPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-medium text-stone-900">
-          Comptes existants
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-medium text-stone-900">
+            {showArchived ? "Comptes archivés" : "Comptes existants"}
+          </h2>
+          <div className="flex gap-1 rounded-lg border border-stone-200 bg-white p-1 text-sm">
+            <Link
+              href="/organisation/benevoles"
+              className={
+                !showArchived
+                  ? "rounded-md bg-stone-900 px-3 py-1 text-white"
+                  : "rounded-md px-3 py-1 text-stone-600 hover:bg-stone-100"
+              }
+            >
+              Actifs
+            </Link>
+            <Link
+              href="/organisation/benevoles?filtre=archives"
+              className={
+                showArchived
+                  ? "rounded-md bg-stone-900 px-3 py-1 text-white"
+                  : "rounded-md px-3 py-1 text-stone-600 hover:bg-stone-100"
+              }
+            >
+              Archivés
+            </Link>
+          </div>
+        </div>
+        {showArchived && users.length === 0 && (
+          <p className="mt-3 text-sm text-stone-400">
+            Aucun compte archivé.
+          </p>
+        )}
         <ul className="mt-3 space-y-3">
           {users.map((u) => {
             const isSelf = u.id === currentUser.id;
@@ -164,14 +203,25 @@ export default async function OrganisationBenevolesPage() {
                       )}
                     </form>
 
-                    {!isSelf && (
-                      <form action={deleteVolunteer}>
+                    {!isSelf && !showArchived && (
+                      <form action={archiveVolunteer}>
                         <input type="hidden" name="id" value={u.id} />
                         <button
                           type="submit"
-                          className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                          className="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
                         >
-                          Supprimer
+                          Archiver
+                        </button>
+                      </form>
+                    )}
+                    {showArchived && (
+                      <form action={unarchiveVolunteer}>
+                        <input type="hidden" name="id" value={u.id} />
+                        <button
+                          type="submit"
+                          className="rounded-lg border-2 border-black bg-brand-yellow px-2 py-1 text-xs font-semibold text-black hover:bg-brand-yellow-dark"
+                        >
+                          Réactiver
                         </button>
                       </form>
                     )}
@@ -244,6 +294,31 @@ export default async function OrganisationBenevolesPage() {
                     </button>
                   </form>
                 </details>
+
+                {showArchived && !isSelf && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs text-red-500 hover:text-red-700">
+                      Supprimer définitivement
+                    </summary>
+                    <div className="mt-2 rounded-lg bg-red-50 p-3">
+                      <p className="text-xs text-red-700">
+                        Tout ce qui est lié à ce compte disparaîtra
+                        définitivement : présences et heures enregistrées sur
+                        les événements passés, tâches assignées, vacances
+                        déclarées. Cette action est irréversible.
+                      </p>
+                      <form action={deleteVolunteer} className="mt-2">
+                        <input type="hidden" name="id" value={u.id} />
+                        <button
+                          type="submit"
+                          className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                        >
+                          Confirmer la suppression définitive
+                        </button>
+                      </form>
+                    </div>
+                  </details>
+                )}
               </li>
             );
           })}

@@ -7,6 +7,7 @@ export default async function AnnuairePage() {
   await requireUser();
 
   const users = await prisma.user.findMany({
+    where: { active: true },
     orderBy: { name: "asc" },
     select: {
       id: true,

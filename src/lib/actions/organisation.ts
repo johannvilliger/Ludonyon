@@ -304,12 +304,41 @@ export async function updateVolunteerRole(formData: FormData) {
   revalidatePath("/organisation/benevoles");
 }
 
+export async function archiveVolunteer(formData: FormData) {
+  const currentUser = await requireOrganisationUser();
+  const id = String(formData.get("id"));
+
+  if (id === currentUser.id) {
+    throw new Error("Vous ne pouvez pas archiver votre propre compte");
+  }
+
+  await prisma.user.update({ where: { id }, data: { active: false } });
+
+  revalidatePath("/annuaire");
+  revalidatePath("/organisation/benevoles");
+}
+
+export async function unarchiveVolunteer(formData: FormData) {
+  await requireOrganisationUser();
+  const id = String(formData.get("id"));
+
+  await prisma.user.update({ where: { id }, data: { active: true } });
+
+  revalidatePath("/annuaire");
+  revalidatePath("/organisation/benevoles");
+}
+
 export async function deleteVolunteer(formData: FormData) {
   const currentUser = await requireOrganisationUser();
   const id = String(formData.get("id"));
 
   if (id === currentUser.id) {
     throw new Error("Vous ne pouvez pas supprimer votre propre compte");
+  }
+
+  const target = await prisma.user.findUniqueOrThrow({ where: { id } });
+  if (target.active) {
+    throw new Error("Archivez d'abord ce compte avant de le supprimer");
   }
 
   await prisma.user.delete({ where: { id } });
