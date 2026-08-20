@@ -1,7 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ROLE_LABELS, type Role } from "@/lib/roles";
 import SignOutButton from "./SignOutButton";
-import LogoMark from "./LogoMark";
 
 export default function Nav({
   userName,
@@ -23,9 +23,15 @@ export default function Nav({
     <header className="border-b border-stone-200 bg-white">
       <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
-            <LogoMark className="h-8 w-8" />
-            Ludonyon
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/logo-ludotheque.png"
+              alt="Ludothèque Nyon Région"
+              width={286}
+              height={80}
+              className="h-10 w-auto"
+              priority
+            />
           </Link>
           <nav className="flex flex-wrap items-center gap-4 text-sm text-stone-600">
             {links.map((link) => (

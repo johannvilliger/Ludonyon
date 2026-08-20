@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   title: "Ludonyon — Espace bénévoles",
   description:
     "Espace communautaire des bénévoles de la Ludothèque Nyon Région.",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
