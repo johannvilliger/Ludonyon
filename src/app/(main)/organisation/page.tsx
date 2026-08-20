@@ -37,7 +37,7 @@ export default async function OrganisationOverviewPage() {
           <Link
             key={card.href}
             href={card.href}
-            className="rounded-xl border border-stone-200 bg-white p-4 transition hover:border-amber-300 hover:shadow-sm"
+            className="rounded-xl border border-stone-200 bg-white p-4 transition hover:border-brand-blue hover:shadow-sm"
           >
             <p className="text-3xl font-semibold text-stone-900">
               {card.value}

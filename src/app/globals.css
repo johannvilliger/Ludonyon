@@ -4,3 +4,13 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
+
+/* Palette reprise du logo de la Ludothèque Nyon Région : jaune, bleu ciel, noir. */
+@theme {
+  --color-brand-yellow: #f6d915;
+  --color-brand-yellow-dark: #dfc300;
+  --color-brand-yellow-soft: #fdf6d2;
+  --color-brand-blue: #2e9fd6;
+  --color-brand-blue-dark: #1c7fae;
+  --color-brand-blue-soft: #e6f4fb;
+}

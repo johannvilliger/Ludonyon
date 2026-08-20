@@ -24,7 +24,7 @@ export default function ChangePasswordForm() {
           type="password"
           name="currentPassword"
           required
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
         />
       </div>
       <div>
@@ -36,7 +36,7 @@ export default function ChangePasswordForm() {
           name="newPassword"
           required
           minLength={8}
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
         />
       </div>
       <div>
@@ -48,7 +48,7 @@ export default function ChangePasswordForm() {
           name="confirmPassword"
           required
           minLength={8}
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
         />
       </div>
       {state.error && (
@@ -64,7 +64,7 @@ export default function ChangePasswordForm() {
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600 disabled:opacity-60"
+        className="rounded-lg border-2 border-black bg-brand-yellow px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand-yellow-dark disabled:opacity-60"
       >
         {isPending ? "Enregistrement…" : "Mettre à jour"}
       </button>

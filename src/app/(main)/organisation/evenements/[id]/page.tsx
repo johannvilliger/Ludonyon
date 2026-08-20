@@ -78,7 +78,7 @@ export default async function OrganisationEvenementDetailPage({
             <span
               className={`rounded-full px-3 py-1 text-xs font-medium ${
                 event.paid
-                  ? "bg-amber-100 text-amber-700"
+                  ? "bg-brand-yellow-soft text-black"
                   : "bg-stone-100 text-stone-600"
               }`}
             >
@@ -185,7 +185,7 @@ export default async function OrganisationEvenementDetailPage({
                         />
                         <button
                           type="submit"
-                          className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600"
+                          className="rounded-lg border-2 border-black bg-brand-yellow px-3 py-1.5 text-xs font-semibold text-black hover:bg-brand-yellow-dark"
                         >
                           Marquer l’arrivée
                         </button>
@@ -231,7 +231,7 @@ export default async function OrganisationEvenementDetailPage({
                     max={1440}
                     placeholder="Minutes"
                     required
-                    className="w-24 rounded-lg border border-stone-300 px-2 py-1 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-24 rounded-lg border border-stone-300 px-2 py-1 text-xs focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
                   />
                   <button
                     type="submit"
@@ -263,7 +263,7 @@ export default async function OrganisationEvenementDetailPage({
             <select
               name="userId"
               required
-              className="rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
             >
               {availableUsers.map((u) => (
                 <option key={u.id} value={u.id}>
@@ -273,7 +273,7 @@ export default async function OrganisationEvenementDetailPage({
             </select>
             <button
               type="submit"
-              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600"
+              className="rounded-lg border-2 border-black bg-brand-yellow px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand-yellow-dark"
             >
               Ajouter
             </button>

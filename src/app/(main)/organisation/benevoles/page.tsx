@@ -34,7 +34,7 @@ export default async function OrganisationBenevolesPage() {
               name="name"
               required
               maxLength={200}
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
             />
           </div>
           <div>
@@ -45,7 +45,7 @@ export default async function OrganisationBenevolesPage() {
               type="email"
               name="email"
               required
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
             />
           </div>
           <div>
@@ -56,7 +56,7 @@ export default async function OrganisationBenevolesPage() {
               type="tel"
               name="phone"
               maxLength={50}
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
             />
           </div>
           <div>
@@ -66,7 +66,7 @@ export default async function OrganisationBenevolesPage() {
             <select
               name="role"
               defaultValue="BENEVOLE"
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
             >
               {ROLES.map((role) => (
                 <option key={role} value={role}>
@@ -84,7 +84,7 @@ export default async function OrganisationBenevolesPage() {
               name="skills"
               maxLength={1000}
               placeholder="Ex : animation, samedis, prêt de jeux"
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
             />
           </div>
           <div className="sm:col-span-2">
@@ -97,13 +97,13 @@ export default async function OrganisationBenevolesPage() {
               required
               minLength={8}
               placeholder="À transmettre au/à la bénévole, à changer ensuite"
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
             />
           </div>
           <div className="sm:col-span-2">
             <button
               type="submit"
-              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600"
+              className="rounded-lg border-2 border-black bg-brand-yellow px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand-yellow-dark"
             >
               Créer le compte
             </button>
@@ -186,7 +186,7 @@ export default async function OrganisationBenevolesPage() {
                       required
                       minLength={8}
                       placeholder="Nouveau mot de passe"
-                      className="rounded-lg border border-stone-300 px-2 py-1 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="rounded-lg border border-stone-300 px-2 py-1 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
                     />
                     <button
                       type="submit"

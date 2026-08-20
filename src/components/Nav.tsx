@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ROLE_LABELS, type Role } from "@/lib/roles";
 import SignOutButton from "./SignOutButton";
+import LogoMark from "./LogoMark";
 
 export default function Nav({
   userName,
@@ -23,9 +24,7 @@ export default function Nav({
       <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 font-semibold">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-lg">
-              🎲
-            </span>
+            <LogoMark className="h-8 w-8" />
             Ludonyon
           </Link>
           <nav className="flex flex-wrap items-center gap-4 text-sm text-stone-600">

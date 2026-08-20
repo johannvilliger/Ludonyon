@@ -30,7 +30,7 @@ export default function SignupButton({
       className={
         isSignedUp
           ? "shrink-0 rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-600 transition hover:bg-stone-100 disabled:opacity-60"
-          : "shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-amber-600 disabled:opacity-60"
+          : "shrink-0 rounded-lg border-2 border-black bg-brand-yellow px-3 py-1.5 text-sm font-semibold text-black transition hover:bg-brand-yellow-dark disabled:opacity-60"
       }
     >
       {isPending
