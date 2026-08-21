@@ -152,10 +152,12 @@ vérifier avec le support Infomaniak le cas échéant.
 
 Depuis **Espace organisation → Planning**, un·e responsable/comité peut
 générer un modèle Excel vide pour une période donnée : un bloc de colonnes
-par jour d'ouverture (Nyon à gauche, Gland à droite), et pour chaque
-semaine 4 lignes empilées sous la date — une par fonction (Ordi-caisse,
-Ordi retours, Accueil, Anim./accueil), avec le libellé de fonction affiché
-une seule fois à gauche pour économiser la place. C'est purement
+par jour d'ouverture (Nyon à gauche, Gland à droite, séparés par une
+colonne vide), et pour chaque semaine 4 lignes empilées sous la date — une
+par fonction (Ordi-caisse, Ordi retours, Accueil, Anim./accueil), avec le
+libellé de fonction affiché une seule fois à gauche pour économiser la
+place. Une couleur différente marque chaque mois pour s'y retrouver plus
+facilement sur une période de plusieurs mois. C'est purement
 organisationnel côté fichier : à l'import, tout le monde est simplement
 ajouté à l'ouverture du jour, quelle que soit la ligne fonction où le
 prénom a été saisi. Le fichier se complète avec les prénoms des bénévoles

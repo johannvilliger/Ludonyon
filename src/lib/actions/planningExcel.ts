@@ -4,7 +4,13 @@ import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
 import { requireOrganisationUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { EXCEL_FONCTIONS, getLeafSlots, type Periode, type Site } from "@/lib/planning";
+import {
+  EXCEL_FONCTIONS,
+  excelLeafColumn,
+  getLeafSlots,
+  type Periode,
+  type Site,
+} from "@/lib/planning";
 import { computeVolunteerDisplayNames, buildVolunteerNameLookup } from "@/lib/volunteerNames";
 
 export type ImportPlanningExcelState = { error?: string; success?: string };
@@ -52,6 +58,7 @@ export async function importPlanningExcel(
   }
 
   const leaves = getLeafSlots();
+  const nyonCount = leaves.filter((l) => l.site === "NYON").length;
   const activeUsers = await prisma.user.findMany({
     where: { active: true },
     select: { id: true, name: true },
@@ -69,13 +76,13 @@ export async function importPlanningExcel(
   while (rowIndex <= lastRow) {
     const headerRow = sheet.getRow(rowIndex);
     const hasAnyDate = leaves.some(
-      (_, i) => headerRow.getCell(i + 2).value instanceof Date
+      (_, i) => headerRow.getCell(excelLeafColumn(i, nyonCount)).value instanceof Date
     );
     if (!hasAnyDate) break; // fin des blocs de semaine (ligne de légende ou vide)
     weekBlocksRead++;
 
     leaves.forEach((leaf, i) => {
-      const col = i + 2;
+      const col = excelLeafColumn(i, nyonCount);
       const headerValue = headerRow.getCell(col).value;
       if (!(headerValue instanceof Date)) return; // "—" : hors période, on n'y touche pas
 

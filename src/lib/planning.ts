@@ -25,6 +25,16 @@ export const EXCEL_FONCTIONS = [
   "Anim./accueil",
 ] as const;
 
+// Colonne (1-indexée, la colonne 1 étant réservée au libellé de fonction)
+// d'un créneau donné dans le modèle Excel, sachant qu'une colonne vide
+// sépare visuellement le bloc Nyon du bloc Gland. `i` est l'index du
+// créneau dans getLeafSlots() (Nyon d'abord, puis Gland) ; utilisé à la
+// fois pour générer le fichier et pour relire les cases au bon endroit à
+// l'import — les deux doivent rester synchronisés.
+export function excelLeafColumn(i: number, nyonCount: number): number {
+  return 2 + i + (i >= nyonCount ? 1 : 0);
+}
+
 // start/end au format "HH:mm" — source unique de vérité pour l'affichage
 // ET pour construire les horaires exacts des événements .ics exportés.
 export interface SlotDef {

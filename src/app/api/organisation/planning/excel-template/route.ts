@@ -4,6 +4,7 @@ import { requireOrganisationUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import {
   EXCEL_FONCTIONS,
+  excelLeafColumn,
   getLeafSlots,
   getPlanningWeeksBetween,
   parseDateKey,
@@ -14,11 +15,13 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const FONCTION_COUNT = EXCEL_FONCTIONS.length;
 const ROWS_PER_WEEK = 1 + FONCTION_COUNT; // 1 ligne date + 4 lignes fonction
 
-// Bandes alternées par semaine (ligne d'en-tête de date uniquement), pour
-// distinguer visuellement un bloc de semaine du suivant en descendant.
-const WEEK_BAND_FILLS: ExcelJS.Fill[] = [
+// Une couleur par mois (ligne d'en-tête de date uniquement) : change dès
+// que le mois du lundi de la semaine change, pour regrouper visuellement
+// les semaines d'un même mois plutôt que d'alterner à chaque ligne.
+const MONTH_BAND_FILLS: ExcelJS.Fill[] = [
   { type: "pattern", pattern: "solid", fgColor: { argb: "FFFBD98A" } },
   { type: "pattern", pattern: "solid", fgColor: { argb: "FFC9C2F0" } },
+  { type: "pattern", pattern: "solid", fgColor: { argb: "FFB8E8CC" } },
 ];
 const CLOSED_FILL: ExcelJS.Fill = {
   type: "pattern",
@@ -60,7 +63,10 @@ export async function GET(request: Request) {
   const leaves = getLeafSlots();
   const nyonCount = leaves.filter((l) => l.site === "NYON").length;
   const weeks = getPlanningWeeksBetween(start, end);
-  const totalCols = 1 + leaves.length;
+  // +1 pour la colonne vide de séparation entre les blocs Nyon et Gland.
+  const totalCols = 1 + leaves.length + 1;
+  const spacerCol = 1 + nyonCount + 1;
+  const glandStartCol = spacerCol + 1;
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Ludonyon";
@@ -72,10 +78,11 @@ export async function GET(request: Request) {
   // Colonne 1 : libellé de fonction (répété pour chaque semaine, sert à la
   // fois pour le bloc Nyon et le bloc Gland puisqu'ils partagent les mêmes
   // lignes). Colonnes 2..N : un jour d'ouverture par colonne (Nyon puis
-  // Gland, même ordre que getLeafSlots()).
+  // Gland, même ordre que getLeafSlots()), avec une colonne étroite vide
+  // entre les deux blocs pour les séparer visuellement.
   sheet.getColumn(1).width = 15;
   for (let col = 2; col <= totalCols; col++) {
-    sheet.getColumn(col).width = 20;
+    sheet.getColumn(col).width = col === spacerCol ? 3 : 20;
   }
 
   const startYear = start.getFullYear();
@@ -83,26 +90,35 @@ export async function GET(request: Request) {
   const yearLabel = startYear === endYear ? String(startYear) : `${startYear}–${endYear}`;
 
   const bannerRow = sheet.getRow(1);
-  sheet.mergeCells(1, 2, 1, 1 + nyonCount);
+  sheet.mergeCells(1, 2, 1, nyonCount + 1);
   const nyonBanner = bannerRow.getCell(2);
   nyonBanner.value = `Ouvertures Nyon ${yearLabel}`;
   nyonBanner.font = { bold: true, size: 13 };
   nyonBanner.alignment = { horizontal: "center", vertical: "middle" };
 
-  sheet.mergeCells(1, 2 + nyonCount, 1, totalCols);
-  const glandBanner = bannerRow.getCell(2 + nyonCount);
+  sheet.mergeCells(1, glandStartCol, 1, totalCols);
+  const glandBanner = bannerRow.getCell(glandStartCol);
   glandBanner.value = `Ouvertures Gland ${yearLabel}`;
   glandBanner.font = { bold: true, size: 13 };
   glandBanner.alignment = { horizontal: "center", vertical: "middle" };
   bannerRow.height = 22;
 
   let rowIndex = 2;
-  weeks.forEach((week, weekIndex) => {
-    const band = WEEK_BAND_FILLS[weekIndex % WEEK_BAND_FILLS.length];
+  let monthColorIndex = 0;
+  let lastMonthKey: string | null = null;
+
+  weeks.forEach((week) => {
+    const monthKey = `${week.monday.getFullYear()}-${week.monday.getMonth()}`;
+    if (lastMonthKey !== null && monthKey !== lastMonthKey) {
+      monthColorIndex = (monthColorIndex + 1) % MONTH_BAND_FILLS.length;
+    }
+    lastMonthKey = monthKey;
+    const band = MONTH_BAND_FILLS[monthColorIndex];
+
     const headerRow = sheet.getRow(rowIndex);
 
     leaves.forEach((leaf, i) => {
-      const col = i + 2;
+      const col = excelLeafColumn(i, nyonCount);
       const cell = headerRow.getCell(col);
       const cellDate = week.cells[i].date;
       const inRange = week.cells[i].inMonth;
@@ -136,7 +152,7 @@ export async function GET(request: Request) {
       labelCell.alignment = { vertical: "middle" };
 
       leaves.forEach((leaf, i) => {
-        const col = i + 2;
+        const col = excelLeafColumn(i, nyonCount);
         const cell = dataRow.getCell(col);
         const inRange = week.cells[i].inMonth;
         cell.border = {
