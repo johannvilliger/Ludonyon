@@ -1,18 +1,29 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatEventDate } from "@/lib/format";
 import { fulfillReplacement } from "@/lib/actions/events";
 import MySignupControls from "./MySignupControls";
 
-export default async function EvenementsPage() {
+export default async function EvenementsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filtre?: string }>;
+}) {
   const user = await requireUser();
+  const { filtre } = await searchParams;
+  const showPast = filtre === "passes";
 
   const events = await prisma.event.findMany({
     // Les séances comité ne sont pas des événements auxquels on s'inscrit :
     // elles ne figurent jamais sur cette liste, y compris pour le comité
     // (géré depuis Espace organisation).
-    where: { active: true, audience: "ALL", startsAt: { gte: new Date() } },
-    orderBy: { startsAt: "asc" },
+    where: {
+      active: true,
+      audience: "ALL",
+      startsAt: showPast ? { lt: new Date() } : { gte: new Date() },
+    },
+    orderBy: { startsAt: showPast ? "desc" : "asc" },
     include: {
       signups: {
         include: { user: { select: { id: true, name: true } } },
@@ -24,12 +35,39 @@ export default async function EvenementsPage() {
     <div>
       <h1 className="text-2xl font-semibold text-stone-900">Événements</h1>
       <p className="mt-1 text-stone-500">
-        Inscrivez-vous aux animations et permanences à venir.
+        {showPast
+          ? "Historique des animations et permanences passées."
+          : "Inscrivez-vous aux animations et permanences à venir."}
       </p>
+
+      <div className="mt-4 flex gap-2 text-sm">
+        <Link
+          href="/evenements"
+          className={
+            !showPast
+              ? "rounded-md bg-stone-900 px-3 py-1 text-white"
+              : "rounded-md px-3 py-1 text-stone-600 hover:bg-stone-100"
+          }
+        >
+          À venir
+        </Link>
+        <Link
+          href="/evenements?filtre=passes"
+          className={
+            showPast
+              ? "rounded-md bg-stone-900 px-3 py-1 text-white"
+              : "rounded-md px-3 py-1 text-stone-600 hover:bg-stone-100"
+          }
+        >
+          Passés
+        </Link>
+      </div>
 
       {events.length === 0 ? (
         <p className="mt-6 text-sm text-stone-400">
-          Aucun événement à venir pour l’instant.
+          {showPast
+            ? "Aucun événement passé."
+            : "Aucun événement à venir pour l’instant."}
         </p>
       ) : (
         <ul className="mt-6 space-y-4">
@@ -57,19 +95,23 @@ export default async function EvenementsPage() {
                         {event.description}
                       </p>
                     )}
-                    <a
-                      href={`/api/evenements/${event.id}/ics`}
-                      className="mt-2 inline-block text-xs text-brand-blue hover:underline"
-                    >
-                      Ajouter à mon calendrier
-                    </a>
+                    {!showPast && (
+                      <a
+                        href={`/api/evenements/${event.id}/ics`}
+                        className="mt-2 inline-block text-xs text-brand-blue hover:underline"
+                      >
+                        Ajouter à mon calendrier
+                      </a>
+                    )}
                   </div>
-                  <MySignupControls
-                    eventId={event.id}
-                    isSignedUp={!!mySignup}
-                    wantsReminder={mySignup?.wantsReminder ?? false}
-                    seekingReplacement={mySignup?.seekingReplacement ?? false}
-                  />
+                  {!showPast && (
+                    <MySignupControls
+                      eventId={event.id}
+                      isSignedUp={!!mySignup}
+                      wantsReminder={mySignup?.wantsReminder ?? false}
+                      seekingReplacement={mySignup?.seekingReplacement ?? false}
+                    />
+                  )}
                 </div>
                 {event.signups.length > 0 && (
                   <p className="mt-3 text-xs text-stone-400">
@@ -77,7 +119,7 @@ export default async function EvenementsPage() {
                     {event.signups.map((s) => s.user.name).join(", ")}
                   </p>
                 )}
-                {replacementNeeded.length > 0 && (
+                {!showPast && replacementNeeded.length > 0 && (
                   <ul className="mt-3 space-y-1.5 border-t border-stone-100 pt-3">
                     {replacementNeeded.map((s) => (
                       <li
