@@ -6,6 +6,7 @@ const links = [
   { href: "/organisation/evenements", label: "Événements" },
   { href: "/organisation/annonces", label: "Annonces" },
   { href: "/organisation/benevoles", label: "Bénévoles" },
+  { href: "/organisation/planning", label: "Planning" },
   { href: "/organisation/notifications", label: "Notifications" },
   { href: "/organisation/parametres", label: "Paramètres" },
 ];

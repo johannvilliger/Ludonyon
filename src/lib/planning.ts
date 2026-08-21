@@ -12,10 +12,13 @@ export const SITE_LABELS: Record<Site, string> = {
   GLAND: "Gland",
 };
 
+// start/end au format "HH:mm" — source unique de vérité pour l'affichage
+// ET pour construire les horaires exacts des événements .ics exportés.
 export interface SlotDef {
   site: Site;
   periode: Periode;
-  hours: string;
+  start: string;
+  end: string;
 }
 
 export interface ColumnDef {
@@ -31,43 +34,76 @@ export const PLANNING_COLUMNS: ColumnDef[] = [
     key: "mardi",
     offset: 1,
     label: "Mardi",
-    slots: [{ site: "NYON", periode: "JOURNEE", hours: "16h–19h" }],
+    slots: [{ site: "NYON", periode: "JOURNEE", start: "16:00", end: "19:00" }],
   },
   {
     key: "mercredi-matin",
     offset: 2,
     label: "Mercredi matin",
-    slots: [{ site: "NYON", periode: "MATIN", hours: "10h–12h" }],
+    slots: [{ site: "NYON", periode: "MATIN", start: "10:00", end: "12:00" }],
   },
   {
     key: "mercredi-apres-midi",
     offset: 2,
     label: "Mercredi après-midi",
     slots: [
-      { site: "NYON", periode: "APREM", hours: "15h–18h" },
-      { site: "GLAND", periode: "APREM", hours: "15h–18h" },
+      { site: "NYON", periode: "APREM", start: "15:00", end: "18:00" },
+      { site: "GLAND", periode: "APREM", start: "15:00", end: "18:00" },
     ],
   },
   {
     key: "vendredi",
     offset: 4,
     label: "Vendredi",
-    slots: [{ site: "NYON", periode: "JOURNEE", hours: "15h–18h" }],
+    slots: [{ site: "NYON", periode: "JOURNEE", start: "15:00", end: "18:00" }],
   },
   {
     key: "samedi",
     offset: 5,
     label: "Samedi",
     slots: [
-      { site: "NYON", periode: "JOURNEE", hours: "10h–13h" },
-      { site: "GLAND", periode: "JOURNEE", hours: "10h–12h" },
+      { site: "NYON", periode: "JOURNEE", start: "10:00", end: "13:00" },
+      { site: "GLAND", periode: "JOURNEE", start: "10:00", end: "12:00" },
     ],
   },
 ];
 
-// Une "feuille" de la grille : une case affichée dans le tableau. Un
-// groupe (ex. "Mercredi après-midi") produit deux feuilles côte à côte
-// (Nyon, Gland) quand il a deux créneaux ; sinon une seule.
+function formatHourLabel(hm: string): string {
+  const [h, m] = hm.split(":");
+  return m === "00" ? `${Number(h)}h` : `${Number(h)}h${m}`;
+}
+
+export function formatHoursRange(start: string, end: string): string {
+  return `${formatHourLabel(start)}–${formatHourLabel(end)}`;
+}
+
+export function findSlotDef(site: Site, periode: Periode): SlotDef | undefined {
+  for (const column of PLANNING_COLUMNS) {
+    const slot = column.slots.find((s) => s.site === site && s.periode === periode);
+    if (slot) return slot;
+  }
+  return undefined;
+}
+
+// Date/heure exactes (fuseau Europe/Zurich, via le constructeur local — le
+// serveur tourne avec TZ=Europe/Zurich, comme pour la saisie des
+// événements) de début et fin d'un créneau à une date donnée.
+export function getShiftDateTimeRange(
+  date: Date,
+  site: Site,
+  periode: Periode
+): { start: Date; end: Date } | null {
+  const slot = findSlotDef(site, periode);
+  if (!slot) return null;
+  const [startH, startM] = slot.start.split(":").map(Number);
+  const [endH, endM] = slot.end.split(":").map(Number);
+  return {
+    start: new Date(date.getFullYear(), date.getMonth(), date.getDate(), startH, startM),
+    end: new Date(date.getFullYear(), date.getMonth(), date.getDate(), endH, endM),
+  };
+}
+
+// Une "feuille" de la grille : une case affichée dans le tableau.
 export interface LeafSlot {
   groupKey: string;
   groupLabel: string;
@@ -75,26 +111,26 @@ export interface LeafSlot {
   site: Site;
   periode: Periode;
   hours: string;
-  siteLabel?: string;
 }
 
+// Regroupées par site (tout Nyon, puis tout Gland) plutôt que par jour,
+// pour que le tableau affiche un grand bloc Nyon à gauche et un bloc
+// Gland à droite (plus lisible qu'un entrelacement colonne par colonne).
 export function getLeafSlots(): LeafSlot[] {
-  const leaves: LeafSlot[] = [];
+  const bySite: Record<Site, LeafSlot[]> = { NYON: [], GLAND: [] };
   for (const column of PLANNING_COLUMNS) {
-    const double = column.slots.length > 1;
     for (const slot of column.slots) {
-      leaves.push({
+      bySite[slot.site].push({
         groupKey: column.key,
         groupLabel: column.label,
         offset: column.offset,
         site: slot.site,
         periode: slot.periode,
-        hours: slot.hours,
-        siteLabel: double ? SITE_LABELS[slot.site] : undefined,
+        hours: formatHoursRange(slot.start, slot.end),
       });
     }
   }
-  return leaves;
+  return [...bySite.NYON, ...bySite.GLAND];
 }
 
 export interface PlanningWeek {
