@@ -4,13 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { ROLE_LABELS, type Role } from "@/lib/roles";
 import { formatEventDate, formatDateOnly } from "@/lib/format";
 import Avatar from "@/components/Avatar";
-import { toggleOpeningReminders } from "@/lib/actions/profile";
+import { toggleOpeningReminders, updateMyAvailability } from "@/lib/actions/profile";
 import { toggleTaskDone } from "@/lib/actions/organisation";
 import ChangePasswordForm from "./ChangePasswordForm";
 import PhotoForm from "./PhotoForm";
 import VacationsForm from "./VacationsForm";
 import CalendarSubscribeLink from "./CalendarSubscribeLink";
 import PushNotificationsToggle from "./PushNotificationsToggle";
+import AvailabilityForm from "@/components/AvailabilityForm";
 
 export default async function ProfilPage() {
   const authUser = await requireUser();
@@ -30,6 +31,10 @@ export default async function ProfilPage() {
     where: { userId: authUser.id },
     include: { task: { include: { event: { select: { title: true } } } } },
     orderBy: { task: { dueDate: "asc" } },
+  });
+  const myAvailability = await prisma.volunteerAvailability.findMany({
+    where: { userId: authUser.id },
+    select: { slotKey: true },
   });
 
   const requestHeaders = await headers();
@@ -152,6 +157,20 @@ export default async function ProfilPage() {
           Enregistrer
         </button>
       </form>
+
+      <h2 className="mt-8 text-lg font-medium text-stone-900">
+        Mes disponibilités pour le planning des ouvertures
+      </h2>
+      <p className="mt-1 text-sm text-stone-500">
+        Utilisées pour vous proposer comme remplaçant·e quand un·e autre
+        bénévole signale un empêchement sur l&rsquo;un de ces créneaux.
+      </p>
+      <div className="mt-3 rounded-xl border border-stone-200 bg-white p-4">
+        <AvailabilityForm
+          action={updateMyAvailability}
+          selectedKeys={myAvailability.map((a) => a.slotKey)}
+        />
+      </div>
 
       <h2 className="mt-8 text-lg font-medium text-stone-900">
         Mes indisponibilités / vacances

@@ -10,6 +10,7 @@ import { savePhoto, deletePhoto } from "@/lib/photoStorage";
 import { sendPushToUsers } from "@/lib/push";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { guideAttachmentPath, guideExists, saveGuide, deleteGuide } from "@/lib/guideStorage";
+import { getAvailabilityOptions } from "@/lib/planning";
 
 // ---------- Annonces ----------
 
@@ -454,6 +455,23 @@ export async function updateVolunteerPhoto(formData: FormData) {
   revalidatePath("/organisation/benevoles");
 }
 
+export async function updateVolunteerAvailability(formData: FormData) {
+  await requireOrganisationUser();
+  const userId = String(formData.get("id"));
+  const validKeys = new Set(getAvailabilityOptions().map((o) => o.slotKey));
+  const selected = formData.getAll("slots").map(String).filter((k) => validKeys.has(k));
+
+  await prisma.$transaction([
+    prisma.volunteerAvailability.deleteMany({ where: { userId } }),
+    prisma.volunteerAvailability.createMany({
+      data: selected.map((slotKey) => ({ userId, slotKey })),
+    }),
+  ]);
+
+  revalidatePath("/organisation/benevoles");
+  revalidatePath("/profil");
+}
+
 // ---------- Tâches ----------
 
 const taskSchema = z.object({
@@ -577,9 +595,18 @@ export async function sendManualNotification(formData: FormData) {
     users.map((u) => u.id),
     { title: parsed.data.title, body: parsed.data.body, url: "/annonces" }
   );
+  await prisma.pushNotificationLog.create({
+    data: {
+      category: "MANUAL",
+      title: parsed.data.title,
+      body: parsed.data.body,
+      recipients: users.length,
+    },
+  });
 
   revalidatePath("/annonces");
   revalidatePath("/organisation/annonces");
+  revalidatePath("/organisation/notifications");
   revalidatePath("/");
 }
 

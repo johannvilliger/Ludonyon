@@ -6,6 +6,7 @@ import { formatDateOnly } from "@/lib/format";
 import { mailConfigured } from "@/lib/mail";
 import Avatar from "@/components/Avatar";
 import PhotoUploadField from "@/components/PhotoUploadField";
+import AvailabilityForm from "@/components/AvailabilityForm";
 import {
   createVolunteer,
   updateVolunteerRole,
@@ -14,6 +15,7 @@ import {
   deleteVolunteer,
   resetVolunteerPassword,
   updateVolunteerPhoto,
+  updateVolunteerAvailability,
 } from "@/lib/actions/organisation";
 
 export default async function OrganisationBenevolesPage({
@@ -28,7 +30,10 @@ export default async function OrganisationBenevolesPage({
   const users = await prisma.user.findMany({
     where: { active: !showArchived },
     orderBy: { name: "asc" },
-    include: { vacations: { orderBy: { startDate: "asc" } } },
+    include: {
+      vacations: { orderBy: { startDate: "asc" } },
+      availabilities: { select: { slotKey: true } },
+    },
   });
 
   return (
@@ -276,6 +281,19 @@ export default async function OrganisationBenevolesPage({
                     </ul>
                   </details>
                 )}
+
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
+                    Disponibilités pour le planning des ouvertures
+                  </summary>
+                  <div className="mt-2">
+                    <AvailabilityForm
+                      action={updateVolunteerAvailability}
+                      selectedKeys={u.availabilities.map((a) => a.slotKey)}
+                      extraFields={{ id: u.id }}
+                    />
+                  </div>
+                </details>
 
                 <details className="mt-2">
                   <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">

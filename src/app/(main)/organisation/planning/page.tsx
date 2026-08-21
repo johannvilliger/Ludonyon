@@ -9,7 +9,7 @@ export default async function OrganisationPlanningPage({
 }: {
   searchParams: Promise<{ y?: string; m?: string }>;
 }) {
-  await requireOrganisationUser();
+  const currentUser = await requireOrganisationUser();
 
   const { y, m } = await searchParams;
   const now = new Date();
@@ -48,6 +48,7 @@ export default async function OrganisationPlanningPage({
           shiftsByKey={shiftsByKey}
           editable
           activeUsers={activeUsers}
+          currentUserId={currentUser.id}
         />
       </div>
     </div>

@@ -1,9 +1,22 @@
 import { requireOrganisationUser } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
 import { pushConfigured } from "@/lib/push";
 import { sendManualNotification } from "@/lib/actions/organisation";
+import { formatDateTime } from "@/lib/format";
+
+const CATEGORY_LABELS: Record<string, string> = {
+  MANUAL: "Manuelle",
+  EVENT_REMINDER: "Rappel événement",
+  REPLACEMENT_REQUEST: "Recherche de remplaçant",
+};
 
 export default async function OrganisationNotificationsPage() {
   await requireOrganisationUser();
+
+  const history = await prisma.pushNotificationLog.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
 
   return (
     <div>
@@ -72,6 +85,34 @@ export default async function OrganisationNotificationsPage() {
           Envoyer
         </button>
       </form>
+
+      <h2 className="mt-8 text-lg font-medium text-stone-900">Historique</h2>
+      {history.length === 0 ? (
+        <p className="mt-2 text-sm text-stone-400">
+          Aucune notification envoyée pour l&rsquo;instant.
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {history.map((entry) => (
+            <li
+              key={entry.id}
+              className="rounded-xl border border-stone-200 bg-white p-3 text-sm"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-medium text-stone-900">{entry.title}</p>
+                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">
+                  {CATEGORY_LABELS[entry.category] ?? entry.category}
+                </span>
+              </div>
+              <p className="mt-1 text-stone-600">{entry.body}</p>
+              <p className="mt-1 text-xs text-stone-400">
+                {formatDateTime(entry.createdAt)} · {entry.recipients} destinataire
+                {entry.recipients > 1 ? "s" : ""}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

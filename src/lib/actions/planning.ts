@@ -2,9 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireOrganisationUser } from "@/lib/session";
+import { requireOrganisationUser, requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { PLANNING_COLUMNS, type Periode, type Site } from "@/lib/planning";
+import { isOrganisationRole } from "@/lib/roles";
+import { sendPushToUsers } from "@/lib/push";
+import {
+  PLANNING_COLUMNS,
+  SITE_LABELS,
+  formatDayLabel,
+  shiftSlotKey,
+  type Periode,
+  type Site,
+} from "@/lib/planning";
 
 const SITES: Site[] = ["NYON", "GLAND"];
 const PERIODES: Periode[] = ["JOURNEE", "MATIN", "APREM"];
@@ -73,6 +82,7 @@ export async function assignToShift(formData: FormData) {
   });
 
   revalidatePath("/planning");
+  revalidatePath("/organisation/planning");
 }
 
 const removeSchema = z.object({
@@ -103,4 +113,83 @@ export async function removeFromShift(formData: FormData) {
   }
 
   revalidatePath("/planning");
+  revalidatePath("/organisation/planning");
+}
+
+// ---------- Recherche de remplaçant ----------
+
+export async function requestReplacement(formData: FormData) {
+  const user = await requireUser();
+  const shiftId = String(formData.get("shiftId") ?? "");
+  const sendNotification = formData.get("sendNotification") === "on";
+
+  const assignee = await prisma.openingShiftAssignee.findUnique({
+    where: { shiftId_userId: { shiftId, userId: user.id } },
+    include: { shift: true },
+  });
+  if (!assignee) {
+    throw new Error("Vous n'êtes pas assigné·e à ce créneau");
+  }
+
+  await prisma.openingShiftAssignee.update({
+    where: { id: assignee.id },
+    data: { seekingReplacement: true, replacementRequestedAt: new Date() },
+  });
+
+  if (sendNotification) {
+    const site = assignee.shift.site as Site;
+    const periode = assignee.shift.periode as Periode;
+    const key = shiftSlotKey(site, periode);
+    if (key) {
+      const candidates = await prisma.user.findMany({
+        where: {
+          active: true,
+          id: { not: user.id },
+          availabilities: { some: { slotKey: key } },
+        },
+        select: { id: true },
+      });
+
+      if (candidates.length > 0) {
+        const title = "Remplaçant·e recherché·e";
+        const body = `${user.name} ne peut pas assurer son créneau du ${formatDayLabel(
+          assignee.shift.date
+        )} à ${SITE_LABELS[site]}. Disponible ?`;
+
+        await sendPushToUsers(
+          candidates.map((c) => c.id),
+          { title, body, url: "/planning" }
+        );
+        await prisma.pushNotificationLog.create({
+          data: {
+            category: "REPLACEMENT_REQUEST",
+            title,
+            body,
+            recipients: candidates.length,
+          },
+        });
+      }
+    }
+  }
+
+  revalidatePath("/planning");
+  revalidatePath("/organisation/planning");
+}
+
+export async function cancelReplacementRequest(formData: FormData) {
+  const user = await requireUser();
+  const shiftId = String(formData.get("shiftId") ?? "");
+  const targetUserId = String(formData.get("userId") ?? user.id);
+
+  if (targetUserId !== user.id && !isOrganisationRole(user.role)) {
+    throw new Error("Action non autorisée");
+  }
+
+  await prisma.openingShiftAssignee.updateMany({
+    where: { shiftId, userId: targetUserId },
+    data: { seekingReplacement: false, replacementRequestedAt: null },
+  });
+
+  revalidatePath("/planning");
+  revalidatePath("/organisation/planning");
 }

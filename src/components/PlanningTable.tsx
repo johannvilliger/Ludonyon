@@ -1,6 +1,11 @@
 import { dateKey, formatDayLabel, getLeafSlots, shiftKey, type PlanningWeek } from "@/lib/planning";
 import type { ShiftMap } from "@/lib/planningData";
-import { assignToShift, removeFromShift } from "@/lib/actions/planning";
+import {
+  assignToShift,
+  removeFromShift,
+  requestReplacement,
+  cancelReplacementRequest,
+} from "@/lib/actions/planning";
 import PlanningAssignSelect from "./PlanningAssignSelect";
 
 export default function PlanningTable({
@@ -8,11 +13,13 @@ export default function PlanningTable({
   shiftsByKey,
   editable,
   activeUsers,
+  currentUserId,
 }: {
   weeks: PlanningWeek[];
   shiftsByKey: ShiftMap;
   editable: boolean;
   activeUsers: { id: string; name: string }[];
+  currentUserId: string;
 }) {
   const leaves = getLeafSlots();
   const nyonCount = leaves.filter((l) => l.site === "NYON").length;
@@ -97,27 +104,84 @@ export default function PlanningTable({
                       {assignees.length === 0 && (
                         <li className="text-xs text-stone-300">—</li>
                       )}
-                      {assignees.map((a) => (
-                        <li
-                          key={a.userId}
-                          className="flex items-center justify-between gap-1 rounded bg-brand-yellow-soft px-1.5 py-0.5 text-xs text-stone-800"
-                        >
-                          <span>{a.name}</span>
-                          {editable && shift && (
-                            <form action={removeFromShift}>
-                              <input type="hidden" name="shiftId" value={shift.id} />
-                              <input type="hidden" name="userId" value={a.userId} />
-                              <button
-                                type="submit"
-                                className="text-stone-400 hover:text-red-600"
-                                aria-label={`Retirer ${a.name}`}
-                              >
-                                ×
-                              </button>
-                            </form>
-                          )}
-                        </li>
-                      ))}
+                      {assignees.map((a) => {
+                        const canManage = editable || a.userId === currentUserId;
+                        return (
+                          <li key={a.userId}>
+                            <div
+                              className={`flex items-center justify-between gap-1 rounded px-1.5 py-0.5 text-xs ${
+                                a.seekingReplacement
+                                  ? "border border-red-300 bg-red-100 text-red-800"
+                                  : "bg-brand-yellow-soft text-stone-800"
+                              }`}
+                            >
+                              <span>
+                                {a.name}
+                                {a.seekingReplacement && " ⏳"}
+                              </span>
+                              {editable && shift && (
+                                <form action={removeFromShift}>
+                                  <input type="hidden" name="shiftId" value={shift.id} />
+                                  <input type="hidden" name="userId" value={a.userId} />
+                                  <button
+                                    type="submit"
+                                    className="text-stone-400 hover:text-red-600"
+                                    aria-label={`Retirer ${a.name}`}
+                                  >
+                                    ×
+                                  </button>
+                                </form>
+                              )}
+                            </div>
+
+                            {a.seekingReplacement && canManage && shift && (
+                              <form action={cancelReplacementRequest} className="mt-0.5">
+                                <input type="hidden" name="shiftId" value={shift.id} />
+                                <input type="hidden" name="userId" value={a.userId} />
+                                <button
+                                  type="submit"
+                                  className="text-[10px] text-stone-400 underline hover:text-stone-600"
+                                >
+                                  Annuler la recherche
+                                </button>
+                              </form>
+                            )}
+
+                            {!a.seekingReplacement && a.userId === currentUserId && shift && (
+                              <details className="mt-0.5">
+                                <summary className="cursor-pointer text-[10px] text-stone-400 hover:text-red-600">
+                                  Empêchement ?
+                                </summary>
+                                <form
+                                  action={requestReplacement}
+                                  className="mt-1 space-y-1 rounded border border-red-200 bg-red-50 p-1.5"
+                                >
+                                  <input type="hidden" name="shiftId" value={shift.id} />
+                                  <p className="text-[10px] text-red-700">
+                                    Vous restez responsable de ce créneau tant
+                                    qu&rsquo;un remplaçant n&rsquo;est pas trouvé.
+                                  </p>
+                                  <label className="flex items-center gap-1 text-[10px] text-stone-600">
+                                    <input
+                                      type="checkbox"
+                                      name="sendNotification"
+                                      defaultChecked
+                                      className="h-3 w-3 rounded border-stone-300"
+                                    />
+                                    Notifier les bénévoles disponibles
+                                  </label>
+                                  <button
+                                    type="submit"
+                                    className="rounded bg-red-600 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-red-700"
+                                  >
+                                    Confirmer l&rsquo;empêchement
+                                  </button>
+                                </form>
+                              </details>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                     {editable && availableUsers.length > 0 && (
                       <PlanningAssignSelect

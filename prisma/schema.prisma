@@ -34,8 +34,37 @@ model User {
   taskAssignees     TaskAssignee[]
   pushSubscriptions PushSubscription[]
   openingShifts     OpeningShiftAssignee[]
+  availabilities    VolunteerAvailability[]
 
   @@index([role])
+}
+
+// Créneaux du planning (voir src/lib/planning.ts) pour lesquels le
+// bénévole se déclare disponible. slotKey = "<groupKey>:<site>", ex.
+// "mercredi-apres-midi:GLAND" — utilisé pour cibler les notifications de
+// recherche de remplaçant.
+model VolunteerAvailability {
+  id      String @id @default(cuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slotKey String
+
+  @@unique([userId, slotKey])
+  @@index([slotKey])
+}
+
+// Historique des notifications push envoyées, toutes catégories
+// confondues, consultable dans Espace organisation > Notifications.
+// category : "MANUAL" | "EVENT_REMINDER" | "REPLACEMENT_REQUEST".
+model PushNotificationLog {
+  id         String   @id @default(cuid())
+  category   String
+  title      String   @db.VarChar(255)
+  body       String   @db.Text
+  recipients Int
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 // Un abonnement par navigateur/appareil ayant activé les notifications.
@@ -154,11 +183,15 @@ model OpeningShift {
 }
 
 model OpeningShiftAssignee {
-  id      String       @id @default(cuid())
-  shiftId String
-  shift   OpeningShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  userId  String
-  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                     String       @id @default(cuid())
+  shiftId                String
+  shift                  OpeningShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  userId                 String
+  user                   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Le bénévole reste responsable du créneau tant que ce champ est actif :
+  // signaler un empêchement ne le retire pas automatiquement.
+  seekingReplacement     Boolean      @default(false)
+  replacementRequestedAt DateTime?
 
   @@unique([shiftId, userId])
   @@index([userId])

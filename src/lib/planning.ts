@@ -85,6 +85,51 @@ export function findSlotDef(site: Site, periode: Periode): SlotDef | undefined {
   return undefined;
 }
 
+function findColumnKeyFor(site: Site, periode: Periode): string | undefined {
+  for (const column of PLANNING_COLUMNS) {
+    if (column.slots.some((s) => s.site === site && s.periode === periode)) {
+      return column.key;
+    }
+  }
+  return undefined;
+}
+
+// Clé stable identifiant un créneau de la grille (groupe de jour + site),
+// utilisée pour stocker les disponibilités des bénévoles et cibler les
+// notifications de recherche de remplaçant.
+export function slotKey(groupKey: string, site: Site): string {
+  return `${groupKey}:${site}`;
+}
+
+export function shiftSlotKey(site: Site, periode: Periode): string | null {
+  const groupKey = findColumnKeyFor(site, periode);
+  return groupKey ? slotKey(groupKey, site) : null;
+}
+
+export interface AvailabilityOption {
+  slotKey: string;
+  label: string;
+  hours: string;
+}
+
+// Les 7 créneaux de la grille sous forme de cases à cocher, avec un
+// libellé distinguant Nyon/Gland pour les créneaux à double colonne
+// (une liste à plat n'a pas le contexte visuel du tableau).
+export function getAvailabilityOptions(): AvailabilityOption[] {
+  const options: AvailabilityOption[] = [];
+  for (const column of PLANNING_COLUMNS) {
+    const double = column.slots.length > 1;
+    for (const slot of column.slots) {
+      options.push({
+        slotKey: slotKey(column.key, slot.site),
+        label: double ? `${column.label} (${SITE_LABELS[slot.site]})` : column.label,
+        hours: formatHoursRange(slot.start, slot.end),
+      });
+    }
+  }
+  return options;
+}
+
 // Date/heure exactes (fuseau Europe/Zurich, via le constructeur local — le
 // serveur tourne avec TZ=Europe/Zurich, comme pour la saisie des
 // événements) de début et fin d'un créneau à une date donnée.

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { savePhoto, deletePhoto } from "@/lib/photoStorage";
+import { getAvailabilityOptions } from "@/lib/planning";
 
 const schema = z
   .object({
@@ -180,4 +181,20 @@ export async function subscribeToPush(input: {
 export async function unsubscribeFromPush(endpoint: string) {
   await requireUser();
   await prisma.pushSubscription.deleteMany({ where: { endpoint } });
+}
+
+export async function updateMyAvailability(formData: FormData) {
+  const authUser = await requireUser();
+  const validKeys = new Set(getAvailabilityOptions().map((o) => o.slotKey));
+  const selected = formData.getAll("slots").map(String).filter((k) => validKeys.has(k));
+
+  await prisma.$transaction([
+    prisma.volunteerAvailability.deleteMany({ where: { userId: authUser.id } }),
+    prisma.volunteerAvailability.createMany({
+      data: selected.map((slotKey) => ({ userId: authUser.id, slotKey })),
+    }),
+  ]);
+
+  revalidatePath("/profil");
+  revalidatePath("/organisation/benevoles");
 }

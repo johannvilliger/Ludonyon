@@ -52,7 +52,13 @@ export default async function PlanningPage({
       </div>
 
       <div className="mt-6">
-        <PlanningTable weeks={weeks} shiftsByKey={shiftsByKey} editable={false} activeUsers={[]} />
+        <PlanningTable
+          weeks={weeks}
+          shiftsByKey={shiftsByKey}
+          editable={false}
+          activeUsers={[]}
+          currentUserId={user.id}
+        />
       </div>
     </div>
   );

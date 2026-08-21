@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { getPlanningWeeks, shiftKey, type PlanningWeek } from "@/lib/planning";
 
-export type ShiftAssignee = { userId: string; name: string };
+export type ShiftAssignee = {
+  userId: string;
+  name: string;
+  seekingReplacement: boolean;
+};
 export type ShiftInfo = { id: string; assignees: ShiftAssignee[] };
 export type ShiftMap = Map<string, ShiftInfo>;
 
@@ -32,7 +36,11 @@ export async function loadPlanningWeeksAndShifts(
       id: shift.id,
       assignees: shift.assignees
         .filter((a) => a.user.active)
-        .map((a) => ({ userId: a.user.id, name: a.user.name })),
+        .map((a) => ({
+          userId: a.user.id,
+          name: a.user.name,
+          seekingReplacement: a.seekingReplacement,
+        })),
     });
   }
 
