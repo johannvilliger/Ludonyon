@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { photoUrl } from "@/lib/photoStorage";
+import { photoUrl } from "@/lib/photoUrl";
 
 const COLORS = [
   "bg-brand-blue",

@@ -14,21 +14,21 @@ export default function PlanningMonthNav({
   const next = addMonths(year, month, 1);
 
   return (
-    <div className="flex items-center gap-2 text-sm">
+    <div className="flex items-center gap-1 text-sm sm:gap-2">
       <Link
         href={`${basePath}?y=${prev.year}&m=${prev.month}`}
-        className="rounded-lg border border-stone-300 px-3 py-1.5 text-stone-600 hover:bg-stone-100"
+        className="rounded-lg border border-stone-300 px-2 py-1.5 text-stone-600 hover:bg-stone-100 sm:px-3"
       >
-        ← Précédent
+        ← <span className="hidden sm:inline">Précédent</span>
       </Link>
-      <span className="min-w-36 text-center font-medium text-stone-800">
+      <span className="min-w-24 text-center font-medium text-stone-800 sm:min-w-36">
         {formatMonthLabel(year, month)}
       </span>
       <Link
         href={`${basePath}?y=${next.year}&m=${next.month}`}
-        className="rounded-lg border border-stone-300 px-3 py-1.5 text-stone-600 hover:bg-stone-100"
+        className="rounded-lg border border-stone-300 px-2 py-1.5 text-stone-600 hover:bg-stone-100 sm:px-3"
       >
-        Suivant →
+        <span className="hidden sm:inline">Suivant</span> →
       </Link>
     </div>
   );

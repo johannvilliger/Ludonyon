@@ -1,6 +1,8 @@
 import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 
+export { photoUrl } from "./photoUrl";
+
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "photos");
 
 const ALLOWED_TYPES: Record<string, string> = {
@@ -10,10 +12,6 @@ const ALLOWED_TYPES: Record<string, string> = {
 };
 
 export const MAX_PHOTO_SIZE = 4 * 1024 * 1024; // 4 Mo
-
-export function photoUrl(photoPath: string | null): string | null {
-  return photoPath ? `/uploads/photos/${photoPath}` : null;
-}
 
 export async function savePhoto(userId: string, file: File): Promise<string> {
   const ext = ALLOWED_TYPES[file.type];
