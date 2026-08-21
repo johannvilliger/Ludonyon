@@ -61,11 +61,12 @@ export async function checkAndSendEventReminders() {
 }
 
 // Alerte les responsables/comité quand un ou plusieurs créneaux des 7
-// prochains jours sont toujours "en attente de remplaçant·e" (recherche
-// non annulée). Une seule notification groupée, envoyée une fois par jour
-// (voir la planification dans instrumentation.ts) plutôt qu'à chaque
-// vérification. problemAlertSentAt évite de réinclure un créneau déjà
-// signalé ; il est remis à null si la recherche est annulée puis relancée.
+// prochains jours (la semaine suivante) sont toujours "en attente de
+// remplaçant·e" (recherche non annulée). Une seule notification groupée,
+// envoyée une fois par semaine, le dimanche à 19h (voir la planification
+// dans instrumentation.ts), plutôt qu'à chaque vérification.
+// problemAlertSentAt évite de réinclure un créneau déjà signalé ; il est
+// remis à null si la recherche est annulée puis relancée.
 export async function checkAndSendReplacementProblemAlerts() {
   if (!pushConfigured()) return;
 

@@ -168,11 +168,11 @@ jours fermés sur le planning, pour tout le monde.
 
 ### Alerte "créneau à risque"
 
-Si un créneau des 7 prochains jours reste sans remplaçant·e trouvé·e après
+Si un créneau de la semaine suivante reste sans remplaçant·e trouvé·e après
 qu'un·e bénévole a signalé un empêchement, les responsables et membres du
-comité reçoivent une notification push groupée une fois par jour (19h,
-heure serveur) listant tous les créneaux concernés — pas de notification à
-chaque vérification.
+comité reçoivent une notification push groupée une fois par semaine, le
+dimanche à 19h (heure serveur), listant tous les créneaux concernés — pas
+de notification à chaque vérification.
 
 ### PWA et notifications push
 
