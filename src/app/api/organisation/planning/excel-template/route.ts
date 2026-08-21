@@ -12,21 +12,23 @@ import { computeVolunteerDisplayNames } from "@/lib/volunteerNames";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const FONCTION_COUNT = EXCEL_FONCTIONS.length;
+const ROWS_PER_WEEK = 1 + FONCTION_COUNT; // 1 ligne date + 4 lignes fonction
 
-const NYON_FILL: ExcelJS.Fill = {
-  type: "pattern",
-  pattern: "solid",
-  fgColor: { argb: "FFDCEBFC" },
-};
-const GLAND_FILL: ExcelJS.Fill = {
-  type: "pattern",
-  pattern: "solid",
-  fgColor: { argb: "FFFCF0D0" },
-};
+// Bandes alternées par semaine (ligne d'en-tête de date uniquement), pour
+// distinguer visuellement un bloc de semaine du suivant en descendant.
+const WEEK_BAND_FILLS: ExcelJS.Fill[] = [
+  { type: "pattern", pattern: "solid", fgColor: { argb: "FFFBD98A" } },
+  { type: "pattern", pattern: "solid", fgColor: { argb: "FFC9C2F0" } },
+];
 const CLOSED_FILL: ExcelJS.Fill = {
   type: "pattern",
   pattern: "solid",
   fgColor: { argb: "FFEEEEEE" },
+};
+const LABEL_FILL: ExcelJS.Fill = {
+  type: "pattern",
+  pattern: "solid",
+  fgColor: { argb: "FFF5F5F4" },
 };
 
 export async function GET(request: Request) {
@@ -58,103 +60,107 @@ export async function GET(request: Request) {
   const leaves = getLeafSlots();
   const nyonCount = leaves.filter((l) => l.site === "NYON").length;
   const weeks = getPlanningWeeksBetween(start, end);
-  const totalCols = 1 + leaves.length * FONCTION_COUNT;
+  const totalCols = 1 + leaves.length;
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Ludonyon";
   workbook.created = new Date();
 
   const sheet = workbook.addWorksheet("Planning");
-  sheet.views = [{ state: "frozen", ySplit: 3, xSplit: 1 }];
+  sheet.views = [{ state: "frozen", xSplit: 1, ySplit: 1 }];
 
-  // Colonne 1 : date du lundi de la semaine. Puis, pour chaque créneau
-  // (Nyon puis Gland, voir getLeafSlots()), un bloc de FONCTION_COUNT
-  // colonnes — une case par fonction, purement organisationnelle : voir
-  // EXCEL_FONCTIONS.
-  sheet.getColumn(1).width = 16;
+  // Colonne 1 : libellé de fonction (répété pour chaque semaine, sert à la
+  // fois pour le bloc Nyon et le bloc Gland puisqu'ils partagent les mêmes
+  // lignes). Colonnes 2..N : un jour d'ouverture par colonne (Nyon puis
+  // Gland, même ordre que getLeafSlots()).
+  sheet.getColumn(1).width = 15;
   for (let col = 2; col <= totalCols; col++) {
-    sheet.getColumn(col).width = 16;
+    sheet.getColumn(col).width = 20;
   }
 
-  const headerRow1 = sheet.getRow(1);
-  sheet.mergeCells(1, 1, 3, 1);
-  headerRow1.getCell(1).value = "Semaine du";
-  sheet.mergeCells(1, 2, 1, 1 + nyonCount * FONCTION_COUNT);
-  headerRow1.getCell(2).value = "Nyon";
-  sheet.mergeCells(1, 2 + nyonCount * FONCTION_COUNT, 1, totalCols);
-  headerRow1.getCell(2 + nyonCount * FONCTION_COUNT).value = "Gland";
+  const startYear = start.getFullYear();
+  const endYear = end.getFullYear();
+  const yearLabel = startYear === endYear ? String(startYear) : `${startYear}–${endYear}`;
 
-  for (let i = 0; i < leaves.length; i++) {
-    const blockStart = 2 + i * FONCTION_COUNT;
-    const fill = i < nyonCount ? NYON_FILL : GLAND_FILL;
+  const bannerRow = sheet.getRow(1);
+  sheet.mergeCells(1, 2, 1, 1 + nyonCount);
+  const nyonBanner = bannerRow.getCell(2);
+  nyonBanner.value = `Ouvertures Nyon ${yearLabel}`;
+  nyonBanner.font = { bold: true, size: 13 };
+  nyonBanner.alignment = { horizontal: "center", vertical: "middle" };
 
-    sheet.mergeCells(2, blockStart, 2, blockStart + FONCTION_COUNT - 1);
-    const dayCell = sheet.getRow(2).getCell(blockStart);
-    dayCell.value = `${leaves[i].groupLabel}\n${leaves[i].hours}`;
-    dayCell.fill = fill;
-    dayCell.font = { bold: true, size: 10 };
-    dayCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+  sheet.mergeCells(1, 2 + nyonCount, 1, totalCols);
+  const glandBanner = bannerRow.getCell(2 + nyonCount);
+  glandBanner.value = `Ouvertures Gland ${yearLabel}`;
+  glandBanner.font = { bold: true, size: 13 };
+  glandBanner.alignment = { horizontal: "center", vertical: "middle" };
+  bannerRow.height = 22;
+
+  let rowIndex = 2;
+  weeks.forEach((week, weekIndex) => {
+    const band = WEEK_BAND_FILLS[weekIndex % WEEK_BAND_FILLS.length];
+    const headerRow = sheet.getRow(rowIndex);
+
+    leaves.forEach((leaf, i) => {
+      const col = i + 2;
+      const cell = headerRow.getCell(col);
+      const cellDate = week.cells[i].date;
+      const inRange = week.cells[i].inMonth;
+
+      if (inRange) {
+        // Vraie date Excel (minuit UTC, comme les colonnes DATE en base —
+        // voir parseDateKey) affichée en "jour date mois" : c'est aussi
+        // cette valeur qui est relue telle quelle à l'import, donc aucun
+        // recalcul lundi+décalage n'est nécessaire côté import.
+        cell.value = new Date(
+          Date.UTC(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate())
+        );
+        cell.numFmt = "dddd d mmmm";
+        cell.fill = band;
+      } else {
+        cell.value = "—";
+        cell.fill = CLOSED_FILL;
+        cell.font = { italic: true, color: { argb: "FFA8A29E" } };
+      }
+      cell.font = { ...cell.font, bold: inRange };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+    });
+    headerRow.height = 18;
 
     EXCEL_FONCTIONS.forEach((fonction, f) => {
-      const c = sheet.getRow(3).getCell(blockStart + f);
-      c.value = fonction;
-      c.fill = fill;
-      c.font = { bold: true, size: 9 };
-      c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-    });
-  }
-  for (let col = 2; col <= totalCols; col++) {
-    headerRow1.getCell(col).fill = col < 2 + nyonCount * FONCTION_COUNT ? NYON_FILL : GLAND_FILL;
-    headerRow1.getCell(col).font = { bold: true };
-    headerRow1.getCell(col).alignment = { horizontal: "center", vertical: "middle" };
-  }
-  const c1Header = headerRow1.getCell(1);
-  c1Header.font = { bold: true };
-  c1Header.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F5F4" } };
-  c1Header.alignment = { horizontal: "center", vertical: "middle" };
+      const dataRow = sheet.getRow(rowIndex + 1 + f);
+      const labelCell = dataRow.getCell(1);
+      labelCell.value = fonction;
+      labelCell.font = { bold: true, size: 10 };
+      labelCell.fill = LABEL_FILL;
+      labelCell.alignment = { vertical: "middle" };
 
-  let rowIndex = 4;
-  for (const week of weeks) {
-    const row = sheet.getRow(rowIndex);
-    const dateCell = row.getCell(1);
-    // Normalisé en minuit UTC (comme les colonnes DATE stockées en base,
-    // voir parseDateKey) : week.monday est un Date en heure locale
-    // (Europe/Zurich), et un simple .value = week.monday ferait dériver le
-    // sérial Excel d'un jour selon l'heure d'été/hiver au moment de la
-    // conversion, décalant toutes les dates relues à l'import.
-    dateCell.value = new Date(
-      Date.UTC(week.monday.getFullYear(), week.monday.getMonth(), week.monday.getDate())
-    );
-    dateCell.numFmt = "dd/mm/yyyy";
-    dateCell.font = { bold: true };
-    dateCell.alignment = { vertical: "middle" };
-
-    week.cells.forEach((cell, i) => {
-      const blockStart = 2 + i * FONCTION_COUNT;
-      for (let f = 0; f < FONCTION_COUNT; f++) {
-        const c = row.getCell(blockStart + f);
-        c.alignment = { wrapText: true, vertical: "top" };
-        c.border = {
+      leaves.forEach((leaf, i) => {
+        const col = i + 2;
+        const cell = dataRow.getCell(col);
+        const inRange = week.cells[i].inMonth;
+        cell.border = {
           top: { style: "thin", color: { argb: "FFE7E5E4" } },
           left: { style: "thin", color: { argb: "FFE7E5E4" } },
           right: { style: "thin", color: { argb: "FFE7E5E4" } },
           bottom: { style: "thin", color: { argb: "FFE7E5E4" } },
         };
-        if (!cell.inMonth) {
-          c.value = "—";
-          c.fill = CLOSED_FILL;
-          c.font = { italic: true, color: { argb: "FFA8A29E" } };
+        if (!inRange) {
+          cell.value = "—";
+          cell.fill = CLOSED_FILL;
+          cell.font = { italic: true, color: { argb: "FFA8A29E" } };
         }
-      }
+      });
     });
-    rowIndex++;
-  }
+
+    rowIndex += ROWS_PER_WEEK;
+  });
 
   const legendRow = sheet.getRow(rowIndex + 1);
   legendRow.getCell(1).value =
-    "Une case par fonction, pour vous aider à répartir les tâches — à l'import, tout le monde est simplement ajouté·e à l'ouverture du jour, quelle que soit la fonction utilisée. Plusieurs bénévoles sur une même case : séparez les prénoms par une virgule. Utilisez exactement les noms de l'onglet « Bénévoles ».";
+    "Une ligne par fonction, pour vous aider à répartir les tâches — à l'import, tout le monde est simplement ajouté·e à l'ouverture du jour, quelle que soit la fonction utilisée. Plusieurs bénévoles sur une même case : séparez les prénoms par une virgule. Utilisez exactement les noms de l'onglet « Bénévoles ».";
   legendRow.getCell(1).font = { italic: true, size: 10, color: { argb: "FF78716C" } };
-  legendRow.alignment = { wrapText: true };
+  legendRow.getCell(1).alignment = { wrapText: true };
   sheet.mergeCells(legendRow.number, 1, legendRow.number, totalCols);
 
   const legendSheet = workbook.addWorksheet("Bénévoles");

@@ -12,17 +12,17 @@ export const SITE_LABELS: Record<Site, string> = {
   GLAND: "Gland",
 };
 
-// Fonctions affichées comme sous-colonnes dans le modèle Excel du planning
-// (une case par fonction, par jour), pour aider à répartir les tâches lors
-// du remplissage. Purement organisationnel côté fichier : à l'import, tous
+// Fonctions affichées comme lignes empilées sous chaque jour dans le
+// modèle Excel du planning, pour aider à répartir les tâches lors du
+// remplissage. Purement organisationnel côté fichier : à l'import, tous
 // les noms d'un même jour/site sont fusionnés dans une seule liste
 // d'assignation, quelle que soit la fonction sous laquelle ils ont été
 // saisis (voir src/lib/actions/planningExcel.ts).
 export const EXCEL_FONCTIONS = [
-  "Ordi Sorties",
-  "Ordi Retour",
+  "Ordi-caisse",
+  "Ordi retours",
   "Accueil",
-  "Anim/Accueil (poste mixte)",
+  "Anim./accueil",
 ] as const;
 
 // start/end au format "HH:mm" — source unique de vérité pour l'affichage

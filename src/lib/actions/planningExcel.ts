@@ -10,30 +10,18 @@ import { computeVolunteerDisplayNames, buildVolunteerNameLookup } from "@/lib/vo
 export type ImportPlanningExcelState = { error?: string; success?: string };
 
 const FONCTION_COUNT = EXCEL_FONCTIONS.length;
-
-const DATE_TEXT_RE = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/;
-
-function parseRowDate(value: ExcelJS.CellValue): Date | null {
-  if (value instanceof Date) return value;
-  if (typeof value === "string") {
-    const match = DATE_TEXT_RE.exec(value.trim());
-    if (match) {
-      const [, d, m, y] = match;
-      return new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
-    }
-  }
-  return null;
-}
+const ROWS_PER_WEEK = 1 + FONCTION_COUNT; // 1 ligne date + 4 lignes fonction
 
 // Importe un planning rempli depuis le modèle Excel généré par
-// "Générer le modèle" : une ligne par semaine (colonne 1 = lundi), et pour
-// chaque créneau de la grille (même ordre que getLeafSlots()) un bloc de
-// EXCEL_FONCTIONS.length colonnes — une case par fonction, purement
-// organisationnelle côté fichier : tous les noms du bloc sont fusionnés
-// dans une seule liste d'assignation pour le créneau, quelle que soit la
-// fonction sous laquelle ils ont été saisis. Un bloc entièrement vide
-// efface l'assignation existante ; un bloc marqué "—" (jour hors période
-// au moment de la génération) reste intouché.
+// "Générer le modèle" : un bloc de ROWS_PER_WEEK lignes par semaine (une
+// ligne d'en-tête avec la date exacte de chaque jour, suivie d'une ligne
+// par fonction — voir EXCEL_FONCTIONS), et une colonne par créneau de la
+// grille (même ordre que getLeafSlots()). Les fonctions sont purement
+// organisationnelles côté fichier : tous les noms saisis sous un même jour
+// sont fusionnés dans une seule liste d'assignation, quelle que soit la
+// ligne fonction où ils ont été tapés. Un jour entièrement vide efface
+// l'assignation existante ; un jour marqué "—" (hors période au moment de
+// la génération du modèle) reste intouché.
 export async function importPlanningExcel(
   _prevState: ImportPlanningExcelState,
   formData: FormData
@@ -73,37 +61,33 @@ export async function importPlanningExcel(
   type ParsedShift = { date: Date; site: Site; periode: Periode; userIds: string[] };
   const parsedShifts: ParsedShift[] = [];
   const unmatchedNames = new Set<string>();
-  let rowsRead = 0;
+  let weekBlocksRead = 0;
 
-  sheet.eachRow((row, rowNumber) => {
-    if (rowNumber < 4) return; // lignes 1-3 = en-têtes (site / jour / fonction)
-    const monday = parseRowDate(row.getCell(1).value);
-    if (!monday) return;
-    rowsRead++;
+  const lastRow = sheet.lastRow?.number ?? 0;
+  let rowIndex = 2; // ligne 1 = bandeau "Ouvertures Nyon/Gland"
+
+  while (rowIndex <= lastRow) {
+    const headerRow = sheet.getRow(rowIndex);
+    const hasAnyDate = leaves.some(
+      (_, i) => headerRow.getCell(i + 2).value instanceof Date
+    );
+    if (!hasAnyDate) break; // fin des blocs de semaine (ligne de légende ou vide)
+    weekBlocksRead++;
 
     leaves.forEach((leaf, i) => {
-      const blockStart = 2 + i * FONCTION_COUNT;
-      const texts: string[] = [];
-      for (let f = 0; f < FONCTION_COUNT; f++) {
-        const cellValue = row.getCell(blockStart + f).value;
-        const text =
-          typeof cellValue === "string" ? cellValue : cellValue != null ? String(cellValue) : "";
-        texts.push(text.trim());
-      }
-
-      // "—" = jour hors période demandée au moment de la génération du
-      // modèle (voir CLOSED_FILL côté export, écrit sur tout le bloc) : on
-      // n'y touche pas du tout, à la différence d'un bloc réellement
-      // laissé vide (voir plus bas).
-      if (texts.includes("—")) return;
-
-      const date = new Date(monday);
-      date.setUTCDate(date.getUTCDate() + leaf.offset);
+      const col = i + 2;
+      const headerValue = headerRow.getCell(col).value;
+      if (!(headerValue instanceof Date)) return; // "—" : hors période, on n'y touche pas
 
       const userIds: string[] = [];
-      for (const text of texts) {
-        if (!text) continue;
-        const names = text
+      for (let f = 0; f < FONCTION_COUNT; f++) {
+        const cellValue = sheet.getRow(rowIndex + 1 + f).getCell(col).value;
+        const text =
+          typeof cellValue === "string" ? cellValue : cellValue != null ? String(cellValue) : "";
+        const trimmed = text.trim();
+        if (!trimmed || trimmed === "—") continue;
+
+        const names = trimmed
           .split(/[,;\n]+/)
           .map((n) => n.trim())
           .filter(Boolean);
@@ -117,16 +101,18 @@ export async function importPlanningExcel(
         }
       }
 
-      // Un bloc entièrement vide (userIds vide, aucun nom non reconnu)
+      // Un jour entièrement vide (userIds vide, aucun nom non reconnu)
       // efface l'assignation existante — voir plus bas.
-      parsedShifts.push({ date, site: leaf.site, periode: leaf.periode, userIds });
+      parsedShifts.push({ date: headerValue, site: leaf.site, periode: leaf.periode, userIds });
     });
-  });
 
-  if (rowsRead === 0) {
+    rowIndex += ROWS_PER_WEEK;
+  }
+
+  if (weekBlocksRead === 0) {
     return {
       error:
-        "Aucune ligne reconnue dans le fichier. Utilisez le modèle généré par « Générer le modèle » sans modifier la mise en page.",
+        "Aucune semaine reconnue dans le fichier. Utilisez le modèle généré par « Générer le modèle » sans modifier la mise en page.",
     };
   }
 
@@ -137,7 +123,7 @@ export async function importPlanningExcel(
     });
 
     if (parsed.userIds.length === 0) {
-      // Case laissée vide dans le fichier = pas de bénévole sur ce créneau.
+      // Jour laissé vide dans le fichier = pas de bénévole sur ce créneau.
       if (existing) {
         await prisma.openingShiftAssignee.deleteMany({ where: { shiftId: existing.id } });
         await prisma.openingShift.delete({ where: { id: existing.id } });
