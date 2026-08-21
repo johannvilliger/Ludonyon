@@ -83,7 +83,7 @@ function NavBody({
         />
         <span className={`${labelBlockClass} leading-tight`}>
           <span className="block text-sm font-semibold text-stone-900">
-            Ludonyon
+            Ludothèque
           </span>
           <span className="block text-xs text-stone-400">Nyon Région</span>
         </span>

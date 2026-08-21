@@ -23,7 +23,7 @@ export default async function MainLayout({
         canSeeOrganisation={isOrganisationRole(user.role)}
       />
       <main className="min-w-0 flex-1 px-4 py-6 sm:py-8">
-        <div className="mx-auto w-full max-w-4xl">{children}</div>
+        <div className="w-full max-w-6xl">{children}</div>
       </main>
     </div>
   );
