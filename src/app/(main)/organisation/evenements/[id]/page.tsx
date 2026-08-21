@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireOrganisationUser } from "@/lib/session";
+import { canAccessEventAudience } from "@/lib/roles";
 import {
   formatEventDate,
   formatTime,
@@ -9,6 +10,7 @@ import {
   formatDateOnly,
 } from "@/lib/format";
 import Avatar from "@/components/Avatar";
+import EventRecorder from "@/components/EventRecorder";
 import {
   addVolunteerToEvent,
   removeEventSignup,
@@ -19,6 +21,9 @@ import {
   createTask,
   deleteTask,
   toggleTaskDone,
+  updateEventAgenda,
+  uploadEventRecording,
+  deleteEventRecording,
 } from "@/lib/actions/organisation";
 
 function sessionMinutes(arrivedAt: Date, leftAt: Date | null): number {
@@ -32,7 +37,7 @@ export default async function OrganisationEvenementDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireOrganisationUser();
+  const currentUser = await requireOrganisationUser();
 
   const event = await prisma.event.findUnique({
     where: { id },
@@ -48,7 +53,11 @@ export default async function OrganisationEvenementDetailPage({
       },
     },
   });
-  if (!event) notFound();
+  // 404 plutôt qu'une redirection : ne révèle pas à un·e responsable
+  // qu'une séance comité existe à cette adresse.
+  if (!event || !canAccessEventAudience(event.audience, currentUser.role)) {
+    notFound();
+  }
 
   const availableUsers = await prisma.user.findMany({
     where: {
@@ -92,9 +101,16 @@ export default async function OrganisationEvenementDetailPage({
         </Link>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-medium text-stone-900">
-              {event.title}
-            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-medium text-stone-900">
+                {event.title}
+              </h2>
+              {event.audience === "COMITE" && (
+                <span className="rounded-full bg-stone-900 px-2 py-0.5 text-xs font-medium text-white">
+                  🔒 Comité
+                </span>
+              )}
+            </div>
             <p className="mt-1 text-sm text-stone-600">
               {formatEventDate(event.startsAt, event.endsAt)}
               {event.location ? ` · ${event.location}` : ""}
@@ -122,6 +138,56 @@ export default async function OrganisationEvenementDetailPage({
           </div>
         </div>
       </div>
+
+      <section>
+        <h3 className="text-sm font-medium text-stone-700">Ordre du jour</h3>
+        <form action={updateEventAgenda} className="mt-2">
+          <input type="hidden" name="eventId" value={event.id} />
+          <textarea
+            name="agenda"
+            rows={4}
+            maxLength={5000}
+            defaultValue={event.agenda ?? ""}
+            placeholder={"1. Point A\n2. Point B\n..."}
+            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+          />
+          <button
+            type="submit"
+            className="mt-2 rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100"
+          >
+            Enregistrer l&rsquo;ordre du jour
+          </button>
+        </form>
+      </section>
+
+      <section>
+        <h3 className="text-sm font-medium text-stone-700">
+          Enregistrement audio
+        </h3>
+        {event.recordingPath ? (
+          <div className="mt-2 space-y-2">
+            <audio
+              controls
+              preload="none"
+              src={`/api/organisation/evenements/${event.id}/recording`}
+              className="w-full"
+            />
+            <form action={deleteEventRecording}>
+              <input type="hidden" name="eventId" value={event.id} />
+              <button
+                type="submit"
+                className="rounded-lg border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+              >
+                Supprimer l&rsquo;enregistrement
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="mt-2">
+            <EventRecorder action={uploadEventRecording} eventId={event.id} />
+          </div>
+        )}
+      </section>
 
       <section>
         <div className="flex flex-wrap items-center justify-between gap-3">

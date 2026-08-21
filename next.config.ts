@@ -9,12 +9,11 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      // Les photos sont redimensionnées côté navigateur avant l'envoi (voir
-      // resizeImage.ts), mais on garde une marge au-delà de la limite par
-      // défaut de 1 Mo pour les cas où ça ne serait pas possible
-      // (redimensionnement impossible sur le navigateur, formulaire soumis
-      // sans JS...).
-      bodySizeLimit: "6mb",
+      // Relevé pour les enregistrements audio des séances comité (jusqu'à
+      // ~200 Mo, voir MAX_RECORDING_SIZE dans recordingStorage.ts) ; les
+      // photos, bien plus petites, restent inchangées (redimensionnées
+      // côté navigateur, voir resizeImage.ts).
+      bodySizeLimit: "220mb",
     },
   },
 };

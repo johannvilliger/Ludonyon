@@ -51,6 +51,10 @@ next-env.d.ts
 # sur le serveur, ne doit pas être versionné
 /public/uploads/
 
+# enregistrements audio des séances comité — hors public/ (jamais servis
+# par une URL statique, voir la route API dédiée avec vérification de rôle)
+/storage/
+
 # reference docs auto-installed by `prisma init` for AI coding assistants
 # (regenerate with `npx prisma init` skills installer if needed)
 /.agents/

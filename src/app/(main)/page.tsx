@@ -15,7 +15,7 @@ export default async function HomePage() {
       include: { author: { select: { name: true } } },
     }),
     prisma.event.findMany({
-      where: { active: true, startsAt: { gte: new Date() } },
+      where: { active: true, audience: "ALL", startsAt: { gte: new Date() } },
       orderBy: { startsAt: "asc" },
       take: 3,
       include: {

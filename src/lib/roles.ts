@@ -19,3 +19,9 @@ export function isOrganisationRole(role: string): boolean {
 export function isValidRole(role: string): role is Role {
   return (ROLES as readonly string[]).includes(role);
 }
+
+// Une séance comité (audience "COMITE") n'est accessible qu'aux membres
+// du comité — ni les responsables, ni les bénévoles.
+export function canAccessEventAudience(audience: string, role: string): boolean {
+  return audience !== "COMITE" || role === "COMITE";
+}

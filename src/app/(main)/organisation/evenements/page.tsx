@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requireOrganisationUser } from "@/lib/session";
 import { formatEventDate } from "@/lib/format";
 import {
   createEvent,
@@ -13,11 +14,18 @@ export default async function OrganisationEvenementsPage({
 }: {
   searchParams: Promise<{ filtre?: string }>;
 }) {
+  const currentUser = await requireOrganisationUser();
+  const isComite = currentUser.role === "COMITE";
   const { filtre } = await searchParams;
   const showArchived = filtre === "archives";
 
   const events = await prisma.event.findMany({
-    where: { active: !showArchived },
+    // Les séances comité (audience "COMITE") restent invisibles pour les
+    // responsables, même dans cette liste de gestion.
+    where: {
+      active: !showArchived,
+      ...(isComite ? {} : { audience: "ALL" }),
+    },
     orderBy: { startsAt: "desc" },
     include: {
       signups: { include: { user: { select: { name: true } } } },
@@ -92,6 +100,18 @@ export default async function OrganisationEvenementsPage({
               className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
             />
           </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-stone-700">
+              Ordre du jour (optionnel)
+            </label>
+            <textarea
+              name="agenda"
+              rows={3}
+              maxLength={5000}
+              placeholder={"1. Point A\n2. Point B\n..."}
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+            />
+          </div>
           <label className="flex items-center gap-2 text-sm text-stone-700">
             <input
               type="checkbox"
@@ -100,6 +120,17 @@ export default async function OrganisationEvenementsPage({
             />
             Événement rémunéré
           </label>
+          {isComite && (
+            <label className="flex items-center gap-2 text-sm text-stone-700">
+              <input
+                type="checkbox"
+                name="committeeOnly"
+                className="h-4 w-4 rounded border-stone-300 text-brand-blue focus:ring-brand-blue"
+              />
+              Réservé au comité (séance comité — invisible pour les
+              responsables et bénévoles)
+            </label>
+          )}
           <button
             type="submit"
             className="rounded-lg border-2 border-black bg-brand-yellow px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand-yellow-dark"
@@ -155,6 +186,11 @@ export default async function OrganisationEvenementsPage({
                     {event.paid && (
                       <span className="rounded-full bg-brand-yellow-soft px-2 py-0.5 text-xs font-medium text-black">
                         Rémunéré
+                      </span>
+                    )}
+                    {event.audience === "COMITE" && (
+                      <span className="rounded-full bg-stone-900 px-2 py-0.5 text-xs font-medium text-white">
+                        🔒 Comité
                       </span>
                     )}
                   </div>

@@ -5,13 +5,14 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { requireOrganisationUser, requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { ROLES, isOrganisationRole } from "@/lib/roles";
+import { ROLES, isOrganisationRole, canAccessEventAudience } from "@/lib/roles";
 import { savePhoto, deletePhoto } from "@/lib/photoStorage";
 import { sendPushToUsers } from "@/lib/push";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { guideAttachmentPath, guideExists, saveGuide, deleteGuide } from "@/lib/guideStorage";
 import { getAvailabilityOptions } from "@/lib/planning";
 import { isValidPoste } from "@/lib/postes";
+import { saveRecording, deleteRecording } from "@/lib/recordingStorage";
 
 // ---------- Annonces ----------
 
@@ -56,10 +57,12 @@ export async function deleteAnnouncement(formData: FormData) {
 const eventSchema = z.object({
   title: z.string().trim().min(1, "Le titre est requis").max(200),
   description: z.string().trim().max(5000).optional(),
+  agenda: z.string().trim().max(5000).optional(),
   location: z.string().trim().max(200).optional(),
   startsAt: z.string().min(1, "La date de début est requise"),
   endsAt: z.string().optional(),
   paid: z.coerce.boolean().optional(),
+  committeeOnly: z.coerce.boolean().optional(),
 });
 
 export async function createEvent(formData: FormData) {
@@ -68,10 +71,12 @@ export async function createEvent(formData: FormData) {
   const parsed = eventSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description") || undefined,
+    agenda: formData.get("agenda") || undefined,
     location: formData.get("location") || undefined,
     startsAt: formData.get("startsAt"),
     endsAt: formData.get("endsAt") || undefined,
     paid: formData.get("paid") === "on" ? true : undefined,
+    committeeOnly: formData.get("committeeOnly") === "on" ? true : undefined,
   });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
@@ -86,14 +91,21 @@ export async function createEvent(formData: FormData) {
     throw new Error("Date de fin invalide");
   }
 
+  // Seul le comité peut créer une séance réservée au comité, même si le
+  // champ était présent dans la requête (défense en profondeur : la case
+  // n'est de toute façon affichée qu'aux membres du comité).
+  const committeeOnly = parsed.data.committeeOnly && user.role === "COMITE";
+
   await prisma.event.create({
     data: {
       title: parsed.data.title,
       description: parsed.data.description ?? null,
+      agenda: parsed.data.agenda ?? null,
       location: parsed.data.location ?? null,
       startsAt,
       endsAt,
       paid: parsed.data.paid ?? false,
+      audience: committeeOnly ? "COMITE" : "ALL",
       createdById: user.id,
     },
   });
@@ -154,6 +166,65 @@ export async function toggleEventPaid(formData: FormData) {
   revalidatePath("/evenements");
   revalidatePath("/organisation/evenements");
   revalidatePath(`/organisation/evenements/${id}`);
+}
+
+export async function updateEventAgenda(formData: FormData) {
+  const user = await requireOrganisationUser();
+  const eventId = String(formData.get("eventId"));
+  const agenda = String(formData.get("agenda") ?? "").trim();
+
+  const event = await prisma.event.findUniqueOrThrow({ where: { id: eventId } });
+  if (!canAccessEventAudience(event.audience, user.role)) {
+    throw new Error("Accès refusé");
+  }
+
+  await prisma.event.update({
+    where: { id: eventId },
+    data: { agenda: agenda || null },
+  });
+
+  revalidatePath(`/organisation/evenements/${eventId}`);
+}
+
+export async function uploadEventRecording(formData: FormData) {
+  const user = await requireOrganisationUser();
+  const eventId = String(formData.get("eventId"));
+  const file = formData.get("recording");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("Aucun enregistrement reçu");
+  }
+
+  const event = await prisma.event.findUniqueOrThrow({ where: { id: eventId } });
+  if (!canAccessEventAudience(event.audience, user.role)) {
+    throw new Error("Accès refusé");
+  }
+
+  const filename = await saveRecording(eventId, file);
+  await deleteRecording(event.recordingPath);
+  await prisma.event.update({
+    where: { id: eventId },
+    data: { recordingPath: filename },
+  });
+
+  revalidatePath(`/organisation/evenements/${eventId}`);
+}
+
+export async function deleteEventRecording(formData: FormData) {
+  const user = await requireOrganisationUser();
+  const eventId = String(formData.get("eventId"));
+
+  const event = await prisma.event.findUniqueOrThrow({ where: { id: eventId } });
+  if (!canAccessEventAudience(event.audience, user.role)) {
+    throw new Error("Accès refusé");
+  }
+
+  await deleteRecording(event.recordingPath);
+  await prisma.event.update({
+    where: { id: eventId },
+    data: { recordingPath: null },
+  });
+
+  revalidatePath(`/organisation/evenements/${eventId}`);
 }
 
 // ---------- Présences ----------

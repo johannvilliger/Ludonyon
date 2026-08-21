@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireOrganisationUser } from "@/lib/session";
+import { canAccessEventAudience } from "@/lib/roles";
 
 function sessionMinutes(arrivedAt: Date, leftAt: Date | null): number {
   const end = leftAt ?? new Date();
@@ -15,7 +16,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  await requireOrganisationUser();
+  const user = await requireOrganisationUser();
   const { id } = await params;
 
   const event = await prisma.event.findUnique({
@@ -30,7 +31,7 @@ export async function GET(
       },
     },
   });
-  if (!event) {
+  if (!event || !canAccessEventAudience(event.audience, user.role)) {
     return NextResponse.json({ error: "Événement introuvable" }, { status: 404 });
   }
 

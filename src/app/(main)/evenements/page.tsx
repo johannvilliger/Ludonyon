@@ -8,7 +8,10 @@ export default async function EvenementsPage() {
   const user = await requireUser();
 
   const events = await prisma.event.findMany({
-    where: { active: true, startsAt: { gte: new Date() } },
+    // Les séances comité ne sont pas des événements auxquels on s'inscrit :
+    // elles ne figurent jamais sur cette liste, y compris pour le comité
+    // (géré depuis Espace organisation).
+    where: { active: true, audience: "ALL", startsAt: { gte: new Date() } },
     orderBy: { startsAt: "asc" },
     include: {
       signups: {

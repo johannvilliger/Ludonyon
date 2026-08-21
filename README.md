@@ -129,6 +129,22 @@ survivent aux `git pull` et rebuilds normaux. Seule l'action **« Réinitialiser
 le site »** dans le Manager Infomaniak les effacerait (avec le reste du
 site) : à éviter une fois en production.
 
+### Séances comité et enregistrements audio
+
+Un événement peut être marqué « Réservé au comité » (visible uniquement par
+les membres du comité — page, liste, ordre du jour et enregistrement audio
+bloqués pour les responsables et bénévoles, y compris par URL directe).
+L'enregistrement (micro du navigateur, ~15-30 Mo/heure) est stocké dans
+`storage/recordings/` à la racine du projet — volontairement **hors**
+`public/` pour ne jamais être accessible par une simple URL statique, et
+hors dépôt Git. Comme pour les photos, ce dossier doit survivre aux
+déploiements ; seule une réinitialisation complète du site l'effacerait.
+
+⚠️ Si l'envoi d'un enregistrement échoue pour une séance longue, ça peut
+venir d'une limite de taille côté reverse-proxy d'Infomaniak (indépendante
+de la limite Next.js déjà relevée à 220 Mo dans `next.config.ts`) — à
+vérifier avec le support Infomaniak le cas échéant.
+
 ### PWA et notifications push
 
 Le site est installable (icône sur l'écran d'accueil, mobile et

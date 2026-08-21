@@ -124,6 +124,16 @@ model Event {
   // Archivé plutôt que supprimé directement, pour ne jamais perdre les
   // présences/heures liées sans confirmation explicite (voir deleteEvent).
   active      Boolean  @default(true)
+  // "ALL" | "COMITE". Une séance comité (audience "COMITE") est invisible
+  // pour tout le monde sauf les membres du comité : listes, page de
+  // gestion, ordre du jour et enregistrement audio (voir les vérifications
+  // de rôle explicites, pas seulement un masquage dans l'UI).
+  audience    String   @default("ALL")
+  agenda      String?  @db.Text
+  // Nom de fichier dans le dossier de stockage des enregistrements, hors
+  // dépôt git ET hors public/ (jamais servi par une URL statique — voir
+  // la route API dédiée qui vérifie le rôle avant de streamer le fichier).
+  recordingPath String?
   createdById String
   createdBy   User     @relation(fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
