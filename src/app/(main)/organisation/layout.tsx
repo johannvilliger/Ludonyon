@@ -7,6 +7,7 @@ const links = [
   { href: "/organisation/annonces", label: "Annonces" },
   { href: "/organisation/benevoles", label: "Bénévoles" },
   { href: "/organisation/notifications", label: "Notifications" },
+  { href: "/organisation/parametres", label: "Paramètres" },
 ];
 
 export default async function OrganisationLayout({

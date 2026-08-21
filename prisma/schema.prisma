@@ -33,6 +33,7 @@ model User {
   vacations         Vacation[]
   taskAssignees     TaskAssignee[]
   pushSubscriptions PushSubscription[]
+  openingShifts     OpeningShiftAssignee[]
 
   @@index([role])
 }
@@ -132,6 +133,35 @@ model TaskAssignee {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, userId])
+}
+
+// Un créneau d'ouverture (jour + site + période) tel que défini par la
+// grille hebdomadaire fixe (voir src/lib/planning.ts). Créé à la demande
+// dès qu'un·e bénévole y est assigné·e.
+// site : "NYON" | "GLAND". période : "JOURNEE" | "MATIN" | "APREM".
+model OpeningShift {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  site      String
+  periode   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignees OpeningShiftAssignee[]
+
+  @@unique([date, site, periode])
+  @@index([date])
+}
+
+model OpeningShiftAssignee {
+  id      String       @id @default(cuid())
+  shiftId String
+  shift   OpeningShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([shiftId, userId])
+  @@index([userId])
 }
 
 // Un bénévole peut arriver/repartir plusieurs fois pendant un même

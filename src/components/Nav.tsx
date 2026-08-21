@@ -17,6 +17,7 @@ export default function Nav({
     { href: "/annuaire", label: "Annuaire" },
     { href: "/annonces", label: "Annonces" },
     { href: "/evenements", label: "Événements" },
+    { href: "/planning", label: "Planning" },
   ];
 
   return (

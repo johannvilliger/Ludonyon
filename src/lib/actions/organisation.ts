@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { ROLES, isOrganisationRole } from "@/lib/roles";
 import { savePhoto, deletePhoto } from "@/lib/photoStorage";
 import { sendPushToUsers } from "@/lib/push";
+import { mailConfigured, sendMail } from "@/lib/mail";
+import { guideAttachmentPath, guideExists, saveGuide, deleteGuide } from "@/lib/guideStorage";
 
 // ---------- Annonces ----------
 
@@ -271,8 +273,67 @@ export async function createVolunteer(formData: FormData) {
     },
   });
 
+  if (mailConfigured()) {
+    try {
+      await sendWelcomeEmail(parsed.data.name, parsed.data.email, parsed.data.password);
+    } catch (err) {
+      // La création du compte ne doit pas échouer si l'email ne part pas :
+      // les identifiants restent transmissibles manuellement.
+      console.error("Échec de l'envoi de l'email de bienvenue :", err);
+    }
+  }
+
   revalidatePath("/annuaire");
   revalidatePath("/organisation/benevoles");
+}
+
+async function sendWelcomeEmail(
+  name: string,
+  email: string,
+  password: string
+): Promise<void> {
+  const url = process.env.AUTH_URL;
+  const attachments = (await guideExists())
+    ? [{ filename: "mode-emploi.pdf", path: guideAttachmentPath() }]
+    : undefined;
+
+  const lines = [
+    `Bonjour ${name},`,
+    "",
+    "Un compte a été créé pour vous sur la plateforme des bénévoles de la Ludothèque Nyon Région.",
+    "",
+    ...(url ? [`Adresse : ${url}`] : []),
+    `Identifiant : ${email}`,
+    `Mot de passe provisoire : ${password}`,
+    "",
+    'Nous vous recommandons de changer ce mot de passe dès votre première connexion (menu "Mon profil").',
+    ...(attachments
+      ? ["", "Vous trouverez en pièce jointe un mode d'emploi des fonctionnalités."]
+      : []),
+    "",
+    "À bientôt,",
+    "L'équipe de la Ludothèque Nyon Région",
+  ];
+
+  const html = lines
+    .map((line) => (line ? `<p>${line}</p>` : ""))
+    .join("\n")
+    .replace(
+      `<p>Identifiant : ${email}</p>`,
+      `<p>Identifiant : <strong>${email}</strong></p>`
+    )
+    .replace(
+      `<p>Mot de passe provisoire : ${password}</p>`,
+      `<p>Mot de passe provisoire : <strong>${password}</strong></p>`
+    );
+
+  await sendMail({
+    to: email,
+    subject: "Bienvenue sur la plateforme des bénévoles — vos identifiants",
+    text: lines.join("\n"),
+    html,
+    attachments,
+  });
 }
 
 const roleUpdateSchema = z.object({
@@ -520,4 +581,24 @@ export async function sendManualNotification(formData: FormData) {
   revalidatePath("/annonces");
   revalidatePath("/organisation/annonces");
   revalidatePath("/");
+}
+
+// ---------- Paramètres (mode d'emploi) ----------
+
+export async function uploadGuide(formData: FormData) {
+  await requireOrganisationUser();
+
+  const file = formData.get("guide");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("Aucun fichier sélectionné");
+  }
+
+  await saveGuide(file);
+  revalidatePath("/organisation/parametres");
+}
+
+export async function removeGuide() {
+  await requireOrganisationUser();
+  await deleteGuide();
+  revalidatePath("/organisation/parametres");
 }

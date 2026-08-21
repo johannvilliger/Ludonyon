@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOrganisationUser } from "@/lib/session";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/roles";
 import { formatDateOnly } from "@/lib/format";
+import { mailConfigured } from "@/lib/mail";
 import Avatar from "@/components/Avatar";
 import PhotoUploadField from "@/components/PhotoUploadField";
 import {
@@ -36,6 +37,11 @@ export default async function OrganisationBenevolesPage({
         <h2 className="text-lg font-medium text-stone-900">
           Ajouter un·e bénévole
         </h2>
+        <p className="mt-1 text-xs text-stone-400">
+          {mailConfigured()
+            ? "Un email avec les identifiants sera envoyé automatiquement à la personne."
+            : "Serveur d'envoi d'emails non configuré (voir Paramètres) : communiquez les identifiants manuellement."}
+        </p>
         <form
           action={createVolunteer}
           className="mt-3 grid gap-3 rounded-xl border border-stone-200 bg-white p-4 sm:grid-cols-2"

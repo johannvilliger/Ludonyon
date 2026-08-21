@@ -13,10 +13,13 @@ activités.
 - **Annonces** : fil de nouvelles de l'équipe.
 - **Événements** : liste des permanences/animations à venir, avec
   inscription et désinscription en un clic.
+- **Planning des ouvertures** : grille mensuelle en lecture seule (mardi,
+  mercredi matin/après-midi, vendredi, samedi — Gland en plus de Nyon le
+  mercredi après-midi et le samedi matin) montrant qui tient la ludothèque.
 - **Espace organisation** (réservé aux rôles Responsable et Comité) :
   créer des annonces et des événements, voir qui s'est inscrit, gérer les
   comptes bénévoles (créer, changer de rôle, réinitialiser un mot de
-  passe, supprimer).
+  passe, archiver), assigner les bénévoles sur le planning des ouvertures.
 
 ### Rôles
 
@@ -103,6 +106,11 @@ ensuite depuis **Mon profil**).
      production avec `npx web-push generate-vapid-keys` (ne réutilisez
      pas celle du développement local). `VAPID_SUBJECT` est un
      `mailto:` de contact, ex. `mailto:contact@ludonyonregion.ch`.
+   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`,
+     `SMTP_FROM` — optionnel, pour l'envoi automatique de l'email de
+     bienvenue à la création d'un compte bénévole (voir détails dans
+     `.env.example`). Sans ces variables, l'application fonctionne
+     normalement, il faut juste communiquer les identifiants manuellement.
 4. Depuis le terminal SSH du site (bouton dans le Manager), lancez :
    ```bash
    npx prisma migrate deploy
@@ -132,13 +140,26 @@ Trois usages :
   "je veux être notifié·e" à l'inscription.
 - Envoi manuel depuis **Espace organisation → Notifications** (à tous les
   bénévoles ou juste responsables/comité).
-- Le rappel "ouvertures" (case globale dans Mon profil) est prévu pour la
-  future page de planning, pas encore branché à un envoi réel.
+- Le rappel "ouvertures" (case globale dans Mon profil) n'est pas encore
+  branché à un envoi push basé sur le planning des ouvertures.
 
 ⚠️ **À tester obligatoirement sur un vrai téléphone une fois déployé** —
 l'activation des notifications (autorisation du navigateur, réception
 réelle) ne peut pas être vérifiée autrement. Sur iPhone, le site doit
 d'abord être ajouté à l'écran d'accueil (limite d'Apple, pas du site).
+
+### Emails (SMTP)
+
+Si les variables `SMTP_*` sont renseignées (voir `.env.example`), un email
+avec l'adresse du site, l'identifiant et le mot de passe provisoire est
+envoyé automatiquement à la création d'un compte bénévole. Un mode d'emploi
+PDF optionnel peut être mis en ligne depuis **Espace organisation →
+Paramètres** : il est alors joint à cet email. Le statut de la
+configuration SMTP est visible sur cette même page.
+
+Avec un compte Office 365, l'authentification SMTP doit d'abord être
+activée pour le compte utilisé (souvent désactivée par défaut) dans le
+centre d'administration Microsoft 365.
 
 ### Mises à jour
 
