@@ -4,6 +4,7 @@ import { requireOrganisationUser } from "@/lib/session";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/roles";
 import { formatDateOnly } from "@/lib/format";
 import Avatar from "@/components/Avatar";
+import PhotoUploadField from "@/components/PhotoUploadField";
 import {
   createVolunteer,
   updateVolunteerRole,
@@ -274,25 +275,13 @@ export default async function OrganisationBenevolesPage({
                   <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
                     Changer la photo
                   </summary>
-                  <form
-                    action={updateVolunteerPhoto}
-                    className="mt-2 flex flex-wrap items-center gap-2"
-                  >
-                    <input type="hidden" name="id" value={u.id} />
-                    <input
-                      type="file"
-                      name="photo"
-                      accept="image/jpeg,image/png,image/webp"
-                      required
-                      className="text-sm"
+                  <div className="mt-2">
+                    <PhotoUploadField
+                      action={updateVolunteerPhoto}
+                      extraFields={{ id: u.id }}
+                      buttonClassName="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100 disabled:opacity-60"
                     />
-                    <button
-                      type="submit"
-                      className="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
-                    >
-                      Enregistrer
-                    </button>
-                  </form>
+                  </div>
                 </details>
 
                 {showArchived && !isSelf && (
