@@ -49,6 +49,7 @@ export default async function OrganisationPlanningPage({
           editable
           activeUsers={activeUsers}
           currentUserId={currentUser.id}
+          isOrg
         />
       </div>
     </div>

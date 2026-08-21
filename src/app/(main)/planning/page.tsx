@@ -58,6 +58,7 @@ export default async function PlanningPage({
           editable={false}
           activeUsers={[]}
           currentUserId={user.id}
+          isOrg={isOrg}
         />
       </div>
     </div>

@@ -146,6 +146,13 @@ export async function requestReplacement(formData: FormData) {
           active: true,
           id: { not: user.id },
           availabilities: { some: { slotKey: key } },
+          // Exclut les bénévoles en vacances déclarées ce jour-là.
+          vacations: {
+            none: {
+              startDate: { lte: assignee.shift.date },
+              endDate: { gte: assignee.shift.date },
+            },
+          },
         },
         select: { id: true },
       });

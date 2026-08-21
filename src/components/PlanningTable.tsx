@@ -14,12 +14,14 @@ export default function PlanningTable({
   editable,
   activeUsers,
   currentUserId,
+  isOrg,
 }: {
   weeks: PlanningWeek[];
   shiftsByKey: ShiftMap;
   editable: boolean;
   activeUsers: { id: string; name: string }[];
   currentUserId: string;
+  isOrg: boolean;
 }) {
   const leaves = getLeafSlots();
   const nyonCount = leaves.filter((l) => l.site === "NYON").length;
@@ -105,7 +107,7 @@ export default function PlanningTable({
                         <li className="text-xs text-stone-300">—</li>
                       )}
                       {assignees.map((a) => {
-                        const canManage = editable || a.userId === currentUserId;
+                        const canManage = editable || isOrg || a.userId === currentUserId;
                         return (
                           <li key={a.userId}>
                             <div
