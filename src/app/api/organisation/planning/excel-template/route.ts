@@ -2,10 +2,16 @@ import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 import { requireOrganisationUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { getLeafSlots, getPlanningWeeksBetween, parseDateKey } from "@/lib/planning";
+import {
+  EXCEL_FONCTIONS,
+  getLeafSlots,
+  getPlanningWeeksBetween,
+  parseDateKey,
+} from "@/lib/planning";
 import { computeVolunteerDisplayNames } from "@/lib/volunteerNames";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const FONCTION_COUNT = EXCEL_FONCTIONS.length;
 
 const NYON_FILL: ExcelJS.Fill = {
   type: "pattern",
@@ -52,51 +58,62 @@ export async function GET(request: Request) {
   const leaves = getLeafSlots();
   const nyonCount = leaves.filter((l) => l.site === "NYON").length;
   const weeks = getPlanningWeeksBetween(start, end);
+  const totalCols = 1 + leaves.length * FONCTION_COUNT;
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Ludonyon";
   workbook.created = new Date();
 
   const sheet = workbook.addWorksheet("Planning");
-  sheet.views = [{ state: "frozen", ySplit: 2, xSplit: 1 }];
+  sheet.views = [{ state: "frozen", ySplit: 3, xSplit: 1 }];
 
-  // Colonne 1 : date du lundi de la semaine. Colonnes 2..N : créneaux
-  // (Nyon puis Gland), dans le même ordre que la grille affichée sur le
-  // site — voir getLeafSlots().
+  // Colonne 1 : date du lundi de la semaine. Puis, pour chaque créneau
+  // (Nyon puis Gland, voir getLeafSlots()), un bloc de FONCTION_COUNT
+  // colonnes — une case par fonction, purement organisationnelle : voir
+  // EXCEL_FONCTIONS.
   sheet.getColumn(1).width = 16;
-  leaves.forEach((_, i) => {
-    sheet.getColumn(i + 2).width = 24;
-  });
+  for (let col = 2; col <= totalCols; col++) {
+    sheet.getColumn(col).width = 16;
+  }
 
   const headerRow1 = sheet.getRow(1);
-  headerRow1.getCell(1).value = "";
-  headerRow1.getCell(2).value = "Nyon";
-  headerRow1.getCell(2 + nyonCount).value = "Gland";
-  sheet.mergeCells(1, 1, 2, 1);
-  sheet.mergeCells(1, 2, 1, 1 + nyonCount);
-  sheet.mergeCells(1, 2 + nyonCount, 1, 1 + leaves.length);
+  sheet.mergeCells(1, 1, 3, 1);
   headerRow1.getCell(1).value = "Semaine du";
+  sheet.mergeCells(1, 2, 1, 1 + nyonCount * FONCTION_COUNT);
+  headerRow1.getCell(2).value = "Nyon";
+  sheet.mergeCells(1, 2 + nyonCount * FONCTION_COUNT, 1, totalCols);
+  headerRow1.getCell(2 + nyonCount * FONCTION_COUNT).value = "Gland";
 
   for (let i = 0; i < leaves.length; i++) {
-    const col = i + 2;
+    const blockStart = 2 + i * FONCTION_COUNT;
     const fill = i < nyonCount ? NYON_FILL : GLAND_FILL;
-    const c1 = headerRow1.getCell(col);
-    c1.fill = fill;
-    c1.font = { bold: true };
-    c1.alignment = { horizontal: "center", vertical: "middle" };
 
-    const c2 = sheet.getRow(2).getCell(col);
-    c2.value = `${leaves[i].groupLabel}\n${leaves[i].hours}`;
-    c2.fill = fill;
-    c2.font = { bold: true, size: 10 };
-    c2.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    sheet.mergeCells(2, blockStart, 2, blockStart + FONCTION_COUNT - 1);
+    const dayCell = sheet.getRow(2).getCell(blockStart);
+    dayCell.value = `${leaves[i].groupLabel}\n${leaves[i].hours}`;
+    dayCell.fill = fill;
+    dayCell.font = { bold: true, size: 10 };
+    dayCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+
+    EXCEL_FONCTIONS.forEach((fonction, f) => {
+      const c = sheet.getRow(3).getCell(blockStart + f);
+      c.value = fonction;
+      c.fill = fill;
+      c.font = { bold: true, size: 9 };
+      c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    });
+  }
+  for (let col = 2; col <= totalCols; col++) {
+    headerRow1.getCell(col).fill = col < 2 + nyonCount * FONCTION_COUNT ? NYON_FILL : GLAND_FILL;
+    headerRow1.getCell(col).font = { bold: true };
+    headerRow1.getCell(col).alignment = { horizontal: "center", vertical: "middle" };
   }
   const c1Header = headerRow1.getCell(1);
   c1Header.font = { bold: true };
   c1Header.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F5F4" } };
   c1Header.alignment = { horizontal: "center", vertical: "middle" };
 
-  let rowIndex = 3;
+  let rowIndex = 4;
   for (const week of weeks) {
     const row = sheet.getRow(rowIndex);
     const dateCell = row.getCell(1);
@@ -113,19 +130,21 @@ export async function GET(request: Request) {
     dateCell.alignment = { vertical: "middle" };
 
     week.cells.forEach((cell, i) => {
-      const col = i + 2;
-      const c = row.getCell(col);
-      c.alignment = { wrapText: true, vertical: "top" };
-      c.border = {
-        top: { style: "thin", color: { argb: "FFE7E5E4" } },
-        left: { style: "thin", color: { argb: "FFE7E5E4" } },
-        right: { style: "thin", color: { argb: "FFE7E5E4" } },
-        bottom: { style: "thin", color: { argb: "FFE7E5E4" } },
-      };
-      if (!cell.inMonth) {
-        c.value = "—";
-        c.fill = CLOSED_FILL;
-        c.font = { italic: true, color: { argb: "FFA8A29E" } };
+      const blockStart = 2 + i * FONCTION_COUNT;
+      for (let f = 0; f < FONCTION_COUNT; f++) {
+        const c = row.getCell(blockStart + f);
+        c.alignment = { wrapText: true, vertical: "top" };
+        c.border = {
+          top: { style: "thin", color: { argb: "FFE7E5E4" } },
+          left: { style: "thin", color: { argb: "FFE7E5E4" } },
+          right: { style: "thin", color: { argb: "FFE7E5E4" } },
+          bottom: { style: "thin", color: { argb: "FFE7E5E4" } },
+        };
+        if (!cell.inMonth) {
+          c.value = "—";
+          c.fill = CLOSED_FILL;
+          c.font = { italic: true, color: { argb: "FFA8A29E" } };
+        }
       }
     });
     rowIndex++;
@@ -133,9 +152,10 @@ export async function GET(request: Request) {
 
   const legendRow = sheet.getRow(rowIndex + 1);
   legendRow.getCell(1).value =
-    "Plusieurs bénévoles sur un même créneau : séparez les prénoms par une virgule. Utilisez exactement les noms de l'onglet « Bénévoles ».";
+    "Une case par fonction, pour vous aider à répartir les tâches — à l'import, tout le monde est simplement ajouté·e à l'ouverture du jour, quelle que soit la fonction utilisée. Plusieurs bénévoles sur une même case : séparez les prénoms par une virgule. Utilisez exactement les noms de l'onglet « Bénévoles ».";
   legendRow.getCell(1).font = { italic: true, size: 10, color: { argb: "FF78716C" } };
-  sheet.mergeCells(legendRow.number, 1, legendRow.number, 1 + leaves.length);
+  legendRow.alignment = { wrapText: true };
+  sheet.mergeCells(legendRow.number, 1, legendRow.number, totalCols);
 
   const legendSheet = workbook.addWorksheet("Bénévoles");
   legendSheet.getColumn(1).width = 28;

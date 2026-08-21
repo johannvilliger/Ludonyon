@@ -152,13 +152,18 @@ vérifier avec le support Infomaniak le cas échéant.
 
 Depuis **Espace organisation → Planning**, un·e responsable/comité peut
 générer un modèle Excel vide pour une période donnée (mise en page identique
-à la grille du site : Nyon à gauche avec tous ses créneaux, Gland à droite),
-le compléter avec les prénoms des bénévoles (un onglet « Bénévoles » liste
-les prénoms exacts à utiliser — l'initiale du nom de famille est ajoutée
-automatiquement en cas de doublon, ex. « Marie D. » / « Marie L. »), puis le
-réimporter : le site reconnaît les bénévoles actif·ve·s et met à jour le
-planning pour toute la période couverte par le fichier (une case laissée
-vide efface l'assignation existante ; les noms non reconnus sont listés
+à la grille du site : Nyon à gauche avec tous ses créneaux, Gland à droite).
+Chaque jour affiche une case par fonction (Ordi Sorties, Ordi Retour,
+Accueil, Anim/Accueil poste mixte) pour aider à répartir les tâches — c'est
+purement organisationnel côté fichier : à l'import, tout le monde est
+simplement ajouté à l'ouverture du jour, quelle que soit la fonction sous
+laquelle le prénom a été saisi. Le fichier se complète avec les prénoms des
+bénévoles (un onglet « Bénévoles » liste les prénoms exacts à utiliser —
+l'initiale du nom de famille est ajoutée automatiquement en cas de doublon,
+ex. « Marie D. » / « Marie L. »), puis se réimporte : le site reconnaît les
+bénévoles actif·ve·s et met à jour le planning pour toute la période
+couverte par le fichier (un jour laissé entièrement vide efface
+l'assignation existante ; les noms non reconnus sont listés
 après l'import pour correction). Le format du fichier (colonnes, position
 de la date en colonne A) ne doit pas être modifié manuellement.
 

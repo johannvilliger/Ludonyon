@@ -12,6 +12,19 @@ export const SITE_LABELS: Record<Site, string> = {
   GLAND: "Gland",
 };
 
+// Fonctions affichées comme sous-colonnes dans le modèle Excel du planning
+// (une case par fonction, par jour), pour aider à répartir les tâches lors
+// du remplissage. Purement organisationnel côté fichier : à l'import, tous
+// les noms d'un même jour/site sont fusionnés dans une seule liste
+// d'assignation, quelle que soit la fonction sous laquelle ils ont été
+// saisis (voir src/lib/actions/planningExcel.ts).
+export const EXCEL_FONCTIONS = [
+  "Ordi Sorties",
+  "Ordi Retour",
+  "Accueil",
+  "Anim/Accueil (poste mixte)",
+] as const;
+
 // start/end au format "HH:mm" — source unique de vérité pour l'affichage
 // ET pour construire les horaires exacts des événements .ics exportés.
 export interface SlotDef {
@@ -225,13 +238,29 @@ export function getPlanningWeeks(year: number, month: number): PlanningWeek[] {
   return weeks;
 }
 
+// Lundi (minuit UTC) de la semaine contenant `date`, `date` étant elle-même
+// minuit UTC (voir parseDateKey). À la différence de mondayOf(), tout reste
+// en UTC ici pour être comparable directement à rangeStart/rangeEnd : les
+// mélanger avec des calculs en heure locale décalerait de 1-2h (fuseau
+// Europe/Zurich) et ferait passer à tort le jour de bord d'une plage pour
+// "hors période".
+function mondayOfUTC(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getUTCDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d;
+}
+
 // Semaines (lundi à dimanche) couvrant une plage de dates arbitraire (pas
-// calée sur un mois), utilisée pour générer le modèle Excel d'import. Les
-// cellules hors de [rangeStart, rangeEnd] restent dans le tableau (semaine
-// entière) mais marquées `inMonth: false`, comme pour getPlanningWeeks.
+// calée sur un mois), utilisée pour générer le modèle Excel d'import.
+// rangeStart/rangeEnd doivent être normalisées en minuit UTC (parseDateKey).
+// Les cellules hors de [rangeStart, rangeEnd] restent dans le tableau
+// (semaine entière) mais marquées `inMonth: false`, comme pour
+// getPlanningWeeks.
 export function getPlanningWeeksBetween(rangeStart: Date, rangeEnd: Date): PlanningWeek[] {
-  const start = mondayOf(rangeStart);
-  const end = mondayOf(rangeEnd);
+  const start = mondayOfUTC(rangeStart);
+  const end = mondayOfUTC(rangeEnd);
 
   const leaves = getLeafSlots();
   const weeks: PlanningWeek[] = [];
@@ -240,7 +269,7 @@ export function getPlanningWeeksBetween(rangeStart: Date, rangeEnd: Date): Plann
     const monday = new Date(cursor);
     const cells = leaves.map((leaf) => {
       const date = new Date(monday);
-      date.setDate(date.getDate() + leaf.offset);
+      date.setUTCDate(date.getUTCDate() + leaf.offset);
       return {
         leaf,
         date,
@@ -248,7 +277,7 @@ export function getPlanningWeeksBetween(rangeStart: Date, rangeEnd: Date): Plann
       };
     });
     weeks.push({ monday, cells });
-    cursor.setDate(cursor.getDate() + 7);
+    cursor.setUTCDate(cursor.getUTCDate() + 7);
   }
 
   return weeks;

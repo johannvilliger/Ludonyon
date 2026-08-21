@@ -4,10 +4,12 @@ import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
 import { requireOrganisationUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { getLeafSlots, type Periode, type Site } from "@/lib/planning";
+import { EXCEL_FONCTIONS, getLeafSlots, type Periode, type Site } from "@/lib/planning";
 import { computeVolunteerDisplayNames, buildVolunteerNameLookup } from "@/lib/volunteerNames";
 
 export type ImportPlanningExcelState = { error?: string; success?: string };
+
+const FONCTION_COUNT = EXCEL_FONCTIONS.length;
 
 const DATE_TEXT_RE = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/;
 
@@ -24,11 +26,14 @@ function parseRowDate(value: ExcelJS.CellValue): Date | null {
 }
 
 // Importe un planning rempli depuis le modèle Excel généré par
-// "Générer le modèle" : une ligne par semaine (colonne 1 = lundi), une
-// colonne par créneau de la grille (même ordre que getLeafSlots()). Une
-// case vide efface l'assignation existante pour ce créneau ; une case
-// remplie remplace la liste des bénévoles par celle reconnue dans le
-// texte (prénoms séparés par virgule/point-virgule/retour à la ligne).
+// "Générer le modèle" : une ligne par semaine (colonne 1 = lundi), et pour
+// chaque créneau de la grille (même ordre que getLeafSlots()) un bloc de
+// EXCEL_FONCTIONS.length colonnes — une case par fonction, purement
+// organisationnelle côté fichier : tous les noms du bloc sont fusionnés
+// dans une seule liste d'assignation pour le créneau, quelle que soit la
+// fonction sous laquelle ils ont été saisis. Un bloc entièrement vide
+// efface l'assignation existante ; un bloc marqué "—" (jour hors période
+// au moment de la génération) reste intouché.
 export async function importPlanningExcel(
   _prevState: ImportPlanningExcelState,
   formData: FormData
@@ -71,40 +76,49 @@ export async function importPlanningExcel(
   let rowsRead = 0;
 
   sheet.eachRow((row, rowNumber) => {
-    if (rowNumber < 3) return; // lignes 1-2 = en-têtes
+    if (rowNumber < 4) return; // lignes 1-3 = en-têtes (site / jour / fonction)
     const monday = parseRowDate(row.getCell(1).value);
     if (!monday) return;
     rowsRead++;
 
     leaves.forEach((leaf, i) => {
-      const cellValue = row.getCell(i + 2).value;
-      const text =
-        typeof cellValue === "string" ? cellValue : cellValue != null ? String(cellValue) : "";
+      const blockStart = 2 + i * FONCTION_COUNT;
+      const texts: string[] = [];
+      for (let f = 0; f < FONCTION_COUNT; f++) {
+        const cellValue = row.getCell(blockStart + f).value;
+        const text =
+          typeof cellValue === "string" ? cellValue : cellValue != null ? String(cellValue) : "";
+        texts.push(text.trim());
+      }
+
       // "—" = jour hors période demandée au moment de la génération du
-      // modèle (voir CLOSED_FILL côté export) : on n'y touche pas du tout,
-      // à la différence d'une case réellement laissée vide (voir plus bas).
-      if (text.trim() === "—") return;
+      // modèle (voir CLOSED_FILL côté export, écrit sur tout le bloc) : on
+      // n'y touche pas du tout, à la différence d'un bloc réellement
+      // laissé vide (voir plus bas).
+      if (texts.includes("—")) return;
 
       const date = new Date(monday);
       date.setUTCDate(date.getUTCDate() + leaf.offset);
 
-      const names = text
-        .split(/[,;\n]+/)
-        .map((n) => n.trim())
-        .filter(Boolean);
-
       const userIds: string[] = [];
-      for (const name of names) {
-        const id = lookup.get(name.toLowerCase());
-        if (id) {
-          userIds.push(id);
-        } else {
-          unmatchedNames.add(name);
+      for (const text of texts) {
+        if (!text) continue;
+        const names = text
+          .split(/[,;\n]+/)
+          .map((n) => n.trim())
+          .filter(Boolean);
+        for (const name of names) {
+          const id = lookup.get(name.toLowerCase());
+          if (id) {
+            if (!userIds.includes(id)) userIds.push(id);
+          } else {
+            unmatchedNames.add(name);
+          }
         }
       }
 
-      // Une case vide (userIds vide, aucun nom non reconnu) efface
-      // l'assignation existante — voir plus bas.
+      // Un bloc entièrement vide (userIds vide, aucun nom non reconnu)
+      // efface l'assignation existante — voir plus bas.
       parsedShifts.push({ date, site: leaf.site, periode: leaf.periode, userIds });
     });
   });
