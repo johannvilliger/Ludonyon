@@ -8,7 +8,7 @@ export default async function EvenementsPage() {
   const user = await requireUser();
 
   const events = await prisma.event.findMany({
-    where: { startsAt: { gte: new Date() } },
+    where: { active: true, startsAt: { gte: new Date() } },
     orderBy: { startsAt: "asc" },
     include: {
       signups: {

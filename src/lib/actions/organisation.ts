@@ -11,6 +11,7 @@ import { sendPushToUsers } from "@/lib/push";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { guideAttachmentPath, guideExists, saveGuide, deleteGuide } from "@/lib/guideStorage";
 import { getAvailabilityOptions } from "@/lib/planning";
+import { isValidPoste } from "@/lib/postes";
 
 // ---------- Annonces ----------
 
@@ -102,9 +103,36 @@ export async function createEvent(formData: FormData) {
   revalidatePath("/");
 }
 
+export async function archiveEvent(formData: FormData) {
+  await requireOrganisationUser();
+  const id = String(formData.get("id"));
+
+  await prisma.event.update({ where: { id }, data: { active: false } });
+
+  revalidatePath("/evenements");
+  revalidatePath("/organisation/evenements");
+  revalidatePath("/");
+}
+
+export async function unarchiveEvent(formData: FormData) {
+  await requireOrganisationUser();
+  const id = String(formData.get("id"));
+
+  await prisma.event.update({ where: { id }, data: { active: true } });
+
+  revalidatePath("/evenements");
+  revalidatePath("/organisation/evenements");
+  revalidatePath("/");
+}
+
 export async function deleteEvent(formData: FormData) {
   await requireOrganisationUser();
   const id = String(formData.get("id"));
+
+  const event = await prisma.event.findUniqueOrThrow({ where: { id } });
+  if (event.active) {
+    throw new Error("Archivez d'abord cet événement avant de le supprimer");
+  }
 
   await prisma.event.delete({ where: { id } });
 
@@ -470,6 +498,17 @@ export async function updateVolunteerAvailability(formData: FormData) {
 
   revalidatePath("/organisation/benevoles");
   revalidatePath("/profil");
+}
+
+export async function updateVolunteerPoste(formData: FormData) {
+  await requireOrganisationUser();
+  const userId = String(formData.get("id"));
+  const raw = String(formData.get("poste") ?? "");
+  const poste = raw && isValidPoste(raw) ? raw : null;
+
+  await prisma.user.update({ where: { id: userId }, data: { poste } });
+
+  revalidatePath("/organisation/benevoles");
 }
 
 // ---------- Tâches ----------

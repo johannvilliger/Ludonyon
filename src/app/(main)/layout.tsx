@@ -15,14 +15,14 @@ export default async function MainLayout({
   });
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col sm:flex-row">
       <Nav
         userName={user.name ?? user.email ?? ""}
         role={user.role}
         photoPath={dbUser?.photoPath ?? null}
         canSeeOrganisation={isOrganisationRole(user.role)}
       />
-      <main className="min-w-0 flex-1 px-4 py-8">
+      <main className="min-w-0 flex-1 px-4 py-6 sm:py-8">
         <div className="mx-auto w-full max-w-4xl">{children}</div>
       </main>
     </div>

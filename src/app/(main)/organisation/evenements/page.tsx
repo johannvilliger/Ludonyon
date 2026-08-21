@@ -1,10 +1,23 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatEventDate } from "@/lib/format";
-import { createEvent, deleteEvent } from "@/lib/actions/organisation";
+import {
+  createEvent,
+  archiveEvent,
+  unarchiveEvent,
+  deleteEvent,
+} from "@/lib/actions/organisation";
 
-export default async function OrganisationEvenementsPage() {
+export default async function OrganisationEvenementsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filtre?: string }>;
+}) {
+  const { filtre } = await searchParams;
+  const showArchived = filtre === "archives";
+
   const events = await prisma.event.findMany({
+    where: { active: !showArchived },
     orderBy: { startsAt: "desc" },
     include: {
       signups: { include: { user: { select: { name: true } } } },
@@ -97,9 +110,36 @@ export default async function OrganisationEvenementsPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-medium text-stone-900">
-          Tous les événements
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-medium text-stone-900">
+            {showArchived ? "Événements archivés" : "Tous les événements"}
+          </h2>
+          <div className="flex gap-1 rounded-lg border border-stone-200 bg-white p-1 text-sm">
+            <Link
+              href="/organisation/evenements"
+              className={
+                !showArchived
+                  ? "rounded-md bg-stone-900 px-3 py-1 text-white"
+                  : "rounded-md px-3 py-1 text-stone-600 hover:bg-stone-100"
+              }
+            >
+              Actifs
+            </Link>
+            <Link
+              href="/organisation/evenements?filtre=archives"
+              className={
+                showArchived
+                  ? "rounded-md bg-stone-900 px-3 py-1 text-white"
+                  : "rounded-md px-3 py-1 text-stone-600 hover:bg-stone-100"
+              }
+            >
+              Archivés
+            </Link>
+          </div>
+        </div>
+        {showArchived && events.length === 0 && (
+          <p className="mt-3 text-sm text-stone-400">Aucun événement archivé.</p>
+        )}
         <ul className="mt-3 space-y-3">
           {events.map((event) => (
             <li
@@ -137,17 +177,55 @@ export default async function OrganisationEvenementsPage() {
                   >
                     Gérer
                   </Link>
-                  <form action={deleteEvent}>
-                    <input type="hidden" name="id" value={event.id} />
-                    <button
-                      type="submit"
-                      className="text-sm text-red-600 hover:underline"
-                    >
-                      Supprimer
-                    </button>
-                  </form>
+                  {!showArchived && (
+                    <form action={archiveEvent}>
+                      <input type="hidden" name="id" value={event.id} />
+                      <button
+                        type="submit"
+                        className="text-sm text-stone-500 hover:underline"
+                      >
+                        Archiver
+                      </button>
+                    </form>
+                  )}
+                  {showArchived && (
+                    <form action={unarchiveEvent}>
+                      <input type="hidden" name="id" value={event.id} />
+                      <button
+                        type="submit"
+                        className="rounded-lg border-2 border-black bg-brand-yellow px-2 py-1 text-xs font-semibold text-black hover:bg-brand-yellow-dark"
+                      >
+                        Réactiver
+                      </button>
+                    </form>
+                  )}
                 </div>
               </div>
+
+              {showArchived && (
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-xs text-red-500 hover:text-red-700">
+                    Supprimer définitivement
+                  </summary>
+                  <div className="mt-2 rounded-lg bg-red-50 p-3">
+                    <p className="text-xs text-red-700">
+                      Tout ce qui est lié à cet événement disparaîtra
+                      définitivement : inscriptions, présences et heures
+                      enregistrées, tâches associées. Cette action est
+                      irréversible.
+                    </p>
+                    <form action={deleteEvent} className="mt-2">
+                      <input type="hidden" name="id" value={event.id} />
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                      >
+                        Confirmer la suppression définitive
+                      </button>
+                    </form>
+                  </div>
+                </details>
+              )}
             </li>
           ))}
         </ul>

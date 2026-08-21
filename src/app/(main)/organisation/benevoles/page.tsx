@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireOrganisationUser } from "@/lib/session";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/roles";
+import { POSTES, POSTE_LABELS, type Poste } from "@/lib/postes";
 import { formatDateOnly } from "@/lib/format";
 import { mailConfigured } from "@/lib/mail";
 import Avatar from "@/components/Avatar";
@@ -16,6 +17,7 @@ import {
   resetVolunteerPassword,
   updateVolunteerPhoto,
   updateVolunteerAvailability,
+  updateVolunteerPoste,
 } from "@/lib/actions/organisation";
 
 export default async function OrganisationBenevolesPage({
@@ -214,6 +216,33 @@ export default async function OrganisationBenevolesPage({
                         </button>
                       )}
                     </form>
+
+                    {u.role === "BENEVOLE" && (
+                      <form
+                        action={updateVolunteerPoste}
+                        className="flex items-center gap-2"
+                      >
+                        <input type="hidden" name="id" value={u.id} />
+                        <select
+                          name="poste"
+                          defaultValue={u.poste ?? ""}
+                          className="rounded-lg border border-stone-300 px-2 py-1 text-sm"
+                        >
+                          <option value="">Poste : non défini</option>
+                          {POSTES.map((poste) => (
+                            <option key={poste} value={poste}>
+                              {POSTE_LABELS[poste as Poste]}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="submit"
+                          className="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
+                        >
+                          Enregistrer
+                        </button>
+                      </form>
+                    )}
 
                     {!isSelf && !showArchived && (
                       <form action={archiveVolunteer}>

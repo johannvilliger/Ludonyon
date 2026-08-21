@@ -6,6 +6,8 @@ import { requireOrganisationUser, requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { isOrganisationRole } from "@/lib/roles";
 import { sendPushToUsers } from "@/lib/push";
+import { POSTES, canCoverPoste, isValidPoste, type Poste } from "@/lib/postes";
+import type { Prisma } from "@/generated/prisma/client";
 import {
   PLANNING_COLUMNS,
   SITE_LABELS,
@@ -141,6 +143,29 @@ export async function requestReplacement(formData: FormData) {
     const periode = assignee.shift.periode as Periode;
     const key = shiftSlotKey(site, periode);
     if (key) {
+      const requester = await prisma.user.findUniqueOrThrow({
+        where: { id: user.id },
+        select: { role: true, poste: true },
+      });
+
+      // Un·e bénévole n'est proposé·e qu'à d'autres bénévoles (filtrés par
+      // la hiérarchie de poste s'il en a un) ; un·e responsable ou membre
+      // du comité n'est proposé·e qu'aux autres personnes du même rôle,
+      // sans filtre de poste (ça ne les concerne pas).
+      let roleFilter: Prisma.UserWhereInput;
+      if (requester.role === "BENEVOLE") {
+        roleFilter = { role: "BENEVOLE" };
+        if (requester.poste && isValidPoste(requester.poste)) {
+          const requesterPoste = requester.poste;
+          const coveringPostes = POSTES.filter((p) =>
+            canCoverPoste(p, requesterPoste as Poste)
+          );
+          roleFilter = { ...roleFilter, poste: { in: coveringPostes } };
+        }
+      } else {
+        roleFilter = { role: requester.role };
+      }
+
       const candidates = await prisma.user.findMany({
         where: {
           active: true,
@@ -153,6 +178,7 @@ export async function requestReplacement(formData: FormData) {
               endDate: { gte: assignee.shift.date },
             },
           },
+          ...roleFilter,
         },
         select: { id: true },
       });

@@ -24,6 +24,12 @@ model User {
   photoPath              String? // nom de fichier dans le dossier de stockage des photos, hors dépôt git
   calendarToken          String   @unique @default(cuid())
   wantsOpeningReminders  Boolean  @default(false)
+  // Poste du bénévole pour le planning des ouvertures — "ACCUEIL" |
+  // "RETOUR" | "SORTIE" | null. Fixé uniquement par un responsable/comité
+  // (jamais par le bénévole lui-même), sert à filtrer qui est notifié
+  // lors d'une recherche de remplaçant (hiérarchie : sortie > retour >
+  // accueil, un poste supérieur peut couvrir les postes inférieurs).
+  poste                  String?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -115,6 +121,9 @@ model Event {
   startsAt    DateTime
   endsAt      DateTime?
   paid        Boolean  @default(false)
+  // Archivé plutôt que supprimé directement, pour ne jamais perdre les
+  // présences/heures liées sans confirmation explicite (voir deleteEvent).
+  active      Boolean  @default(true)
   createdById String
   createdBy   User     @relation(fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
