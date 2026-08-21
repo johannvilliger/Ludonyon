@@ -135,7 +135,11 @@ export async function requestReplacement(formData: FormData) {
 
   await prisma.openingShiftAssignee.update({
     where: { id: assignee.id },
-    data: { seekingReplacement: true, replacementRequestedAt: new Date() },
+    data: {
+      seekingReplacement: true,
+      replacementRequestedAt: new Date(),
+      problemAlertSentAt: null,
+    },
   });
 
   if (sendNotification) {
@@ -220,7 +224,11 @@ export async function cancelReplacementRequest(formData: FormData) {
 
   await prisma.openingShiftAssignee.updateMany({
     where: { shiftId, userId: targetUserId },
-    data: { seekingReplacement: false, replacementRequestedAt: null },
+    data: {
+      seekingReplacement: false,
+      replacementRequestedAt: null,
+      problemAlertSentAt: null,
+    },
   });
 
   revalidatePath("/planning");

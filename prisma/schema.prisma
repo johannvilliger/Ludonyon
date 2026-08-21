@@ -211,6 +211,11 @@ model OpeningShiftAssignee {
   // signaler un empêchement ne le retire pas automatiquement.
   seekingReplacement     Boolean      @default(false)
   replacementRequestedAt DateTime?
+  // Rempli dès qu'une alerte "créneau à risque" a été envoyée aux
+  // responsables/comité pour ce remplacement en attente, pour ne pas
+  // renvoyer la même alerte à chaque vérification périodique. Remis à
+  // null dès que la recherche est annulée ou relancée.
+  problemAlertSentAt     DateTime?
 
   @@unique([shiftId, userId])
   @@index([userId])
