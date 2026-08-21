@@ -12,6 +12,7 @@ import {
   PLANNING_COLUMNS,
   SITE_LABELS,
   formatDayLabel,
+  parseDateKey,
   shiftSlotKey,
   type Periode,
   type Site,
@@ -25,11 +26,6 @@ const shiftSchema = z.object({
   site: z.enum(SITES as [Site, ...Site[]]),
   periode: z.enum(PERIODES as [Periode, ...Periode[]]),
 });
-
-function parseDateKey(dateKey: string): Date {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d));
-}
 
 // Vérifie que la combinaison (site, période) fait bien partie de la grille
 // hebdomadaire fixe, pour éviter de créer des créneaux hors planning via
@@ -208,6 +204,50 @@ export async function requestReplacement(formData: FormData) {
       }
     }
   }
+
+  revalidatePath("/planning");
+  revalidatePath("/organisation/planning");
+}
+
+// ---------- Fermetures globales (vacances) ----------
+
+const closureSchema = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date de début invalide"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date de fin invalide"),
+  label: z.string().trim().min(1, "Libellé requis").max(191),
+});
+
+export async function createPlanningClosure(formData: FormData) {
+  await requireOrganisationUser();
+
+  const parsed = closureSchema.safeParse({
+    startDate: formData.get("startDate"),
+    endDate: formData.get("endDate"),
+    label: formData.get("label"),
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Fermeture invalide");
+  }
+
+  const startDate = parseDateKey(parsed.data.startDate);
+  const endDate = parseDateKey(parsed.data.endDate);
+  if (endDate.getTime() < startDate.getTime()) {
+    throw new Error("La date de fin doit être après la date de début");
+  }
+
+  await prisma.planningClosure.create({
+    data: { startDate, endDate, label: parsed.data.label },
+  });
+
+  revalidatePath("/planning");
+  revalidatePath("/organisation/planning");
+}
+
+export async function deletePlanningClosure(formData: FormData) {
+  await requireOrganisationUser();
+
+  const id = String(formData.get("id") ?? "");
+  await prisma.planningClosure.delete({ where: { id } }).catch(() => {});
 
   revalidatePath("/planning");
   revalidatePath("/organisation/planning");

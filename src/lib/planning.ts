@@ -225,6 +225,42 @@ export function getPlanningWeeks(year: number, month: number): PlanningWeek[] {
   return weeks;
 }
 
+// Semaines (lundi à dimanche) couvrant une plage de dates arbitraire (pas
+// calée sur un mois), utilisée pour générer le modèle Excel d'import. Les
+// cellules hors de [rangeStart, rangeEnd] restent dans le tableau (semaine
+// entière) mais marquées `inMonth: false`, comme pour getPlanningWeeks.
+export function getPlanningWeeksBetween(rangeStart: Date, rangeEnd: Date): PlanningWeek[] {
+  const start = mondayOf(rangeStart);
+  const end = mondayOf(rangeEnd);
+
+  const leaves = getLeafSlots();
+  const weeks: PlanningWeek[] = [];
+  const cursor = new Date(start);
+  while (cursor.getTime() <= end.getTime()) {
+    const monday = new Date(cursor);
+    const cells = leaves.map((leaf) => {
+      const date = new Date(monday);
+      date.setDate(date.getDate() + leaf.offset);
+      return {
+        leaf,
+        date,
+        inMonth: date.getTime() >= rangeStart.getTime() && date.getTime() <= rangeEnd.getTime(),
+      };
+    });
+    weeks.push({ monday, cells });
+    cursor.setDate(cursor.getDate() + 7);
+  }
+
+  return weeks;
+}
+
+// Clé "YYYY-MM-DD" -> Date (minuit UTC), format utilisé pour stocker les
+// dates de créneau/fermeture (colonnes DATE) indépendamment du fuseau.
+export function parseDateKey(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
 export function dateKey(date: Date): string {
   // Clé locale (fuseau Suisse) indépendante de l'heure de stockage,
   // utilisée pour indexer les créneaux chargés depuis la base.
@@ -236,6 +272,27 @@ export function dateKey(date: Date): string {
 
 export function shiftKey(date: Date, site: Site, periode: Periode): string {
   return `${dateKey(date)}|${site}|${periode}`;
+}
+
+// Construit une table jour -> libellé(s) de fermeture, pour marquer les
+// jours fermés (vacances globales) sur la grille sans avoir à comparer des
+// plages de dates cellule par cellule. Avance en UTC (les dates de
+// fermeture sont stockées en DATE, minuit UTC, comme les créneaux — voir
+// dateKey) pour rester indépendant du fuseau du serveur.
+export function buildClosureLabelByDate(
+  closures: { startDate: Date; endDate: Date; label: string }[]
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const closure of closures) {
+    const cursor = new Date(closure.startDate);
+    while (cursor.getTime() <= closure.endDate.getTime()) {
+      const key = dateKey(cursor);
+      const existing = map.get(key);
+      map.set(key, existing ? `${existing}, ${closure.label}` : closure.label);
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+  }
+  return map;
 }
 
 const dayLabelFormatter = new Intl.DateTimeFormat("fr-CH", {

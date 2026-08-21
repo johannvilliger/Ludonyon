@@ -19,7 +19,10 @@ activités.
 - **Espace organisation** (réservé aux rôles Responsable et Comité) :
   créer des annonces et des événements, voir qui s'est inscrit, gérer les
   comptes bénévoles (créer, changer de rôle, réinitialiser un mot de
-  passe, archiver), assigner les bénévoles sur le planning des ouvertures.
+  passe, archiver), assigner les bénévoles sur le planning des ouvertures
+  (à la main ou en important un fichier Excel — voir ci-dessous), déclarer
+  des vacances globales (fermeture de la ludothèque, affichée sur le
+  planning).
 
 ### Rôles
 
@@ -144,6 +147,32 @@ déploiements ; seule une réinitialisation complète du site l'effacerait.
 venir d'une limite de taille côté reverse-proxy d'Infomaniak (indépendante
 de la limite Next.js déjà relevée à 220 Mo dans `next.config.ts`) — à
 vérifier avec le support Infomaniak le cas échéant.
+
+### Planning : import/export Excel et vacances globales
+
+Depuis **Espace organisation → Planning**, un·e responsable/comité peut
+générer un modèle Excel vide pour une période donnée (mise en page identique
+à la grille du site : Nyon à gauche avec tous ses créneaux, Gland à droite),
+le compléter avec les prénoms des bénévoles (un onglet « Bénévoles » liste
+les prénoms exacts à utiliser — l'initiale du nom de famille est ajoutée
+automatiquement en cas de doublon, ex. « Marie D. » / « Marie L. »), puis le
+réimporter : le site reconnaît les bénévoles actif·ve·s et met à jour le
+planning pour toute la période couverte par le fichier (une case laissée
+vide efface l'assignation existante ; les noms non reconnus sont listés
+après l'import pour correction). Le format du fichier (colonnes, position
+de la date en colonne A) ne doit pas être modifié manuellement.
+
+Les **vacances globales** (fermeture complète de la ludothèque — vacances
+scolaires, etc.) se déclarent depuis la même page et s'affichent comme
+jours fermés sur le planning, pour tout le monde.
+
+### Alerte "créneau à risque"
+
+Si un créneau des 7 prochains jours reste sans remplaçant·e trouvé·e après
+qu'un·e bénévole a signalé un empêchement, les responsables et membres du
+comité reçoivent une notification push groupée une fois par jour (19h,
+heure serveur) listant tous les créneaux concernés — pas de notification à
+chaque vérification.
 
 ### PWA et notifications push
 

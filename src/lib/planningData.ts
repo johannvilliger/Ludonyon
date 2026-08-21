@@ -8,27 +8,35 @@ export type ShiftAssignee = {
 };
 export type ShiftInfo = { id: string; assignees: ShiftAssignee[] };
 export type ShiftMap = Map<string, ShiftInfo>;
+export type ClosureInfo = { id: string; startDate: Date; endDate: Date; label: string };
 
-// Charge les semaines du mois demandé et les créneaux déjà assignés,
-// indexés par shiftKey(date, site, periode) — partagé entre la page
-// publique (lecture seule) et la page de gestion (assignation).
+// Charge les semaines du mois demandé, les créneaux déjà assignés (indexés
+// par shiftKey(date, site, periode)) et les fermetures globales
+// chevauchant la période — partagé entre la page publique (lecture seule)
+// et la page de gestion (assignation).
 export async function loadPlanningWeeksAndShifts(
   year: number,
   month: number
-): Promise<{ weeks: PlanningWeek[]; shiftsByKey: ShiftMap }> {
+): Promise<{ weeks: PlanningWeek[]; shiftsByKey: ShiftMap; closures: ClosureInfo[] }> {
   const weeks = getPlanningWeeks(year, month);
   const rangeStart = weeks[0].monday;
   const rangeEnd = new Date(weeks[weeks.length - 1].monday);
   rangeEnd.setDate(rangeEnd.getDate() + 7);
 
-  const shifts = await prisma.openingShift.findMany({
-    where: { date: { gte: rangeStart, lt: rangeEnd } },
-    include: {
-      assignees: {
-        include: { user: { select: { id: true, name: true, active: true } } },
+  const [shifts, closures] = await Promise.all([
+    prisma.openingShift.findMany({
+      where: { date: { gte: rangeStart, lt: rangeEnd } },
+      include: {
+        assignees: {
+          include: { user: { select: { id: true, name: true, active: true } } },
+        },
       },
-    },
-  });
+    }),
+    prisma.planningClosure.findMany({
+      where: { startDate: { lt: rangeEnd }, endDate: { gte: rangeStart } },
+      orderBy: { startDate: "asc" },
+    }),
+  ]);
 
   const shiftsByKey: ShiftMap = new Map();
   for (const shift of shifts) {
@@ -44,5 +52,5 @@ export async function loadPlanningWeeksAndShifts(
     });
   }
 
-  return { weeks, shiftsByKey };
+  return { weeks, shiftsByKey, closures };
 }

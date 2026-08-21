@@ -18,7 +18,7 @@ export default async function PlanningPage({
   const year = Number(y) || now.getFullYear();
   const month = Number(m) || now.getMonth() + 1;
 
-  const { weeks, shiftsByKey } = await loadPlanningWeeksAndShifts(year, month);
+  const { weeks, shiftsByKey, closures } = await loadPlanningWeeksAndShifts(year, month);
 
   return (
     <div>
@@ -55,6 +55,7 @@ export default async function PlanningPage({
         <PlanningTable
           weeks={weeks}
           shiftsByKey={shiftsByKey}
+          closures={closures}
           editable={false}
           activeUsers={[]}
           currentUserId={user.id}

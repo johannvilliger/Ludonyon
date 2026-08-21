@@ -201,6 +201,20 @@ model OpeningShift {
   @@index([date])
 }
 
+// Fermeture globale de la ludothèque (vacances scolaires, jours fériés
+// exceptionnels, etc.), saisie par un·e responsable/comité et affichée sur
+// le planning des ouvertures (public et gestion). Distincte des Vacation,
+// qui sont l'indisponibilité d'un·e bénévole en particulier.
+model PlanningClosure {
+  id        String   @id @default(cuid())
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  label     String
+  createdAt DateTime @default(now())
+
+  @@index([startDate, endDate])
+}
+
 model OpeningShiftAssignee {
   id                     String       @id @default(cuid())
   shiftId                String

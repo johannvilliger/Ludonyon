@@ -1,5 +1,12 @@
-import { dateKey, formatDayLabel, getLeafSlots, shiftKey, type PlanningWeek } from "@/lib/planning";
-import type { ShiftMap } from "@/lib/planningData";
+import {
+  buildClosureLabelByDate,
+  dateKey,
+  formatDayLabel,
+  getLeafSlots,
+  shiftKey,
+  type PlanningWeek,
+} from "@/lib/planning";
+import type { ClosureInfo, ShiftMap } from "@/lib/planningData";
 import {
   assignToShift,
   removeFromShift,
@@ -11,6 +18,7 @@ import PlanningAssignSelect from "./PlanningAssignSelect";
 export default function PlanningTable({
   weeks,
   shiftsByKey,
+  closures = [],
   editable,
   activeUsers,
   currentUserId,
@@ -18,12 +26,14 @@ export default function PlanningTable({
 }: {
   weeks: PlanningWeek[];
   shiftsByKey: ShiftMap;
+  closures?: ClosureInfo[];
   editable: boolean;
   activeUsers: { id: string; name: string }[];
   currentUserId: string;
   isOrg: boolean;
 }) {
   const leaves = getLeafSlots();
+  const closureByDate = buildClosureLabelByDate(closures);
   const nyonCount = leaves.filter((l) => l.site === "NYON").length;
   // Bordure pour marquer visuellement la frontière entre le bloc Nyon (à
   // gauche, ~3/4 de la largeur) et le bloc Gland (à droite).
@@ -88,6 +98,28 @@ export default function PlanningTable({
                 const availableUsers = activeUsers.filter(
                   (u) => !assignees.some((a) => a.userId === u.id)
                 );
+                const closureLabel = closureByDate.get(dateKey(cell.date));
+                if (closureLabel) {
+                  return (
+                    <td
+                      key={i}
+                      className={`align-top border-r border-stone-100 bg-stone-100 p-2 last:border-r-0 ${siteDivider(
+                        i
+                      )} ${cell.inMonth ? "" : "opacity-60"}`}
+                    >
+                      <div
+                        className={`text-xs font-medium ${
+                          cell.inMonth ? "text-stone-700" : "text-stone-400"
+                        }`}
+                      >
+                        {formatDayLabel(cell.date)}
+                      </div>
+                      <p className="mt-1 text-xs italic text-stone-400">
+                        Fermé — {closureLabel}
+                      </p>
+                    </td>
+                  );
+                }
                 return (
                   <td
                     key={i}

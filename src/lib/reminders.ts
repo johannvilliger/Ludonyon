@@ -60,11 +60,12 @@ export async function checkAndSendEventReminders() {
   }
 }
 
-// Alerte les responsables/comité quand un créneau des 7 prochains jours est
-// toujours "en attente de remplaçant·e" (recherche non annulée), pour
-// éviter de découvrir le problème le jour même. Une seule alerte par
-// recherche en cours (voir problemAlertSentAt, remis à null si la
-// recherche est annulée puis relancée).
+// Alerte les responsables/comité quand un ou plusieurs créneaux des 7
+// prochains jours sont toujours "en attente de remplaçant·e" (recherche
+// non annulée). Une seule notification groupée, envoyée une fois par jour
+// (voir la planification dans instrumentation.ts) plutôt qu'à chaque
+// vérification. problemAlertSentAt évite de réinclure un créneau déjà
+// signalé ; il est remis à null si la recherche est annulée puis relancée.
 export async function checkAndSendReplacementProblemAlerts() {
   if (!pushConfigured()) return;
 
@@ -79,35 +80,30 @@ export async function checkAndSendReplacementProblemAlerts() {
       shift: { date: { gte: start, lte: end } },
     },
     include: { shift: true, user: { select: { name: true } } },
+    orderBy: { shift: { date: "asc" } },
   });
 
-  for (const assignee of atRisk) {
-    const site = assignee.shift.site as Site;
-    const periode = assignee.shift.periode as Periode;
-    const slot = findSlotDef(site, periode);
+  if (atRisk.length === 0) return;
 
-    const managers = await prisma.user.findMany({
-      where: {
-        active: true,
-        role: { in: ["RESPONSABLE", "COMITE"] },
-        id: { not: assignee.userId },
-      },
-      select: { id: true },
+  const managers = await prisma.user.findMany({
+    where: { active: true, role: { in: ["RESPONSABLE", "COMITE"] } },
+    select: { id: true },
+  });
+
+  if (managers.length > 0) {
+    const lines = atRisk.map((assignee) => {
+      const site = assignee.shift.site as Site;
+      const periode = assignee.shift.periode as Periode;
+      const slot = findSlotDef(site, periode);
+      const hours = slot ? ` (${formatHoursRange(slot.start, slot.end)})` : "";
+      return `${formatDayLabel(assignee.shift.date)} à ${SITE_LABELS[site]}${hours} — ${assignee.user.name}`;
     });
 
-    if (managers.length === 0) {
-      await prisma.openingShiftAssignee.update({
-        where: { id: assignee.id },
-        data: { problemAlertSentAt: now },
-      });
-      continue;
-    }
-
-    const title = "Créneau à risque";
-    const hours = slot ? ` (${formatHoursRange(slot.start, slot.end)})` : "";
-    const body = `Aucun·e remplaçant·e trouvé·e pour le ${formatDayLabel(
-      assignee.shift.date
-    )} à ${SITE_LABELS[site]}${hours} — ${assignee.user.name} ne peut pas assurer ce créneau.`;
+    const title = atRisk.length > 1 ? "Créneaux à risque" : "Créneau à risque";
+    const body =
+      (atRisk.length > 1
+        ? `${atRisk.length} créneaux sans remplaçant·e cette semaine :\n`
+        : "Aucun·e remplaçant·e trouvé·e :\n") + lines.join("\n");
 
     await sendPushToUsers(
       managers.map((m) => m.id),
@@ -121,9 +117,10 @@ export async function checkAndSendReplacementProblemAlerts() {
         recipients: managers.length,
       },
     });
-    await prisma.openingShiftAssignee.update({
-      where: { id: assignee.id },
-      data: { problemAlertSentAt: now },
-    });
   }
+
+  await prisma.openingShiftAssignee.updateMany({
+    where: { id: { in: atRisk.map((a) => a.id) } },
+    data: { problemAlertSentAt: now },
+  });
 }
