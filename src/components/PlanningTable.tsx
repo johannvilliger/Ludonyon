@@ -114,7 +114,9 @@ export default function PlanningTable({
                               className={`flex items-center justify-between gap-1 rounded px-1.5 py-0.5 text-xs ${
                                 a.seekingReplacement
                                   ? "border border-red-300 bg-red-100 text-red-800"
-                                  : "bg-brand-yellow-soft text-stone-800"
+                                  : a.userId === currentUserId
+                                    ? "border border-brand-blue bg-brand-blue-soft font-medium text-stone-900"
+                                    : "bg-brand-yellow-soft text-stone-800"
                               }`}
                             >
                               <span>
