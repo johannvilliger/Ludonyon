@@ -12,6 +12,7 @@ import VacationsForm from "./VacationsForm";
 import CalendarSubscribeLink from "./CalendarSubscribeLink";
 import PushNotificationsToggle from "./PushNotificationsToggle";
 import AvailabilityForm from "@/components/AvailabilityForm";
+import SaveButton from "@/components/SaveButton";
 
 export default async function ProfilPage() {
   const authUser = await requireUser();
@@ -151,12 +152,7 @@ export default async function ProfilPage() {
           />
           Je veux être notifié·e avant mes créneaux d’ouverture
         </label>
-        <button
-          type="submit"
-          className="shrink-0 rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100"
-        >
-          Enregistrer
-        </button>
+        <SaveButton className="shrink-0 rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 disabled:opacity-60" />
       </form>
 
       <h2 className="mt-8 text-lg font-medium text-stone-900">

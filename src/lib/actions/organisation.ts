@@ -436,33 +436,55 @@ async function sendWelcomeEmail(
   });
 }
 
-const roleUpdateSchema = z.object({
+const volunteerProfileSchema = z.object({
   id: z.string().min(1),
-  role: z.enum(ROLES),
+  role: z.enum(ROLES).optional(),
 });
 
-export async function updateVolunteerRole(formData: FormData) {
+// Un seul bouton "Enregistrer" par bénévole dans la liste de gestion, pour
+// le rôle, le poste et les disponibilités à la fois — plutôt que trois
+// formulaires séparés. Le champ "role" est absent du formulaire (select
+// désactivé côté client) quand on tente de modifier son propre compte ;
+// "poste" est absent pour les rôles autres que bénévole (case non rendue).
+export async function updateVolunteerProfile(formData: FormData) {
   const currentUser = await requireOrganisationUser();
 
-  const parsed = roleUpdateSchema.safeParse({
+  const roleRaw = formData.get("role");
+  const parsed = volunteerProfileSchema.safeParse({
     id: formData.get("id"),
-    role: formData.get("role"),
+    role: roleRaw === null ? undefined : roleRaw,
   });
   if (!parsed.success) {
     throw new Error("Champs invalides");
   }
+  const { id, role } = parsed.data;
 
-  if (parsed.data.id === currentUser.id) {
-    throw new Error("Vous ne pouvez pas modifier votre propre rôle");
+  if (role) {
+    if (id === currentUser.id) {
+      throw new Error("Vous ne pouvez pas modifier votre propre rôle");
+    }
+    await prisma.user.update({ where: { id }, data: { role } });
   }
 
-  await prisma.user.update({
-    where: { id: parsed.data.id },
-    data: { role: parsed.data.role },
-  });
+  const posteRaw = formData.get("poste");
+  if (posteRaw !== null) {
+    const rawStr = String(posteRaw);
+    const poste = rawStr && isValidPoste(rawStr) ? rawStr : null;
+    await prisma.user.update({ where: { id }, data: { poste } });
+  }
+
+  const validKeys = new Set(getAvailabilityOptions().map((o) => o.slotKey));
+  const selectedSlots = formData.getAll("slots").map(String).filter((k) => validKeys.has(k));
+  await prisma.$transaction([
+    prisma.volunteerAvailability.deleteMany({ where: { userId: id } }),
+    prisma.volunteerAvailability.createMany({
+      data: selectedSlots.map((slotKey) => ({ userId: id, slotKey })),
+    }),
+  ]);
 
   revalidatePath("/annuaire");
   revalidatePath("/organisation/benevoles");
+  revalidatePath("/profil");
 }
 
 export async function archiveVolunteer(formData: FormData) {
@@ -551,34 +573,6 @@ export async function updateVolunteerPhoto(formData: FormData) {
   await deletePhoto(current.photoPath);
 
   revalidatePath("/annuaire");
-  revalidatePath("/organisation/benevoles");
-}
-
-export async function updateVolunteerAvailability(formData: FormData) {
-  await requireOrganisationUser();
-  const userId = String(formData.get("id"));
-  const validKeys = new Set(getAvailabilityOptions().map((o) => o.slotKey));
-  const selected = formData.getAll("slots").map(String).filter((k) => validKeys.has(k));
-
-  await prisma.$transaction([
-    prisma.volunteerAvailability.deleteMany({ where: { userId } }),
-    prisma.volunteerAvailability.createMany({
-      data: selected.map((slotKey) => ({ userId, slotKey })),
-    }),
-  ]);
-
-  revalidatePath("/organisation/benevoles");
-  revalidatePath("/profil");
-}
-
-export async function updateVolunteerPoste(formData: FormData) {
-  await requireOrganisationUser();
-  const userId = String(formData.get("id"));
-  const raw = String(formData.get("poste") ?? "");
-  const poste = raw && isValidPoste(raw) ? raw : null;
-
-  await prisma.user.update({ where: { id: userId }, data: { poste } });
-
   revalidatePath("/organisation/benevoles");
 }
 

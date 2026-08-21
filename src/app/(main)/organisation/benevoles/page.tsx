@@ -7,17 +7,16 @@ import { formatDateOnly } from "@/lib/format";
 import { mailConfigured } from "@/lib/mail";
 import Avatar from "@/components/Avatar";
 import PhotoUploadField from "@/components/PhotoUploadField";
-import AvailabilityForm from "@/components/AvailabilityForm";
+import { AvailabilityFields } from "@/components/AvailabilityForm";
+import SaveButton from "@/components/SaveButton";
 import {
   createVolunteer,
-  updateVolunteerRole,
+  updateVolunteerProfile,
   archiveVolunteer,
   unarchiveVolunteer,
   deleteVolunteer,
   resetVolunteerPassword,
   updateVolunteerPhoto,
-  updateVolunteerAvailability,
-  updateVolunteerPoste,
 } from "@/lib/actions/organisation";
 
 export default async function OrganisationBenevolesPage({
@@ -180,21 +179,18 @@ export default async function OrganisationBenevolesPage({
                 key={u.id}
                 className="rounded-xl border border-stone-200 bg-white p-4"
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <Avatar name={u.name} photoPath={u.photoPath} />
-                    <div>
-                      <p className="font-medium text-stone-900">{u.name}</p>
-                      <p className="text-sm text-stone-600">{u.email}</p>
+                <form action={updateVolunteerProfile}>
+                  <input type="hidden" name="id" value={u.id} />
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <Avatar name={u.name} photoPath={u.photoPath} />
+                      <div>
+                        <p className="font-medium text-stone-900">{u.name}</p>
+                        <p className="text-sm text-stone-600">{u.email}</p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <form
-                      action={updateVolunteerRole}
-                      className="flex items-center gap-2"
-                    >
-                      <input type="hidden" name="id" value={u.id} />
+                    <div className="flex flex-wrap items-center gap-2">
                       <select
                         key={u.role}
                         name="role"
@@ -208,22 +204,8 @@ export default async function OrganisationBenevolesPage({
                           </option>
                         ))}
                       </select>
-                      {!isSelf && (
-                        <button
-                          type="submit"
-                          className="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
-                        >
-                          Mettre à jour
-                        </button>
-                      )}
-                    </form>
 
-                    {u.role === "BENEVOLE" && (
-                      <form
-                        action={updateVolunteerPoste}
-                        className="flex items-center gap-2"
-                      >
-                        <input type="hidden" name="id" value={u.id} />
+                      {u.role === "BENEVOLE" && (
                         <select
                           key={u.poste ?? "none"}
                           name="poste"
@@ -237,15 +219,24 @@ export default async function OrganisationBenevolesPage({
                             </option>
                           ))}
                         </select>
-                        <button
-                          type="submit"
-                          className="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
-                        >
-                          Enregistrer
-                        </button>
-                      </form>
-                    )}
+                      )}
 
+                      <SaveButton className="rounded-lg border-2 border-black bg-brand-yellow px-2 py-1 text-xs font-semibold text-black hover:bg-brand-yellow-dark disabled:opacity-60" />
+                    </div>
+                  </div>
+
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
+                      Disponibilités pour le planning des ouvertures
+                    </summary>
+                    <div className="mt-2">
+                      <AvailabilityFields selectedKeys={u.availabilities.map((a) => a.slotKey)} />
+                    </div>
+                  </details>
+                </form>
+
+                {(!isSelf || showArchived) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     {!isSelf && !showArchived && (
                       <form action={archiveVolunteer}>
                         <input type="hidden" name="id" value={u.id} />
@@ -269,7 +260,7 @@ export default async function OrganisationBenevolesPage({
                       </form>
                     )}
                   </div>
-                </div>
+                )}
 
                 <details className="mt-3">
                   <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
@@ -288,12 +279,9 @@ export default async function OrganisationBenevolesPage({
                       placeholder="Nouveau mot de passe"
                       className="rounded-lg border border-stone-300 px-2 py-1 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
                     />
-                    <button
-                      type="submit"
-                      className="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
-                    >
+                    <SaveButton className="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100 disabled:opacity-60">
                       Réinitialiser
-                    </button>
+                    </SaveButton>
                   </form>
                 </details>
 
@@ -312,19 +300,6 @@ export default async function OrganisationBenevolesPage({
                     </ul>
                   </details>
                 )}
-
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
-                    Disponibilités pour le planning des ouvertures
-                  </summary>
-                  <div className="mt-2">
-                    <AvailabilityForm
-                      action={updateVolunteerAvailability}
-                      selectedKeys={u.availabilities.map((a) => a.slotKey)}
-                      extraFields={{ id: u.id }}
-                    />
-                  </div>
-                </details>
 
                 <details className="mt-2">
                   <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">

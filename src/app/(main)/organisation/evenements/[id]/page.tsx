@@ -11,6 +11,7 @@ import {
 } from "@/lib/format";
 import Avatar from "@/components/Avatar";
 import EventRecorder from "@/components/EventRecorder";
+import SaveButton from "@/components/SaveButton";
 import {
   addVolunteerToEvent,
   removeEventSignup,
@@ -152,12 +153,9 @@ export default async function OrganisationEvenementDetailPage({
             placeholder={"1. Point A\n2. Point B\n..."}
             className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
           />
-          <button
-            type="submit"
-            className="mt-2 rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100"
-          >
+          <SaveButton className="mt-2 rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 disabled:opacity-60">
             Enregistrer l&rsquo;ordre du jour
-          </button>
+          </SaveButton>
         </form>
       </section>
 
