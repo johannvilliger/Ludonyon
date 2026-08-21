@@ -143,6 +143,7 @@ export default async function ProfilPage() {
       >
         <label className="flex items-center gap-2 text-sm text-stone-700">
           <input
+            key={String(user.wantsOpeningReminders)}
             type="checkbox"
             name="wantsOpeningReminders"
             defaultChecked={user.wantsOpeningReminders}

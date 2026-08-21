@@ -13,7 +13,12 @@ export default function AvailabilityForm({
   const selected = new Set(selectedKeys);
 
   return (
-    <form action={action} className="space-y-3">
+    // Le formulaire est réaffiché avec les mêmes cases cochées après un
+    // enregistrement réussi (React réinitialise les champs non contrôlés
+    // à leur valeur de montage, pas à la nouvelle defaultChecked) — la clé
+    // force un remontage avec les valeurs à jour dès que selectedKeys
+    // change, y compris juste après ce même formulaire.
+    <form key={[...selected].sort().join(",")} action={action} className="space-y-3">
       {Object.entries(extraFields ?? {}).map(([key, value]) => (
         <input key={key} type="hidden" name={key} value={value} />
       ))}

@@ -144,6 +144,7 @@ export default async function OrganisationEvenementDetailPage({
         <form action={updateEventAgenda} className="mt-2">
           <input type="hidden" name="eventId" value={event.id} />
           <textarea
+            key={event.agenda ?? ""}
             name="agenda"
             rows={4}
             maxLength={5000}

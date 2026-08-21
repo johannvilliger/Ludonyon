@@ -196,6 +196,7 @@ export default async function OrganisationBenevolesPage({
                     >
                       <input type="hidden" name="id" value={u.id} />
                       <select
+                        key={u.role}
                         name="role"
                         defaultValue={u.role}
                         disabled={isSelf}
@@ -224,6 +225,7 @@ export default async function OrganisationBenevolesPage({
                       >
                         <input type="hidden" name="id" value={u.id} />
                         <select
+                          key={u.poste ?? "none"}
                           name="poste"
                           defaultValue={u.poste ?? ""}
                           className="rounded-lg border border-stone-300 px-2 py-1 text-sm"
