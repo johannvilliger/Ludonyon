@@ -188,10 +188,15 @@ export async function requestReplacement(formData: FormData) {
         const body = `${user.name} ne peut pas assurer son créneau du ${formatDayLabel(
           assignee.shift.date
         )} à ${SITE_LABELS[site]}. Disponible ?`;
+        // Ouvre directement le mois du créneau concerné plutôt que le mois
+        // courant, pour ne pas obliger la personne à chercher la bonne
+        // date après avoir cliqué sur la notification.
+        const shiftYear = assignee.shift.date.getFullYear();
+        const shiftMonth = assignee.shift.date.getMonth() + 1;
 
         await sendPushToUsers(
           candidates.map((c) => c.id),
-          { title, body, url: "/planning" }
+          { title, body, url: `/planning?y=${shiftYear}&m=${shiftMonth}` }
         );
         await prisma.pushNotificationLog.create({
           data: {
