@@ -279,3 +279,34 @@ export async function cancelReplacementRequest(formData: FormData) {
   revalidatePath("/planning");
   revalidatePath("/organisation/planning");
 }
+
+// N'importe quel·le bénévole connecté·e peut se proposer pour un créneau
+// en attente de remplaçant·e (comme pour les événements) : la personne
+// initiale est retirée du créneau, remplacée par celle qui clique.
+export async function fulfillShiftReplacement(formData: FormData) {
+  const user = await requireUser();
+  const shiftId = String(formData.get("shiftId") ?? "");
+  const replacedUserId = String(formData.get("userId") ?? "");
+
+  const target = await prisma.openingShiftAssignee.findUnique({
+    where: { shiftId_userId: { shiftId, userId: replacedUserId } },
+  });
+  if (!target || !target.seekingReplacement) {
+    throw new Error("Ce créneau n'est plus à remplacer");
+  }
+  if (target.userId === user.id) {
+    throw new Error("Vous ne pouvez pas remplacer votre propre créneau");
+  }
+
+  await prisma.$transaction([
+    prisma.openingShiftAssignee.delete({ where: { id: target.id } }),
+    prisma.openingShiftAssignee.upsert({
+      where: { shiftId_userId: { shiftId, userId: user.id } },
+      update: { seekingReplacement: false, replacementRequestedAt: null, problemAlertSentAt: null },
+      create: { shiftId, userId: user.id },
+    }),
+  ]);
+
+  revalidatePath("/planning");
+  revalidatePath("/organisation/planning");
+}

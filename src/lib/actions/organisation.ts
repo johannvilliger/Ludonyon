@@ -115,6 +115,71 @@ export async function createEvent(formData: FormData) {
   revalidatePath("/");
 }
 
+// L'ordre du jour a son propre formulaire (updateEventAgenda) : on l'exclut
+// ici pour ne pas l'écraser à null si ce champ n'est pas présent dans le
+// formulaire d'édition générale.
+const eventUpdateSchema = eventSchema.omit({ committeeOnly: true, agenda: true });
+
+// Modifie le contenu d'un événement existant (titre, description, lieu,
+// horaires, rémunéré) tant qu'il n'est pas terminé — l'audience (comité ou
+// tout le monde) n'est en revanche jamais modifiable après création, pour
+// ne pas basculer une séance confidentielle par erreur.
+export async function updateEvent(formData: FormData) {
+  const user = await requireOrganisationUser();
+  const id = String(formData.get("id"));
+
+  const existing = await prisma.event.findUnique({ where: { id } });
+  if (!existing || !canAccessEventAudience(existing.audience, user.role)) {
+    throw new Error("Événement introuvable");
+  }
+  if (!existing.active) {
+    throw new Error("Un événement archivé ne peut plus être modifié");
+  }
+  const referenceEnd = existing.endsAt ?? existing.startsAt;
+  if (referenceEnd.getTime() < Date.now()) {
+    throw new Error("Cet événement est déjà terminé, il ne peut plus être modifié");
+  }
+
+  const parsed = eventUpdateSchema.safeParse({
+    title: formData.get("title"),
+    description: formData.get("description") || undefined,
+    location: formData.get("location") || undefined,
+    startsAt: formData.get("startsAt"),
+    endsAt: formData.get("endsAt") || undefined,
+    paid: formData.get("paid") === "on" ? true : undefined,
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
+  }
+
+  const startsAt = new Date(parsed.data.startsAt);
+  const endsAt = parsed.data.endsAt ? new Date(parsed.data.endsAt) : null;
+  if (Number.isNaN(startsAt.getTime())) {
+    throw new Error("Date de début invalide");
+  }
+  if (endsAt && Number.isNaN(endsAt.getTime())) {
+    throw new Error("Date de fin invalide");
+  }
+
+  await prisma.event.update({
+    where: { id },
+    data: {
+      title: parsed.data.title,
+      description: parsed.data.description ?? null,
+      location: parsed.data.location ?? null,
+      startsAt,
+      endsAt,
+      paid: parsed.data.paid ?? false,
+    },
+  });
+
+  revalidatePath("/evenements");
+  revalidatePath(`/evenements/${id}`);
+  revalidatePath("/organisation/evenements");
+  revalidatePath(`/organisation/evenements/${id}`);
+  revalidatePath("/");
+}
+
 export async function archiveEvent(formData: FormData) {
   await requireOrganisationUser();
   const id = String(formData.get("id"));
@@ -236,6 +301,16 @@ export async function addVolunteerToEvent(formData: FormData) {
     throw new Error("Champs invalides");
   }
   await requireOrganisationUser();
+
+  // Une séance comité ne peut accueillir que des membres du comité, même
+  // via une requête forgée — pas seulement un filtrage côté formulaire.
+  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { audience: true } });
+  if (event?.audience === "COMITE") {
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    if (target?.role !== "COMITE") {
+      throw new Error("Seul·es les membres du comité peuvent être ajouté·es à une séance comité");
+    }
+  }
 
   await prisma.eventSignup.upsert({
     where: { eventId_userId: { eventId, userId } },

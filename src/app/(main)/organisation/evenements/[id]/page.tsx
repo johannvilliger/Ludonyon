@@ -22,6 +22,7 @@ import {
   createTask,
   deleteTask,
   toggleTaskDone,
+  updateEvent,
   updateEventAgenda,
   uploadEventRecording,
   deleteEventRecording,
@@ -30,6 +31,15 @@ import {
 function sessionMinutes(arrivedAt: Date, leftAt: Date | null): number {
   const end = leftAt ?? new Date();
   return (end.getTime() - arrivedAt.getTime()) / 60000;
+}
+
+// Format attendu par <input type="datetime-local">, en heure locale
+// (serveur en Europe/Zurich).
+function toDatetimeLocalValue(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours()
+  )}:${pad(date.getMinutes())}`;
 }
 
 export default async function OrganisationEvenementDetailPage({
@@ -64,6 +74,9 @@ export default async function OrganisationEvenementDetailPage({
     where: {
       active: true,
       id: { notIn: event.signups.map((s) => s.userId) },
+      // Une séance comité ne se propose qu'à des membres du comité — pas
+      // de bénévoles ni de responsables dans la liste d'ajout.
+      ...(event.audience === "COMITE" ? { role: "COMITE" } : {}),
     },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
@@ -90,6 +103,8 @@ export default async function OrganisationEvenementDetailPage({
       ),
     0
   );
+
+  const isEditable = event.active && (event.endsAt ?? event.startsAt) >= new Date();
 
   return (
     <div className="space-y-8">
@@ -138,6 +153,92 @@ export default async function OrganisationEvenementDetailPage({
             </form>
           </div>
         </div>
+
+        {isEditable && (
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
+              Modifier l&rsquo;événement
+            </summary>
+            <form
+              action={updateEvent}
+              className="mt-2 space-y-3 rounded-xl border border-stone-200 bg-white p-4"
+            >
+              <input type="hidden" name="id" value={event.id} />
+              <div>
+                <label className="mb-1 block text-sm font-medium text-stone-700">
+                  Titre
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  required
+                  maxLength={200}
+                  defaultValue={event.title}
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-stone-700">
+                    Début
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="startsAt"
+                    required
+                    defaultValue={toDatetimeLocalValue(event.startsAt)}
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-stone-700">
+                    Fin (optionnel)
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="endsAt"
+                    defaultValue={event.endsAt ? toDatetimeLocalValue(event.endsAt) : ""}
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-stone-700">
+                  Lieu
+                </label>
+                <input
+                  type="text"
+                  name="location"
+                  maxLength={200}
+                  defaultValue={event.location ?? ""}
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-stone-700">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  rows={3}
+                  maxLength={5000}
+                  defaultValue={event.description ?? ""}
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-sm text-stone-700">
+                <input
+                  type="checkbox"
+                  name="paid"
+                  defaultChecked={event.paid}
+                  className="h-4 w-4 rounded border-stone-300 text-brand-blue focus:ring-brand-blue"
+                />
+                Événement rémunéré
+              </label>
+              <SaveButton className="rounded-lg border-2 border-black bg-brand-yellow px-4 py-2 text-sm font-semibold text-black hover:bg-brand-yellow-dark disabled:opacity-60" />
+            </form>
+          </details>
+        )}
       </div>
 
       <section>

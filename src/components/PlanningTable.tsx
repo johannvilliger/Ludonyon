@@ -12,6 +12,7 @@ import {
   removeFromShift,
   requestReplacement,
   cancelReplacementRequest,
+  fulfillShiftReplacement,
 } from "@/lib/actions/planning";
 import PlanningAssignSelect from "./PlanningAssignSelect";
 
@@ -179,6 +180,19 @@ export default function PlanningTable({
                                   className="text-[10px] text-stone-400 underline hover:text-stone-600"
                                 >
                                   Annuler la recherche
+                                </button>
+                              </form>
+                            )}
+
+                            {a.seekingReplacement && a.userId !== currentUserId && shift && (
+                              <form action={fulfillShiftReplacement} className="mt-0.5">
+                                <input type="hidden" name="shiftId" value={shift.id} />
+                                <input type="hidden" name="userId" value={a.userId} />
+                                <button
+                                  type="submit"
+                                  className="rounded bg-red-600 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-red-700"
+                                >
+                                  Je remplace
                                 </button>
                               </form>
                             )}
