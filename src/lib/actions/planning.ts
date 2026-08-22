@@ -180,7 +180,7 @@ export async function requestReplacement(formData: FormData) {
           },
           ...roleFilter,
         },
-        select: { id: true },
+        select: { id: true, name: true },
       });
 
       if (candidates.length > 0) {
@@ -204,6 +204,7 @@ export async function requestReplacement(formData: FormData) {
             title,
             body,
             recipients: candidates.length,
+            recipientNames: candidates.map((c) => c.name).join(", "),
           },
         });
       }

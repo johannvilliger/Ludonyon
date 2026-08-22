@@ -61,14 +61,18 @@ model VolunteerAvailability {
 
 // Historique des notifications push envoyées, toutes catégories
 // confondues, consultable dans Espace organisation > Notifications.
-// category : "MANUAL" | "EVENT_REMINDER" | "REPLACEMENT_REQUEST".
+// category : "MANUAL" | "EVENT_REMINDER" | "REPLACEMENT_REQUEST" | "REPLACEMENT_PROBLEM".
 model PushNotificationLog {
-  id         String   @id @default(cuid())
-  category   String
-  title      String   @db.VarChar(255)
-  body       String   @db.Text
-  recipients Int
-  createdAt  DateTime @default(now())
+  id             String   @id @default(cuid())
+  category       String
+  title          String   @db.VarChar(255)
+  body           String   @db.Text
+  recipients     Int
+  // Noms des destinataires au moment de l'envoi (liste figée, séparée par
+  // des virgules) : un compte renommé ou supprimé par la suite ne modifie
+  // pas l'historique déjà consigné.
+  recipientNames String?  @db.Text
+  createdAt      DateTime @default(now())
 
   @@index([createdAt])
 }

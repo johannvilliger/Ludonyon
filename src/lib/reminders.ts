@@ -26,7 +26,7 @@ export async function checkAndSendEventReminders() {
       reminderSentAt: null,
       event: { startsAt: { gte: now, lte: windowEnd } },
     },
-    include: { event: true },
+    include: { event: true, user: { select: { name: true } } },
   });
 
   const byEvent = new Map<string, typeof dueSignups>();
@@ -55,6 +55,7 @@ export async function checkAndSendEventReminders() {
         title,
         body,
         recipients: signups.length,
+        recipientNames: signups.map((s) => s.user.name).join(", "),
       },
     });
   }
@@ -88,7 +89,7 @@ export async function checkAndSendReplacementProblemAlerts() {
 
   const managers = await prisma.user.findMany({
     where: { active: true, role: { in: ["RESPONSABLE", "COMITE"] } },
-    select: { id: true },
+    select: { id: true, name: true },
   });
 
   if (managers.length > 0) {
@@ -116,6 +117,7 @@ export async function checkAndSendReplacementProblemAlerts() {
         title,
         body,
         recipients: managers.length,
+        recipientNames: managers.map((m) => m.name).join(", "),
       },
     });
   }

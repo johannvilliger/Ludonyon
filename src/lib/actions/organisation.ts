@@ -755,7 +755,7 @@ export async function sendManualNotification(formData: FormData) {
         ? { role: { in: ["RESPONSABLE", "COMITE"] } }
         : {}),
     },
-    select: { id: true },
+    select: { id: true, name: true },
   });
 
   // La notification est aussi relayée dans les annonces, avec la même
@@ -780,6 +780,7 @@ export async function sendManualNotification(formData: FormData) {
       title: parsed.data.title,
       body: parsed.data.body,
       recipients: users.length,
+      recipientNames: users.map((u) => u.name).join(", "),
     },
   });
 

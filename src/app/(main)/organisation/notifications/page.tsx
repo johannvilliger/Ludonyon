@@ -8,6 +8,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   MANUAL: "Manuelle",
   EVENT_REMINDER: "Rappel événement",
   REPLACEMENT_REQUEST: "Recherche de remplaçant",
+  REPLACEMENT_PROBLEM: "Alerte créneau à risque",
 };
 
 export default async function OrganisationNotificationsPage() {
@@ -104,11 +105,18 @@ export default async function OrganisationNotificationsPage() {
                   {CATEGORY_LABELS[entry.category] ?? entry.category}
                 </span>
               </div>
-              <p className="mt-1 text-stone-600">{entry.body}</p>
+              <p className="mt-1 whitespace-pre-wrap text-stone-600">
+                {entry.body}
+              </p>
               <p className="mt-1 text-xs text-stone-400">
                 {formatDateTime(entry.createdAt)} · {entry.recipients} destinataire
                 {entry.recipients > 1 ? "s" : ""}
               </p>
+              {entry.recipientNames && (
+                <p className="mt-1 text-xs text-stone-400">
+                  {entry.recipientNames}
+                </p>
+              )}
             </li>
           ))}
         </ul>
