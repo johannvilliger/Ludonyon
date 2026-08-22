@@ -13,8 +13,9 @@ Stack : [Next.js](https://nextjs.org) (App Router, TypeScript, Tailwind) +
       vidages de cash et règles bénévoles
 - [x] Dépôt de liste par le vendeur (`/vendeur/nouveau`) + page de confirmation
       avec QR
-- [ ] Contrôle et impression des étiquettes (planche vendeur + QR
-      `vendeur-article-prix`, case "vendeur bénévole")
+- [x] Accueil/contrôle (`/accueil`) : recherche par nom, liste sur place
+      (`/accueil/nouveau`), case "vendeur bénévole", impression des étiquettes
+      (`vendeur-article-prix`), marquage "contrôlée"
 - [ ] Caisse (panier, +10% sauf acheteur bénévole, blocage double scan /
       mismatch prix, sélection de la caisse)
 - [ ] Dashboard vente en direct (ventes par caisse, cash en caisse, bénéfice

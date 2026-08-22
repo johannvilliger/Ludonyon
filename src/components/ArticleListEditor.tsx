@@ -1,0 +1,94 @@
+"use client";
+
+import { useState } from "react";
+
+type ArticleRow = { nom: string; prix: string };
+
+const MAX_ARTICLES = 30;
+
+export function ArticleListEditor({
+  fieldName = "articles",
+  initialArticles,
+}: {
+  fieldName?: string;
+  initialArticles?: { nom: string; prix: number }[];
+}) {
+  const [articles, setArticles] = useState<ArticleRow[]>(
+    initialArticles && initialArticles.length > 0
+      ? initialArticles.map((a) => ({ nom: a.nom, prix: String(a.prix) }))
+      : [{ nom: "", prix: "" }],
+  );
+
+  function updateArticle(index: number, field: keyof ArticleRow, value: string) {
+    setArticles((prev) =>
+      prev.map((article, i) => (i === index ? { ...article, [field]: value } : article)),
+    );
+  }
+
+  function addArticle() {
+    setArticles((prev) => (prev.length >= MAX_ARTICLES ? prev : [...prev, { nom: "", prix: "" }]));
+  }
+
+  function removeArticle(index: number) {
+    setArticles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  const articlesJson = JSON.stringify(
+    articles.map((a) => ({ nom: a.nom, prix: Number(a.prix) || 0 })),
+  );
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-medium">Articles</h2>
+        <span className="text-sm text-zinc-500">
+          {articles.length} / {MAX_ARTICLES}
+        </span>
+      </div>
+
+      <div className="mt-3 space-y-2">
+        {articles.map((article, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="w-6 shrink-0 text-sm text-zinc-400">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <input
+              value={article.nom}
+              onChange={(e) => updateArticle(i, "nom", e.target.value)}
+              placeholder="Nom de l'objet"
+              className="flex-1 rounded-md border border-zinc-300 px-3 py-2"
+            />
+            <input
+              value={article.prix}
+              onChange={(e) => updateArticle(i, "prix", e.target.value)}
+              type="number"
+              min={0}
+              step={1}
+              placeholder="CHF"
+              className="w-24 rounded-md border border-zinc-300 px-3 py-2"
+            />
+            <button
+              type="button"
+              onClick={() => removeArticle(i)}
+              aria-label="Supprimer cet article"
+              className="px-2 text-lg text-zinc-400 hover:text-red-600"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={addArticle}
+        disabled={articles.length >= MAX_ARTICLES}
+        className="mt-3 w-full rounded-md border border-dashed border-zinc-300 px-3 py-2 text-sm text-zinc-600 hover:border-zinc-400 disabled:opacity-40"
+      >
+        + Ajouter un article
+      </button>
+
+      <input type="hidden" name={fieldName} value={articlesJson} />
+    </div>
+  );
+}

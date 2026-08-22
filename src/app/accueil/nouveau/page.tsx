@@ -1,20 +1,24 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { ArticleListEditor } from "@/components/ArticleListEditor";
-import { soumettreListe, type FormState } from "./actions";
+import { creerListeAccueil, type FormState } from "./actions";
 
 const initialState: FormState = { error: null };
 
-export default function NouvelleListePage() {
-  const [state, formAction, pending] = useActionState(soumettreListe, initialState);
+export default function NouvelleListeAccueilPage() {
+  const [state, formAction, pending] = useActionState(creerListeAccueil, initialState);
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="text-3xl font-semibold tracking-tight">Déposer ma liste</h1>
+      <Link href="/accueil" className="text-sm text-zinc-500 hover:underline">
+        ← Accueil
+      </Link>
+
+      <h1 className="mt-2 text-3xl font-semibold tracking-tight">Nouvelle liste sur place</h1>
       <p className="mt-2 text-zinc-600">
-        Un objet par ligne, avec son prix en francs (pas de centimes). Tu recevras un numéro de
-        vendeur et un code à présenter au dépôt.
+        Pour un vendeur qui n&apos;a pas soumis sa liste en ligne au préalable.
       </p>
 
       <form action={formAction} className="mt-8 space-y-8">
@@ -44,6 +48,11 @@ export default function NouvelleListePage() {
           </label>
         </div>
 
+        <label className="flex items-center gap-2 text-sm font-medium text-zinc-700">
+          <input name="est_benevole" type="checkbox" className="h-4 w-4 rounded border-zinc-300" />
+          Vendeur bénévole (pas de retenue de 10% sur ses ventes)
+        </label>
+
         <ArticleListEditor />
 
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}
@@ -53,7 +62,7 @@ export default function NouvelleListePage() {
           disabled={pending}
           className="w-full rounded-md bg-zinc-900 px-4 py-3 font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
         >
-          {pending ? "Envoi…" : "Soumettre ma liste"}
+          {pending ? "Enregistrement…" : "Créer la liste"}
         </button>
       </form>
     </main>

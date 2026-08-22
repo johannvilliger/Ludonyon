@@ -14,6 +14,10 @@ export default function Home() {
       >
         Déposer ma liste
       </Link>
+
+      <Link href="/accueil" className="mt-4 text-sm text-zinc-500 hover:underline">
+        Espace bénévoles →
+      </Link>
     </main>
   );
 }
