@@ -9,13 +9,18 @@ Stack : [Next.js](https://nextjs.org) (App Router, TypeScript, Tailwind) +
 
 ## État actuel
 
-- [x] Schéma de base de données (`supabase/migrations/0001_init.sql`)
+- [x] Schéma de base de données (`supabase/migrations/`), avec caisses,
+      vidages de cash et règles bénévoles
 - [x] Dépôt de liste par le vendeur (`/vendeur/nouveau`) + page de confirmation
       avec QR
 - [ ] Contrôle et impression des étiquettes (planche vendeur + QR
-      `vendeur-article-prix`)
-- [ ] Caisse (panier, +10%, blocage double scan / mismatch prix)
-- [ ] Clôture (calcul des enveloppes, suivi des invendus)
+      `vendeur-article-prix`, case "vendeur bénévole")
+- [ ] Caisse (panier, +10% sauf acheteur bénévole, blocage double scan /
+      mismatch prix, sélection de la caisse)
+- [ ] Dashboard vente en direct (ventes par caisse, cash en caisse, bénéfice
+      cumulé)
+- [ ] Clôture (calcul des enveloppes à −10% sauf vendeur bénévole, suivi des
+      invendus)
 
 ## Mise en route
 
@@ -24,7 +29,7 @@ Stack : [Next.js](https://nextjs.org) (App Router, TypeScript, Tailwind) +
    `supabase/migrations/0001_init.sql`.
 3. Crée une édition ouverte pour pouvoir tester le dépôt de liste :
    ```sql
-   insert into editions (annee, taux_commission) values (2026, 0.10);
+   insert into editions (annee, taux_achat, taux_vendeur) values (2026, 0.10, 0.10);
    ```
 4. Copie `.env.local.example` en `.env.local` et renseigne `SUPABASE_URL` et
    `SUPABASE_SERVICE_ROLE_KEY` (Project Settings > API).
@@ -41,3 +46,14 @@ Stack : [Next.js](https://nextjs.org) (App Router, TypeScript, Tailwind) +
 - `vente_articles.article_id` est `unique` : un même article ne peut pas être
   vendu deux fois, même depuis deux caisses différentes — ça donne le blocage
   anti-double-scan directement au niveau de la base.
+- Règle bénévoles : le +10% (`taux_achat`) ne s'applique pas si l'acheteur est
+  bénévole (`ventes.acheteur_benevole`) ; le −10% (`taux_vendeur`) ne
+  s'applique pas si le vendeur est bénévole (`participations.est_benevole`).
+  Une vente bénévole↔bénévole ne rapporte donc rien à la ludothèque, une vente
+  mixte 10%, une vente client↔client 20%.
+- `participations.est_benevole` n'est jamais renseigné par le formulaire
+  public de dépôt — uniquement depuis un écran réservé à l'accueil/comité (pas
+  encore construit).
+- Chaque caisse a un fonds de départ (`caisses.fond_initial`, 250.- par
+  défaut) et les vidages sont tracés dans `mouvements_caisse` (montant,
+  responsable, horodatage) pour calculer le cash présent en temps réel.
