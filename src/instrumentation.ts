@@ -1,6 +1,19 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 const REPLACEMENT_ALERT_HOUR = 19;
+const OPENING_REMINDER_HOUR = 19;
+
+// Millisecondes jusqu'à la prochaine occurrence de `hour`:00 heure serveur
+// (TZ=Europe/Zurich en production) — aujourd'hui si l'heure n'est pas
+// encore passée, sinon demain.
+function msUntilNextHour(hour: number): number {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0, 0, 0);
+  if (next.getTime() <= now.getTime()) {
+    next.setDate(next.getDate() + 1);
+  }
+  return next.getTime() - now.getTime();
+}
 
 // Millisecondes jusqu'au prochain dimanche REPLACEMENT_ALERT_HOUR:00 heure
 // serveur (TZ=Europe/Zurich en production) — une seule alerte groupée par
@@ -32,9 +45,11 @@ export async function register() {
   if (globalForReminders.remindersIntervalStarted) return;
   globalForReminders.remindersIntervalStarted = true;
 
-  const { checkAndSendEventReminders, checkAndSendReplacementProblemAlerts } = await import(
-    "@/lib/reminders"
-  );
+  const {
+    checkAndSendEventReminders,
+    checkAndSendReplacementProblemAlerts,
+    checkAndSendOpeningShiftReminders,
+  } = await import("@/lib/reminders");
 
   // Rappels d'événements : vérification fréquente, la fenêtre de rappel
   // (1h avant l'événement) est courte.
@@ -58,4 +73,17 @@ export async function register() {
       });
     }, WEEK_MS);
   }, msUntilNextSundayAlertHour());
+
+  // Rappel individuel d'ouverture : une vérification par jour, à 19h, pour
+  // les créneaux du lendemain.
+  setTimeout(() => {
+    checkAndSendOpeningShiftReminders().catch((err) => {
+      console.error("Erreur lors de l'envoi des rappels d'ouverture :", err);
+    });
+    setInterval(() => {
+      checkAndSendOpeningShiftReminders().catch((err) => {
+        console.error("Erreur lors de l'envoi des rappels d'ouverture :", err);
+      });
+    }, DAY_MS);
+  }, msUntilNextHour(OPENING_REMINDER_HOUR));
 }

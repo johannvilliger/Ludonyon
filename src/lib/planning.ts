@@ -91,7 +91,7 @@ export const PLANNING_COLUMNS: ColumnDef[] = [
   },
 ];
 
-function formatHourLabel(hm: string): string {
+export function formatHourLabel(hm: string): string {
   const [h, m] = hm.split(":");
   return m === "00" ? `${Number(h)}h` : `${Number(h)}h${m}`;
 }

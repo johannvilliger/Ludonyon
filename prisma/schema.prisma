@@ -61,7 +61,8 @@ model VolunteerAvailability {
 
 // Historique des notifications push envoyées, toutes catégories
 // confondues, consultable dans Espace organisation > Notifications.
-// category : "MANUAL" | "EVENT_REMINDER" | "REPLACEMENT_REQUEST" | "REPLACEMENT_PROBLEM".
+// category : "MANUAL" | "EVENT_REMINDER" | "OPENING_REMINDER" |
+// "REPLACEMENT_REQUEST" | "REPLACEMENT_PROBLEM".
 model PushNotificationLog {
   id             String   @id @default(cuid())
   category       String
@@ -234,6 +235,9 @@ model OpeningShiftAssignee {
   // renvoyer la même alerte à chaque vérification périodique. Remis à
   // null dès que la recherche est annulée ou relancée.
   problemAlertSentAt     DateTime?
+  // Rempli dès que le rappel "la veille à 19h" a été envoyé pour cette
+  // assignation, pour ne pas le renvoyer en cas de nouvelle vérification.
+  reminderSentAt         DateTime?
 
   @@unique([shiftId, userId])
   @@index([userId])

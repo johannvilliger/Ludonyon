@@ -5,6 +5,7 @@ import {
   SITE_LABELS,
   findSlotDef,
   formatDayLabel,
+  formatHourLabel,
   formatHoursRange,
   type Periode,
   type Site,
@@ -126,4 +127,55 @@ export async function checkAndSendReplacementProblemAlerts() {
     where: { id: { in: atRisk.map((a) => a.id) } },
     data: { problemAlertSentAt: now },
   });
+}
+
+// Rappel individuel la veille au soir (19h, voir instrumentation.ts) pour
+// chaque bénévole ayant activé "Rappels pour les ouvertures" (profil) et
+// assigné à un créneau le lendemain.
+export async function checkAndSendOpeningShiftReminders() {
+  if (!pushConfigured()) return;
+
+  const now = new Date();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const tomorrowUTC = new Date(Date.UTC(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate()));
+
+  const shifts = await prisma.openingShift.findMany({
+    where: { date: tomorrowUTC },
+    include: {
+      assignees: {
+        where: { reminderSentAt: null, user: { wantsOpeningReminders: true } },
+        include: { user: { select: { id: true, name: true } } },
+      },
+    },
+  });
+
+  for (const shift of shifts) {
+    if (shift.assignees.length === 0) continue;
+
+    const site = shift.site as Site;
+    const periode = shift.periode as Periode;
+    const slot = findSlotDef(site, periode);
+    if (!slot) continue;
+
+    const title = "Rappel ouverture";
+    const body = `Demain ${formatDayLabel(shift.date)}, tu es inscrit·e à l’ouverture à ${SITE_LABELS[site]} dès ${formatHourLabel(slot.start)}`;
+
+    await sendPushToUsers(
+      shift.assignees.map((a) => a.userId),
+      { title, body, url: "/planning" }
+    );
+    await prisma.openingShiftAssignee.updateMany({
+      where: { id: { in: shift.assignees.map((a) => a.id) } },
+      data: { reminderSentAt: now },
+    });
+    await prisma.pushNotificationLog.create({
+      data: {
+        category: "OPENING_REMINDER",
+        title,
+        body,
+        recipients: shift.assignees.length,
+        recipientNames: shift.assignees.map((a) => a.user.name).join(", "),
+      },
+    });
+  }
 }

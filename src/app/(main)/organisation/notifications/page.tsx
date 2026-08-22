@@ -7,6 +7,7 @@ import { formatDateTime } from "@/lib/format";
 const CATEGORY_LABELS: Record<string, string> = {
   MANUAL: "Manuelle",
   EVENT_REMINDER: "Rappel événement",
+  OPENING_REMINDER: "Rappel ouverture",
   REPLACEMENT_REQUEST: "Recherche de remplaçant",
   REPLACEMENT_PROBLEM: "Alerte créneau à risque",
 };
