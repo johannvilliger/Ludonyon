@@ -14,6 +14,7 @@ export async function signUpForEvent(eventId: string) {
   });
 
   revalidatePath("/evenements");
+  revalidatePath(`/evenements/${eventId}`);
   revalidatePath("/");
 }
 
@@ -25,6 +26,7 @@ export async function cancelEventSignup(eventId: string) {
   });
 
   revalidatePath("/evenements");
+  revalidatePath(`/evenements/${eventId}`);
   revalidatePath("/");
 }
 
@@ -42,6 +44,7 @@ export async function toggleWantsReminder(eventId: string) {
   });
 
   revalidatePath("/evenements");
+  revalidatePath(`/evenements/${eventId}`);
 }
 
 export async function toggleSeekingReplacement(eventId: string) {
@@ -58,6 +61,7 @@ export async function toggleSeekingReplacement(eventId: string) {
   });
 
   revalidatePath("/evenements");
+  revalidatePath(`/evenements/${eventId}`);
   revalidatePath("/");
 }
 

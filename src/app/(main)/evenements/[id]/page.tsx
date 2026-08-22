@@ -3,13 +3,14 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatEventDate } from "@/lib/format";
+import MySignupControls from "../MySignupControls";
 
 export default async function EvenementDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
   const { id } = await params;
 
   const event = await prisma.event.findUnique({
@@ -28,26 +29,51 @@ export default async function EvenementDetailPage({
     notFound();
   }
 
+  const isUpcoming = (event.endsAt ?? event.startsAt) >= new Date();
+  const mySignup = event.signups.find((s) => s.userId === user.id);
+
   return (
     <div>
       <Link
-        href="/evenements?filtre=passes"
+        href={isUpcoming ? "/evenements" : "/evenements?filtre=passes"}
         className="text-sm text-stone-500 hover:underline"
       >
         ← Tous les événements
       </Link>
 
-      <h1 className="mt-2 text-2xl font-semibold text-stone-900">
-        {event.title}
-      </h1>
-      <p className="mt-1 text-stone-600">
-        {formatEventDate(event.startsAt, event.endsAt)}
-        {event.location ? ` · ${event.location}` : ""}
-      </p>
+      <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-stone-900">
+            {event.title}
+          </h1>
+          <p className="mt-1 text-stone-600">
+            {formatEventDate(event.startsAt, event.endsAt)}
+            {event.location ? ` · ${event.location}` : ""}
+          </p>
+        </div>
+        {isUpcoming && (
+          <MySignupControls
+            eventId={event.id}
+            isSignedUp={!!mySignup}
+            wantsReminder={mySignup?.wantsReminder ?? false}
+            seekingReplacement={mySignup?.seekingReplacement ?? false}
+          />
+        )}
+      </div>
+
       {event.description && (
         <p className="mt-4 whitespace-pre-wrap text-stone-700">
           {event.description}
         </p>
+      )}
+
+      {isUpcoming && (
+        <a
+          href={`/api/evenements/${event.id}/ics`}
+          className="mt-4 inline-block text-xs text-brand-blue hover:underline"
+        >
+          Ajouter à mon calendrier
+        </a>
       )}
 
       {event.signups.length > 0 && (
