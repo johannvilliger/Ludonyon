@@ -1,0 +1,71 @@
+import { notFound } from "next/navigation";
+import QRCode from "qrcode";
+import { createServiceClient } from "@/lib/supabase/server";
+
+type Article = { numero_article: number; nom: string; prix: number };
+
+export default async function ConfirmationPage({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}) {
+  const { code } = await params;
+  const supabase = createServiceClient();
+
+  const { data: participation } = await supabase
+    .from("participations")
+    .select("numero_vendeur, code_confirmation, articles(numero_article, nom, prix)")
+    .eq("code_confirmation", code)
+    .single<{
+      numero_vendeur: number;
+      code_confirmation: string;
+      articles: Article[];
+    }>();
+
+  if (!participation) notFound();
+
+  const qrDataUrl = await QRCode.toDataURL(participation.code_confirmation, {
+    margin: 1,
+    width: 220,
+  });
+
+  const articles = [...participation.articles].sort(
+    (a, b) => a.numero_article - b.numero_article,
+  );
+  const total = articles.reduce((sum, a) => sum + a.prix, 0);
+
+  return (
+    <main className="mx-auto max-w-xl px-6 py-12">
+      <h1 className="text-3xl font-semibold tracking-tight">Liste enregistrée</h1>
+      <p className="mt-2 text-zinc-600">
+        Vendeur n° <strong>{participation.numero_vendeur}</strong> — présente ce code au dépôt,
+        le comité imprimera tes étiquettes sur place.
+      </p>
+
+      <div className="mt-6 flex flex-col items-center gap-3 rounded-lg border border-zinc-200 p-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={qrDataUrl}
+          alt={`QR de confirmation ${participation.code_confirmation}`}
+          width={180}
+          height={180}
+        />
+        <p className="font-mono text-sm text-zinc-500">{participation.code_confirmation}</p>
+      </div>
+
+      <h2 className="mt-8 text-lg font-medium">
+        {articles.length} article{articles.length > 1 ? "s" : ""} · {total} CHF
+      </h2>
+      <ul className="mt-3 divide-y divide-zinc-200">
+        {articles.map((a) => (
+          <li key={a.numero_article} className="flex justify-between py-2 text-sm">
+            <span>
+              {String(a.numero_article).padStart(2, "0")} — {a.nom}
+            </span>
+            <span className="font-mono">{a.prix}.–</span>
+          </li>
+        ))}
+      </ul>
+    </main>
+  );
+}
