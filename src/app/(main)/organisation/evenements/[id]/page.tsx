@@ -104,7 +104,7 @@ export default async function OrganisationEvenementDetailPage({
     0
   );
 
-  const isEditable = event.active && (event.endsAt ?? event.startsAt) >= new Date();
+  const isEditable = event.active;
 
   return (
     <div className="space-y-8">

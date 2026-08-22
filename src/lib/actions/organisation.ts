@@ -121,7 +121,8 @@ export async function createEvent(formData: FormData) {
 const eventUpdateSchema = eventSchema.omit({ committeeOnly: true, agenda: true });
 
 // Modifie le contenu d'un événement existant (titre, description, lieu,
-// horaires, rémunéré) tant qu'il n'est pas terminé — l'audience (comité ou
+// horaires, rémunéré), y compris un événement déjà terminé — utile pour
+// corriger une erreur de saisie (ex. mauvaise date). L'audience (comité ou
 // tout le monde) n'est en revanche jamais modifiable après création, pour
 // ne pas basculer une séance confidentielle par erreur.
 export async function updateEvent(formData: FormData) {
@@ -134,10 +135,6 @@ export async function updateEvent(formData: FormData) {
   }
   if (!existing.active) {
     throw new Error("Un événement archivé ne peut plus être modifié");
-  }
-  const referenceEnd = existing.endsAt ?? existing.startsAt;
-  if (referenceEnd.getTime() < Date.now()) {
-    throw new Error("Cet événement est déjà terminé, il ne peut plus être modifié");
   }
 
   const parsed = eventUpdateSchema.safeParse({
