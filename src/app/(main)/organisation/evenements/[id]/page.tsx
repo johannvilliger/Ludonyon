@@ -335,6 +335,15 @@ export default async function OrganisationEvenementDetailPage({
                       <p className="text-xs text-stone-500">
                         {signup.user.email}
                       </p>
+                      <span
+                        className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs ${
+                          signup.wantsReminder
+                            ? "bg-brand-blue-soft text-brand-blue-dark"
+                            : "bg-stone-100 text-stone-400"
+                        }`}
+                      >
+                        🔔 {signup.wantsReminder ? "Rappel activé" : "Rappel désactivé"}
+                      </span>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">

@@ -34,6 +34,7 @@ export default async function OrganisationBenevolesPage({
     include: {
       vacations: { orderBy: { startDate: "asc" } },
       availabilities: { select: { slotKey: true } },
+      _count: { select: { pushSubscriptions: true } },
     },
   });
 
@@ -187,6 +188,20 @@ export default async function OrganisationBenevolesPage({
                       <div>
                         <p className="font-medium text-stone-900">{u.name}</p>
                         <p className="text-sm text-stone-600">{u.email}</p>
+                        <span
+                          className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs ${
+                            u.wantsOpeningReminders && u._count.pushSubscriptions > 0
+                              ? "bg-brand-blue-soft text-brand-blue-dark"
+                              : "bg-stone-100 text-stone-400"
+                          }`}
+                        >
+                          🔔{" "}
+                          {u.wantsOpeningReminders
+                            ? u._count.pushSubscriptions > 0
+                              ? "Rappels ouverture actifs"
+                              : "Rappel demandé — notifications désactivées sur l’appareil"
+                            : "Rappels ouverture désactivés"}
+                        </span>
                       </div>
                     </div>
 
