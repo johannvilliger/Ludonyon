@@ -26,6 +26,7 @@ import {
   updateEventAgenda,
   uploadEventRecording,
   deleteEventRecording,
+  togglePullLoaned,
 } from "@/lib/actions/organisation";
 
 function sessionMinutes(arrivedAt: Date, leftAt: Date | null): number {
@@ -359,6 +360,20 @@ export default async function OrganisationEvenementDetailPage({
                     <span className="text-xs text-stone-500">
                       Total : {formatDuration(totalMinutes)}
                     </span>
+                    <form action={togglePullLoaned}>
+                      <input type="hidden" name="eventSignupId" value={signup.id} />
+                      <input type="hidden" name="eventId" value={event.id} />
+                      <button
+                        type="submit"
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                          signup.pullLoaned
+                            ? "bg-brand-yellow text-black"
+                            : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+                        }`}
+                      >
+                        🧥 {signup.pullLoaned ? "Pull prêté" : "Prêter un pull"}
+                      </button>
+                    </form>
                     {openSession ? (
                       <form action={markDeparture}>
                         <input

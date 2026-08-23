@@ -1,0 +1,10 @@
+-- AlterTable
+ALTER TABLE `EventSignup` ADD COLUMN `pullLoaned` BOOLEAN NOT NULL DEFAULT false;
+
+-- AlterTable
+ALTER TABLE `User` ADD COLUMN `poloCut` VARCHAR(191) NULL,
+    ADD COLUMN `poloReceived` BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN `poloSize` VARCHAR(191) NULL,
+    ADD COLUMN `pullCut` VARCHAR(191) NULL,
+    ADD COLUMN `pullReceived` BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN `pullSize` VARCHAR(191) NULL;

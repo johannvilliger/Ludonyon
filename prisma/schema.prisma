@@ -30,6 +30,17 @@ model User {
   // lors d'une recherche de remplaçant (hiérarchie : sortie > retour >
   // accueil, un poste supérieur peut couvrir les postes inférieurs).
   poste                  String?
+  // Habits remis par la ludothèque — géré uniquement par les
+  // responsables/comité (voir Espace organisation > Bénévoles). Taille et
+  // coupe restent modifiables même sans l'avoir reçu : ça permet de savoir
+  // directement lequel donner le jour où on en prête ou en remet un. Le
+  // pull doit être rendu si le/la bénévole quitte l'association.
+  poloReceived           Boolean  @default(false)
+  poloSize               String?
+  poloCut                String?
+  pullReceived           Boolean  @default(false)
+  pullSize               String?
+  pullCut                String?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -156,6 +167,9 @@ model EventSignup {
   wantsReminder      Boolean   @default(false)
   reminderSentAt     DateTime?
   seekingReplacement Boolean   @default(false)
+  // Un pull de la ludothèque est prêté pour cet événement — pense-bête pour
+  // le récupérer à la fin (le pull lui-même, taille/coupe, reste sur le profil).
+  pullLoaned         Boolean   @default(false)
   createdAt          DateTime  @default(now())
 
   attendanceSessions AttendanceSession[]

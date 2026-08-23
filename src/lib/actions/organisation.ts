@@ -12,6 +12,7 @@ import { mailConfigured, sendMail } from "@/lib/mail";
 import { guideAttachmentPath, guideExists, saveGuide, deleteGuide } from "@/lib/guideStorage";
 import { getAvailabilityOptions } from "@/lib/planning";
 import { isValidPoste } from "@/lib/postes";
+import { isValidClothingSize, isValidClothingCut } from "@/lib/clothing";
 import { saveRecording, deleteRecording } from "@/lib/recordingStorage";
 
 // ---------- Annonces ----------
@@ -368,6 +369,22 @@ export async function markDeparture(formData: FormData) {
   revalidatePath(`/organisation/evenements/${eventId}`);
 }
 
+export async function togglePullLoaned(formData: FormData) {
+  const eventSignupId = String(formData.get("eventSignupId"));
+  const eventId = String(formData.get("eventId"));
+  await requireOrganisationUser();
+
+  const signup = await prisma.eventSignup.findUniqueOrThrow({
+    where: { id: eventSignupId },
+  });
+  await prisma.eventSignup.update({
+    where: { id: eventSignupId },
+    data: { pullLoaned: !signup.pullLoaned },
+  });
+
+  revalidatePath(`/organisation/evenements/${eventId}`);
+}
+
 const manualTimeSchema = z.object({
   eventSignupId: z.string().min(1),
   eventId: z.string().min(1),
@@ -544,6 +561,29 @@ export async function updateVolunteerProfile(formData: FormData) {
     const poste = rawStr && isValidPoste(rawStr) ? rawStr : null;
     await prisma.user.update({ where: { id }, data: { poste } });
   }
+
+  function readSize(field: string): string | null {
+    const raw = formData.get(field);
+    const str = raw === null ? "" : String(raw);
+    return str && isValidClothingSize(str) ? str : null;
+  }
+  function readCut(field: string): string | null {
+    const raw = formData.get(field);
+    const str = raw === null ? "" : String(raw);
+    return str && isValidClothingCut(str) ? str : null;
+  }
+
+  await prisma.user.update({
+    where: { id },
+    data: {
+      poloReceived: formData.get("poloReceived") === "on",
+      poloSize: readSize("poloSize"),
+      poloCut: readCut("poloCut"),
+      pullReceived: formData.get("pullReceived") === "on",
+      pullSize: readSize("pullSize"),
+      pullCut: readCut("pullCut"),
+    },
+  });
 
   const validKeys = new Set(getAvailabilityOptions().map((o) => o.slotKey));
   const selectedSlots = formData.getAll("slots").map(String).filter((k) => validKeys.has(k));

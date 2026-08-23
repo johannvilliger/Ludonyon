@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOrganisationUser } from "@/lib/session";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/roles";
 import { POSTES, POSTE_LABELS, type Poste } from "@/lib/postes";
+import { CLOTHING_SIZES, CLOTHING_CUTS, CLOTHING_CUT_LABELS, type ClothingCut } from "@/lib/clothing";
 import { formatDateOnly } from "@/lib/format";
 import { mailConfigured } from "@/lib/mail";
 import Avatar from "@/components/Avatar";
@@ -246,6 +247,98 @@ export default async function OrganisationBenevolesPage({
                     </summary>
                     <div className="mt-2">
                       <AvailabilityFields selectedKeys={u.availabilities.map((a) => a.slotKey)} />
+                    </div>
+                  </details>
+
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
+                      Habits (polo, pull)
+                    </summary>
+                    <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-lg border border-stone-200 p-3">
+                        <label className="flex items-center gap-2 text-sm text-stone-700">
+                          <input
+                            key={String(u.poloReceived)}
+                            type="checkbox"
+                            name="poloReceived"
+                            defaultChecked={u.poloReceived}
+                            className="h-4 w-4 rounded border-stone-300 text-brand-blue focus:ring-brand-blue"
+                          />
+                          Polo reçu
+                        </label>
+                        <div className="mt-2 flex gap-2">
+                          <select
+                            key={u.poloSize ?? "none"}
+                            name="poloSize"
+                            defaultValue={u.poloSize ?? ""}
+                            className="w-full rounded-lg border border-stone-300 px-2 py-1 text-sm"
+                          >
+                            <option value="">Taille</option>
+                            {CLOTHING_SIZES.map((size) => (
+                              <option key={size} value={size}>
+                                {size}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            key={u.poloCut ?? "none"}
+                            name="poloCut"
+                            defaultValue={u.poloCut ?? ""}
+                            className="w-full rounded-lg border border-stone-300 px-2 py-1 text-sm"
+                          >
+                            <option value="">Coupe</option>
+                            {CLOTHING_CUTS.map((cut) => (
+                              <option key={cut} value={cut}>
+                                {CLOTHING_CUT_LABELS[cut as ClothingCut]}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-stone-200 p-3">
+                        <label className="flex items-center gap-2 text-sm text-stone-700">
+                          <input
+                            key={String(u.pullReceived)}
+                            type="checkbox"
+                            name="pullReceived"
+                            defaultChecked={u.pullReceived}
+                            className="h-4 w-4 rounded border-stone-300 text-brand-blue focus:ring-brand-blue"
+                          />
+                          Pull reçu
+                        </label>
+                        <div className="mt-2 flex gap-2">
+                          <select
+                            key={u.pullSize ?? "none"}
+                            name="pullSize"
+                            defaultValue={u.pullSize ?? ""}
+                            className="w-full rounded-lg border border-stone-300 px-2 py-1 text-sm"
+                          >
+                            <option value="">Taille</option>
+                            {CLOTHING_SIZES.map((size) => (
+                              <option key={size} value={size}>
+                                {size}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            key={u.pullCut ?? "none"}
+                            name="pullCut"
+                            defaultValue={u.pullCut ?? ""}
+                            className="w-full rounded-lg border border-stone-300 px-2 py-1 text-sm"
+                          >
+                            <option value="">Coupe</option>
+                            {CLOTHING_CUTS.map((cut) => (
+                              <option key={cut} value={cut}>
+                                {CLOTHING_CUT_LABELS[cut as ClothingCut]}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <p className="mt-1.5 text-xs text-stone-400">
+                          À rendre si le/la bénévole quitte l’association.
+                        </p>
+                      </div>
                     </div>
                   </details>
                 </form>
