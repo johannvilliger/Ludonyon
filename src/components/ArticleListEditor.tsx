@@ -30,10 +30,6 @@ export function ArticleListEditor({
     );
   }
 
-  function addArticle() {
-    setArticles((prev) => (prev.length >= MAX_ARTICLES ? prev : [...prev, { nom: "", prix: "" }]));
-  }
-
   function removeArticle(index: number) {
     setArticles((prev) => prev.filter((_, i) => i !== index));
   }
@@ -94,15 +90,6 @@ export function ArticleListEditor({
           );
         })}
       </div>
-
-      <button
-        type="button"
-        onClick={addArticle}
-        disabled={articles.length >= MAX_ARTICLES}
-        className="mt-3 w-full rounded-md border border-dashed border-zinc-300 px-3 py-2 text-sm text-zinc-600 hover:border-zinc-400 disabled:opacity-40"
-      >
-        + Ajouter un article
-      </button>
 
       <input type="hidden" name={fieldName} value={articlesJson} />
     </div>

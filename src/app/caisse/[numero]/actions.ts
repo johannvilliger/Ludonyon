@@ -1,6 +1,9 @@
 "use server";
 
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { nouvelId, query, queryOne, withTransaction } from "@/lib/db";
+import { COOKIE_CAISSE } from "@/lib/gestion";
 
 export type ArticleTrouve = {
   articleId: string;
@@ -131,4 +134,21 @@ export async function encaisserPanier(
 
   const total = lignes.reduce((sum, l) => sum + l.prix_encaisse, 0);
   return { ok: true, total };
+}
+
+export async function voirInstructions(posteId: string) {
+  await query("UPDATE caisses SET instructions_vues = 1 WHERE poste_caisse_id = ? AND edition_id = (SELECT id FROM editions WHERE active_flag = 1)", [
+    posteId,
+  ]);
+}
+
+export async function cloturerCaisse(caisseId: string, posteId: string) {
+  await query("UPDATE caisses SET cloturee = 1 WHERE id = ?", [caisseId]);
+  await query("UPDATE postes_caisse SET connecte = 0, session_token = NULL, demande_en_attente = 0 WHERE id = ?", [
+    posteId,
+  ]);
+
+  const jar = await cookies();
+  jar.delete(COOKIE_CAISSE);
+  redirect("/gestion");
 }

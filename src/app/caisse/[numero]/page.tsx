@@ -3,8 +3,12 @@ import Link from "next/link";
 import { queryOne } from "@/lib/db";
 import { posteCaisseAutorise } from "@/lib/gestion";
 import { CaisseScanner } from "./caisse-scanner";
+import { ClotureButton } from "./cloture-button";
+import { InstructionsCaisse } from "./instructions-modal";
 
-type Caisse = { id: string; edition_id: string; taux_achat: number };
+type Caisse = { id: string; edition_id: string; taux_achat: number; cloturee: number; instructions_vues: number };
+
+export const dynamic = "force-dynamic";
 
 export default async function CaisseDetailPage({ params }: { params: Promise<{ numero: string }> }) {
   const { numero } = await params;
@@ -15,7 +19,7 @@ export default async function CaisseDetailPage({ params }: { params: Promise<{ n
   if (!autorisation) redirect("/gestion");
 
   const caisse = await queryOne<Caisse>(
-    `SELECT c.id, c.edition_id, e.taux_achat
+    `SELECT c.id, c.edition_id, e.taux_achat, c.cloturee, c.instructions_vues
      FROM caisses c
      JOIN editions e ON e.id = c.edition_id
      WHERE c.poste_caisse_id = ? AND e.active_flag = 1`,
@@ -33,10 +37,20 @@ export default async function CaisseDetailPage({ params }: { params: Promise<{ n
 
       {!caisse && <p className="mt-6 text-sm text-red-600">Aucune édition active pour le moment.</p>}
 
-      {caisse && (
+      {caisse && !caisse.cloturee && (
         <div className="mt-8">
-          <CaisseScanner caisseId={caisse.id} editionId={caisse.edition_id} tauxAchat={Number(caisse.taux_achat)} />
+          <InstructionsCaisse posteId={autorisation.posteId} dejaVues={Boolean(caisse.instructions_vues)} />
+          <div className="mt-4">
+            <CaisseScanner caisseId={caisse.id} editionId={caisse.edition_id} tauxAchat={Number(caisse.taux_achat)} />
+          </div>
+          <div className="mt-8 border-t border-zinc-200 pt-4">
+            <ClotureButton caisseId={caisse.id} posteId={autorisation.posteId} />
+          </div>
         </div>
+      )}
+
+      {caisse && Boolean(caisse.cloturee) && (
+        <p className="mt-6 text-sm text-zinc-500">Cette caisse a été clôturée pour cette édition.</p>
       )}
     </main>
   );

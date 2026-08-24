@@ -23,10 +23,18 @@ MariaDB (hébergée chez Infomaniak, accès direct via `mysql2`).
 - [x] Caisse (`/caisse/1` à `/caisse/5`, protégée par le code) : scan et
       panier, case "acheteur bénévole", blocage double scan et mismatch prix,
       encaissement, historique des ventes de la caisse
-- [x] Dashboard (`/gestion/dashboard`) : création/pilotage des phases de
-      l'édition, demandes de connexion caisse, ventes/cash par caisse en
-      direct, bénéfice cumulé, vidage de caisse tracé, historique par caisse,
-      gestion des codes d'accès
+- [x] Dashboard (`/gestion/dashboard`) : création/pilotage des phases
+      (changement confirmé), demandes de connexion caisse, tuiles caisses en
+      direct (ventes/cash, alerte clignotante au-delà de 2000.–, caisses
+      clôturées mises à l'écart), bénéfice cumulé, vidage de caisse tracé,
+      historique par caisse, codes d'accès masqués par défaut, liste des
+      vendeurs avec statut de chaque article (`/gestion/dashboard/vendeurs`).
+      Rafraîchissement automatique (toutes les 3s), pas besoin de recharger.
+- [x] Connexion caisse bloquée tant que l'édition n'est pas en phase
+      "Caisse" ; chaque caisse peut se clôturer elle-même
+      (`/caisse/[numero]`), ce qui l'empêche de se reconnecter ensuite pour
+      cette édition ; instructions d'ouverture affichées une fois par caisse
+      et par édition (bouton discret pour les revoir)
 - [ ] Clôture (calcul des enveloppes à −10% sauf vendeur bénévole, suivi des
       invendus)
 - [ ] Annulation d'une vente déjà encaissée (à définir)
@@ -107,7 +115,18 @@ Générés par la migration, à changer avant toute utilisation réelle (section
   (`demande_en_attente` → `connecte`) ; la page d'attente (`/gestion/attente/[numero]`)
   interroge le serveur toutes les 2 secondes. Sessions via cookies
   `httpOnly` (`gestion_dashboard`, `gestion_caisse`), un jeton par poste —
-  le dashboard peut déconnecter une caisse à tout moment.
+  le dashboard peut déconnecter une caisse à tout moment. Le code caisse
+  n'est accepté que si l'édition est en phase `caisse` et que la caisse de
+  cette édition n'est pas déjà `cloturee`.
+- `articles.statut` (`non_recu` → `recu` → `vendu`, ou `invendu` en fin
+  d'édition) : bascule `non_recu`/`recu` depuis l'accueil au moment de la
+  réception (étiquette collée), `vendu` posé automatiquement à
+  l'encaissement. `caisses.cloturee` et `caisses.instructions_vues` sont
+  propres à chaque caisse *pour une édition donnée* (la table `caisses` est
+  déjà recréée à chaque nouvelle édition).
+- Le dashboard (`/gestion/dashboard`) se rafraîchit tout seul côté client
+  (`AutoRefresh`, `router.refresh()` toutes les 3s) : pas de WebSocket, mais
+  suffisant pour un usage sur une poignée d'heures avec 3-5 caisses.
 - Les pages qui lisent des données changeantes ou des cookies (`/caisse/*`,
   `/gestion/dashboard`, etc.) sont automatiquement rendues à la demande par
   Next.js (jamais pré-rendues au build).

@@ -11,9 +11,15 @@ import {
   validerConnexionCaisse,
   type Phase,
 } from "./actions";
+import { AutoRefresh } from "./auto-refresh";
 import { CodeEditor } from "./code-editor";
 import { EditionForm } from "./edition-form";
+import { PhaseButton } from "./phase-button";
 import { VidageForm } from "./vidage-form";
+
+export const dynamic = "force-dynamic";
+
+const SEUIL_ALERTE_CAISSE = 2000;
 
 type Edition = { id: string; annee: number; phase: Phase };
 type Parametres = { code_dashboard: string };
@@ -24,6 +30,7 @@ type PosteLigne = {
   connecte: number;
   demande_en_attente: number;
   caisse_id: string | null;
+  cloturee: number;
   fond_initial: number | null;
   total_ventes: number;
   total_vidages: number;
@@ -52,6 +59,7 @@ export default async function DashboardGestionPage() {
        pc.connecte,
        pc.demande_en_attente,
        c.id AS caisse_id,
+       COALESCE(c.cloturee, 0) AS cloturee,
        c.fond_initial,
        COALESCE(SUM(va.prix_encaisse), 0) AS total_ventes,
        COALESCE((SELECT SUM(mc.montant) FROM mouvements_caisse mc WHERE mc.caisse_id = c.id), 0) AS total_vidages
@@ -59,7 +67,7 @@ export default async function DashboardGestionPage() {
      LEFT JOIN caisses c ON c.poste_caisse_id = pc.id AND c.edition_id = ?
      LEFT JOIN ventes v ON v.caisse_id = c.id
      LEFT JOIN vente_articles va ON va.vente_id = v.id
-     GROUP BY pc.id, pc.numero, pc.code_acces, pc.connecte, pc.demande_en_attente, c.id, c.fond_initial
+     GROUP BY pc.id, pc.numero, pc.code_acces, pc.connecte, pc.demande_en_attente, c.id, c.cloturee, c.fond_initial
      ORDER BY pc.numero`,
     [edition?.id ?? null],
   );
@@ -87,10 +95,19 @@ export default async function DashboardGestionPage() {
 
   const demandes = postes.filter((p) => p.demande_en_attente);
   const connectees = postes.filter((p) => p.connecte);
+  const postesActifs = postes.filter((p) => !p.cloturee);
+  const postesClotures = postes.filter((p) => p.cloturee);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+    <main className="mx-auto max-w-6xl px-6 py-12">
+      <AutoRefresh />
+
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+        <Link href="/gestion/dashboard/vendeurs" className="text-sm text-zinc-500 hover:underline">
+          Vendeurs →
+        </Link>
+      </div>
 
       {/* Édition */}
       <section className="mt-8">
@@ -111,19 +128,13 @@ export default async function DashboardGestionPage() {
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {ORDRE_PHASES.map((phase) => (
-                <form key={phase} action={changerPhase.bind(null, phase)}>
-                  <button
-                    type="submit"
-                    disabled={phase === edition.phase}
-                    className={
-                      phase === edition.phase
-                        ? "rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white"
-                        : "rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:border-zinc-400"
-                    }
-                  >
-                    {LABELS_PHASE[phase]}
-                  </button>
-                </form>
+                <PhaseButton
+                  key={phase}
+                  phase={phase}
+                  label={LABELS_PHASE[phase]}
+                  active={phase === edition.phase}
+                  onChange={changerPhase}
+                />
               ))}
             </div>
             <p className="mt-2 text-xs text-zinc-400">
@@ -154,7 +165,7 @@ export default async function DashboardGestionPage() {
       )}
 
       {/* Demandes de connexion en attente */}
-      {demandes.length > 0 && (
+      {edition && demandes.length > 0 && (
         <section className="mt-8">
           <h2 className="text-lg font-medium">Demandes de connexion</h2>
           <ul className="mt-3 space-y-2">
@@ -189,7 +200,7 @@ export default async function DashboardGestionPage() {
       )}
 
       {/* Caisses connectées */}
-      {connectees.length > 0 && (
+      {edition && connectees.length > 0 && (
         <section className="mt-8">
           <h2 className="text-lg font-medium">Caisses connectées</h2>
           <ul className="mt-3 space-y-2">
@@ -207,56 +218,102 @@ export default async function DashboardGestionPage() {
         </section>
       )}
 
-      {/* Caisses : ventes, cash, vidage, historique */}
-      <section className="mt-8">
-        <h2 className="text-lg font-medium">Caisses</h2>
-        <ul className="mt-3 space-y-3">
-          {postes.map((p) => {
-            const ventes = Number(p.total_ventes);
-            const vidages = Number(p.total_vidages);
-            const cashEnCaisse = p.fond_initial != null ? p.fond_initial + ventes - vidages : null;
-            return (
-              <li key={p.poste_id} className="rounded-md border border-zinc-200 p-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Caisse {p.numero}</span>
-                  <Link href={`/gestion/dashboard/historique/${p.numero}`} className="text-sm text-zinc-500 hover:underline">
-                    Historique →
-                  </Link>
-                </div>
-                {p.caisse_id ? (
-                  <>
-                    <p className="mt-1 text-sm text-zinc-600">
-                      Ventes : {ventes}.– · Cash en caisse :{" "}
-                      <span className="font-mono">{cashEnCaisse}.–</span>{" "}
-                      <span className="text-zinc-400">
+      {/* Caisses : grandes tuiles ventes/cash/vidage/historique */}
+      {edition && (
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Caisses</h2>
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {postesActifs.map((p) => {
+              const ventes = Number(p.total_ventes);
+              const vidages = Number(p.total_vidages);
+              const cashEnCaisse = p.fond_initial != null ? p.fond_initial + ventes - vidages : null;
+              const enAlerte = cashEnCaisse != null && cashEnCaisse > SEUIL_ALERTE_CAISSE;
+              const ouverte = Boolean(p.connecte);
+
+              const tuileClasses = enAlerte
+                ? "caisse-alerte rounded-lg border border-red-600 p-4 text-white"
+                : ouverte
+                  ? "rounded-lg border border-emerald-300 bg-emerald-50 p-4"
+                  : "rounded-lg border border-zinc-200 bg-white p-4";
+
+              return (
+                <div key={p.poste_id} className={tuileClasses}>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-lg font-semibold ${enAlerte ? "text-white" : ""}`}>Caisse {p.numero}</span>
+                    <Link
+                      href={`/gestion/dashboard/historique/${p.numero}`}
+                      className={`text-sm hover:underline ${enAlerte ? "text-white" : "text-zinc-500"}`}
+                    >
+                      Historique →
+                    </Link>
+                  </div>
+                  <p className={`mt-1 text-xs font-medium uppercase tracking-wide ${enAlerte ? "text-white" : ouverte ? "text-emerald-700" : "text-zinc-400"}`}>
+                    {ouverte ? "Ouverte" : "Fermée"}
+                  </p>
+                  {p.caisse_id ? (
+                    <>
+                      <p className={`mt-2 text-sm ${enAlerte ? "text-white" : "text-zinc-600"}`}>
+                        Ventes : {ventes}.– · Cash en caisse : <span className="font-mono">{cashEnCaisse}.–</span>
+                      </p>
+                      <p className={`text-xs ${enAlerte ? "text-white/80" : "text-zinc-400"}`}>
                         (fonds {p.fond_initial}.– − vidages {vidages}.–)
-                      </span>
-                    </p>
-                    <VidageForm caisseId={p.caisse_id} />
-                  </>
-                ) : (
-                  <p className="mt-1 text-sm text-zinc-400">Pas encore de caisse pour cette édition.</p>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+                      </p>
+                      <div className="mt-2">
+                        <VidageForm caisseId={p.caisse_id} />
+                      </div>
+                    </>
+                  ) : (
+                    <p className="mt-2 text-sm text-zinc-400">Pas encore de caisse pour cette édition.</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {postesClotures.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm font-medium text-zinc-500">Caisses clôturées</h3>
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {postesClotures.map((p) => (
+                  <div key={p.poste_id} className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 opacity-70">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Caisse {p.numero}</span>
+                      <Link
+                        href={`/gestion/dashboard/historique/${p.numero}`}
+                        className="text-xs text-zinc-500 hover:underline"
+                      >
+                        Historique →
+                      </Link>
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-400">Clôturée</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Codes d'accès */}
       <section className="mt-8">
         <h2 className="text-lg font-medium">Codes d&apos;accès</h2>
         <div className="mt-3 space-y-2 rounded-md border border-zinc-200 p-4">
-          {postes.map((p) => (
-            <CodeEditor
-              key={p.poste_id}
-              label={`Caisse ${p.numero}`}
-              valeurInitiale={p.code_acces}
-              onSave={modifierCodeCaisse.bind(null, p.poste_id)}
-            />
-          ))}
+          {edition &&
+            postes.map((p) => (
+              <CodeEditor
+                key={p.poste_id}
+                label={`Caisse ${p.numero}`}
+                valeurInitiale={p.code_acces}
+                onSave={modifierCodeCaisse.bind(null, p.poste_id)}
+              />
+            ))}
           {parametres && (
             <CodeEditor label="Dashboard" valeurInitiale={parametres.code_dashboard} onSave={modifierCodeDashboard} />
+          )}
+          {!edition && (
+            <p className="text-xs text-zinc-400">
+              Les codes des caisses n&apos;apparaissent qu&apos;une fois une édition active.
+            </p>
           )}
         </div>
       </section>

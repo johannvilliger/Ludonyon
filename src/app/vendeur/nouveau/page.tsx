@@ -11,7 +11,17 @@ export default function NouvelleListePage() {
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="text-3xl font-semibold tracking-tight">Déposer ma liste</h1>
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="text-3xl font-semibold tracking-tight">Déposer ma liste</h1>
+        <a
+          href="/reglement.pdf"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:border-zinc-400"
+        >
+          Règlement (PDF)
+        </a>
+      </div>
       <p className="mt-2 text-zinc-600">
         Un objet par ligne, avec son prix en francs (pas de centimes). Vous recevrez un numéro de
         vendeur et un code à présenter au dépôt.

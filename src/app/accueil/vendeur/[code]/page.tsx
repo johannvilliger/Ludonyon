@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
-import { definirBenevole, marquerControlee } from "./actions";
+import { basculerRecu, definirBenevole, marquerControlee } from "./actions";
 
-type Article = { numero_article: number; nom: string; prix: number; statut: string };
+type Article = { id: string; numero_article: number; nom: string; prix: number; statut: string };
 type Participation = {
   numero_vendeur: number;
   code_confirmation: string;
@@ -18,6 +18,20 @@ const STATUT_LABELS: Record<string, string> = {
   liste_soumise: "Liste soumise",
   controlee: "Contrôlée",
   cloturee: "Clôturée",
+};
+
+const STATUT_ARTICLE_LABELS: Record<string, string> = {
+  non_recu: "Non reçu",
+  recu: "Reçu",
+  vendu: "Vendu",
+  invendu: "Invendu",
+};
+
+const STATUT_ARTICLE_STYLES: Record<string, string> = {
+  non_recu: "bg-zinc-100 text-zinc-600",
+  recu: "bg-emerald-100 text-emerald-800",
+  vendu: "bg-blue-100 text-blue-800",
+  invendu: "bg-amber-100 text-amber-800",
 };
 
 export default async function VendeurAccueilPage({
@@ -39,7 +53,7 @@ export default async function VendeurAccueilPage({
   if (!participation) notFound();
 
   const articles = await query<Article>(
-    `SELECT a.numero_article, a.nom, a.prix, a.statut
+    `SELECT a.id, a.numero_article, a.nom, a.prix, a.statut
      FROM articles a
      JOIN participations p ON p.id = a.participation_id
      WHERE p.code_confirmation = ?
@@ -106,14 +120,35 @@ export default async function VendeurAccueilPage({
         {articles.length} article{articles.length > 1 ? "s" : ""} · {total} CHF
       </h2>
       <ul className="mt-3 divide-y divide-zinc-200">
-        {articles.map((a) => (
-          <li key={a.numero_article} className="flex justify-between py-2 text-sm">
-            <span>
-              {String(a.numero_article).padStart(2, "0")} — {a.nom}
-            </span>
-            <span className="font-mono">{a.prix}.–</span>
-          </li>
-        ))}
+        {articles.map((a) => {
+          const modifiable = a.statut === "non_recu" || a.statut === "recu";
+          return (
+            <li key={a.id} className="flex items-center justify-between py-2 text-sm">
+              <span>
+                {String(a.numero_article).padStart(2, "0")} — {a.nom}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono">{a.prix}.–</span>
+                {modifiable ? (
+                  <form action={basculerRecu.bind(null, a.id, code)}>
+                    <button
+                      type="submit"
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_ARTICLE_STYLES[a.statut]}`}
+                    >
+                      {STATUT_ARTICLE_LABELS[a.statut] ?? a.statut}
+                    </button>
+                  </form>
+                ) : (
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_ARTICLE_STYLES[a.statut] ?? "bg-zinc-100 text-zinc-600"}`}
+                  >
+                    {STATUT_ARTICLE_LABELS[a.statut] ?? a.statut}
+                  </span>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </main>
   );

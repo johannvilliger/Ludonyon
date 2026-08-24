@@ -22,6 +22,7 @@ export function CaisseScanner({
 }) {
   const [panier, setPanier] = useState<ArticleTrouve[]>([]);
   const [acheteurBenevole, setAcheteurBenevole] = useState(false);
+  const [montantRecu, setMontantRecu] = useState("");
   const [code, setCode] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -75,10 +76,13 @@ export function CaisseScanner({
     setConfirmation(`Encaissé : ${resultat.total}.–`);
     setPanier([]);
     setAcheteurBenevole(false);
+    setMontantRecu("");
     inputRef.current?.focus();
   }
 
   const total = panier.reduce((sum, a) => sum + prixAffiche(a, acheteurBenevole, tauxAchat), 0);
+  const montantRecuNombre = Number(montantRecu) || 0;
+  const rendu = montantRecuNombre - total;
 
   return (
     <div>
@@ -109,7 +113,7 @@ export function CaisseScanner({
           onChange={(e) => setAcheteurBenevole(e.target.checked)}
           className="h-4 w-4 rounded border-zinc-300"
         />
-        Acheteur bénévole (pas de +10%)
+        Acheteur bénévole
       </label>
 
       <ul className="mt-4 divide-y divide-zinc-200 rounded-md border border-zinc-200">
@@ -142,6 +146,32 @@ export function CaisseScanner({
 
       <div className="mt-6 flex items-center justify-between">
         <span className="text-lg font-medium">Total : {total}.–</span>
+      </div>
+
+      {panier.length > 0 && (
+        <div className="mt-3 flex items-center gap-3">
+          <label className="text-sm font-medium text-zinc-700" htmlFor="montant-recu">
+            Montant reçu
+          </label>
+          <input
+            id="montant-recu"
+            type="number"
+            min={0}
+            step={1}
+            value={montantRecu}
+            onChange={(e) => setMontantRecu(e.target.value)}
+            placeholder="CHF"
+            className="w-28 rounded-md border border-zinc-300 px-3 py-2"
+          />
+          {montantRecu.trim() !== "" && (
+            <span className={rendu < 0 ? "text-sm font-medium text-red-600" : "text-sm font-medium text-emerald-700"}>
+              {rendu < 0 ? `Il manque ${Math.abs(rendu)}.–` : `Rendu à donner : ${rendu}.–`}
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="mt-4 flex justify-end">
         <button
           type="button"
           onClick={handleEncaisser}

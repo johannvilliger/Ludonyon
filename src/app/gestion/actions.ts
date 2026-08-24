@@ -32,6 +32,21 @@ export async function validerCode(_prevState: CodeState, formData: FormData): Pr
     if (poste.connecte) {
       return { error: `La caisse ${poste.numero} est déjà connectée ailleurs.` };
     }
+
+    const edition = await queryOne<{ phase: string }>("SELECT phase FROM editions WHERE active_flag = 1");
+    if (!edition || edition.phase !== "caisse") {
+      return { error: "Les caisses ne sont pas encore ouvertes — l'édition n'est pas en phase « Caisse »." };
+    }
+
+    const caisse = await queryOne<{ cloturee: number }>(
+      `SELECT c.cloturee FROM caisses c JOIN editions e ON e.id = c.edition_id
+       WHERE c.poste_caisse_id = ? AND e.active_flag = 1`,
+      [poste.id],
+    );
+    if (caisse?.cloturee) {
+      return { error: `La caisse ${poste.numero} a déjà été clôturée pour cette édition.` };
+    }
+
     await query("UPDATE postes_caisse SET demande_en_attente = 1 WHERE id = ?", [poste.id]);
     redirect(`/gestion/attente/${poste.numero}`);
   }
