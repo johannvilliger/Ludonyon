@@ -29,17 +29,21 @@ MariaDB (hébergée chez Infomaniak, accès direct via `mysql2`).
 1. Crée une base MariaDB dans le Manager Infomaniak (Hébergement web >
    Bases de données), note l'hôte, le port, l'utilisateur, le mot de passe
    et le nom de la base.
-2. Applique le schéma :
+2. Copie `.env.local.example` en `.env.local` (ou `.env`) et renseigne
+   `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`.
+3. Applique le schéma :
    ```bash
-   mariadb -h <hôte> -P <port> -u <utilisateur> -p <base> < db/migrations/0001_init.sql
+   npm run db:migrate
    ```
-3. Crée une édition ouverte pour pouvoir tester le dépôt de liste :
+   (lit `db/migrations/*.sql` et les exécute sur la base configurée à
+   l'étape 2 — pas besoin d'un client `mariadb` séparé, juste Node.)
+4. Crée une édition ouverte pour pouvoir tester le dépôt de liste. Le plus
+   simple est d'exécuter ce SQL depuis le Manager Infomaniak (onglet
+   phpMyAdmin/Adminer de la base) :
    ```sql
    INSERT INTO editions (id, annee, taux_achat, taux_vendeur)
    VALUES (UUID(), 2026, 0.10, 0.10);
    ```
-4. Copie `.env.local.example` en `.env.local` et renseigne `DB_HOST`,
-   `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`.
 5. `npm run dev`, puis ouvre [http://localhost:3000](http://localhost:3000).
 
 ### Déploiement (Infomaniak, hébergement Node.js)
@@ -50,7 +54,12 @@ MariaDB (hébergée chez Infomaniak, accès direct via `mysql2`).
 - Commande de build : `npm run build`
 - Commande d'exécution : `npm start`
 - Renseigne les variables d'environnement `DB_HOST`, `DB_PORT`, `DB_USER`,
-  `DB_PASSWORD`, `DB_NAME` dans les réglages de l'application Node.js.
+  `DB_PASSWORD`, `DB_NAME` dans les réglages de l'application Node.js
+  (jamais dans un fichier commité au dépôt).
+- Une fois l'app importée et les variables d'environnement en place, lance
+  `npm run db:migrate` une fois depuis la console SSH pour créer les tables
+  (idem que pour le site bénévole, juste une commande Node plutôt qu'un
+  client `mariadb` séparé).
 
 ## Notes techniques
 
