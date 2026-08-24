@@ -13,6 +13,46 @@ export async function telechargerSauvegarde(): Promise<string> {
   return genererSauvegardeSql();
 }
 
+// Réservé aux tests : une édition "terminée" (phase = 'terminee') devient
+// invisible au dashboard (active_flag = NULL, voir migration 0004) et
+// bloque la réutilisation de son année (UNIQUE KEY editions_annee_uk) sans
+// aucun moyen de revenir dessus depuis l'interface. La suppression efface
+// tout ce qui lui est rattaché (caisses, participations, articles,
+// ventes...) — jamais les bénévoles/vendeurs, qui sont une base fixe
+// indépendante des éditions. Effacé dans l'ordre à la main plutôt que via
+// ON DELETE CASCADE : MySQL ne garantit pas l'ordre entre deux chemins de
+// cascade différents menant à la même table (ex. caisses -> ventes ET
+// editions -> ventes), et peut échouer avec une contrainte FK sinon.
+export async function supprimerEdition(editionId: string) {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+
+  await withTransaction(async (conn) => {
+    await conn.query(
+      "DELETE cl FROM clotures cl JOIN participations p ON p.id = cl.participation_id WHERE p.edition_id = ?",
+      [editionId],
+    );
+    await conn.query(
+      "DELETE va FROM vente_articles va JOIN ventes v ON v.id = va.vente_id WHERE v.edition_id = ?",
+      [editionId],
+    );
+    await conn.query("DELETE FROM ventes WHERE edition_id = ?", [editionId]);
+    await conn.query(
+      "DELETE mc FROM mouvements_caisse mc JOIN caisses c ON c.id = mc.caisse_id WHERE c.edition_id = ?",
+      [editionId],
+    );
+    await conn.query(
+      "DELETE a FROM articles a JOIN participations p ON p.id = a.participation_id WHERE p.edition_id = ?",
+      [editionId],
+    );
+    await conn.query("DELETE FROM participations WHERE edition_id = ?", [editionId]);
+    await conn.query("DELETE FROM categories WHERE edition_id = ?", [editionId]);
+    await conn.query("DELETE FROM caisses WHERE edition_id = ?", [editionId]);
+    await conn.query("DELETE FROM editions WHERE id = ? AND active_flag IS NULL", [editionId]);
+  });
+
+  revalidatePath("/gestion/dashboard");
+}
+
 export type FormState = { error: string | null };
 
 export async function creerEdition(_prevState: FormState, formData: FormData): Promise<FormState> {

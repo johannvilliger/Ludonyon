@@ -21,6 +21,7 @@ import { PhaseButton } from "./phase-button";
 import { ReouvrirCaisseButton } from "./reouvrir-caisse-button";
 import { ResetTestDataButton } from "./reset-test-data-button";
 import { SauvegardeButton } from "./sauvegarde-button";
+import { SupprimerEditionButton } from "./supprimer-edition-button";
 import { TerminerEditionButton } from "./terminer-edition-button";
 import { VidageForm } from "./vidage-form";
 
@@ -58,6 +59,11 @@ export default async function DashboardGestionPage() {
   if (!(await dashboardEstConnecte())) redirect("/gestion");
 
   const edition = await queryOne<Edition>("SELECT id, annee, phase FROM editions WHERE active_flag = 1");
+  const editionsTerminees = edition
+    ? []
+    : await query<{ id: string; annee: number }>(
+        "SELECT id, annee FROM editions WHERE active_flag IS NULL ORDER BY annee DESC",
+      );
   const parametres = await queryOne<Parametres>("SELECT code_dashboard FROM parametres_gestion WHERE id = 1");
 
   const postes = await query<PosteLigne>(
@@ -149,6 +155,21 @@ export default async function DashboardGestionPage() {
             <div className="mt-3">
               <EditionForm />
             </div>
+            {editionsTerminees.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-medium text-zinc-500">
+                  Éditions terminées (bloquent la réutilisation de leur année)
+                </h3>
+                <ul className="mt-2 divide-y divide-zinc-200 rounded-md border border-zinc-200">
+                  {editionsTerminees.map((e) => (
+                    <li key={e.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                      <span>{e.annee}</span>
+                      <SupprimerEditionButton editionId={e.id} annee={e.annee} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
         {edition && (
