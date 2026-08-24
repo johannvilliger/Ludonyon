@@ -19,16 +19,20 @@ export function BenevoleForm() {
       className="flex flex-wrap items-end gap-2"
     >
       <label className="block">
+        <span className="text-sm font-medium text-zinc-700">Numéro</span>
+        <input
+          name="numero"
+          type="number"
+          min={903}
+          step={1}
+          required
+          placeholder="903+"
+          className="mt-1 w-24 rounded-md border border-zinc-300 px-3 py-2"
+        />
+      </label>
+      <label className="block">
         <span className="text-sm font-medium text-zinc-700">Nom</span>
-        <input name="nom" required className="mt-1 w-48 rounded-md border border-zinc-300 px-3 py-2" />
-      </label>
-      <label className="block">
-        <span className="text-sm font-medium text-zinc-700">Téléphone</span>
-        <input name="telephone" className="mt-1 w-40 rounded-md border border-zinc-300 px-3 py-2" />
-      </label>
-      <label className="block">
-        <span className="text-sm font-medium text-zinc-700">Email</span>
-        <input name="email" type="email" className="mt-1 w-48 rounded-md border border-zinc-300 px-3 py-2" />
+        <input name="nom" required className="mt-1 w-56 rounded-md border border-zinc-300 px-3 py-2" />
       </label>
       <button
         type="submit"

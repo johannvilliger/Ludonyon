@@ -10,8 +10,6 @@ export const dynamic = "force-dynamic";
 type BenevoleLigne = {
   numero_fixe: number;
   nom: string;
-  telephone: string | null;
-  email: string | null;
   code_confirmation: string | null;
 };
 
@@ -21,7 +19,7 @@ export default async function BenevolesPage() {
   const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1");
 
   const benevoles = await query<BenevoleLigne>(
-    `SELECT b.numero_fixe, v.nom, v.telephone, v.email, p.code_confirmation
+    `SELECT b.numero_fixe, v.nom, p.code_confirmation
      FROM benevoles b
      JOIN vendeurs v ON v.id = b.vendeur_id
      LEFT JOIN participations p ON p.vendeur_id = b.vendeur_id AND p.edition_id = ?
@@ -63,11 +61,6 @@ export default async function BenevolesPage() {
                 )}
               </span>
               <span className="flex items-center gap-3">
-                {!special && (
-                  <span className="text-zinc-500">
-                    {b.telephone || "—"} · {b.email || "—"}
-                  </span>
-                )}
                 {b.code_confirmation && (
                   <Link
                     href={`/accueil/vendeur/${b.code_confirmation}`}

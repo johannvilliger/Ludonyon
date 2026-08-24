@@ -7,31 +7,26 @@ export type FormState = { error: string | null };
 
 export async function creerBenevole(_prevState: FormState, formData: FormData): Promise<FormState> {
   const nom = String(formData.get("nom") ?? "").trim();
-  const telephone = String(formData.get("telephone") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
+  const numero = Math.round(Number(formData.get("numero")));
   if (!nom) return { error: "Le nom est obligatoire." };
+  if (!Number.isFinite(numero) || numero < 903) {
+    return { error: "Le numéro doit être un entier à partir de 903 (901 et 902 sont réservés)." };
+  }
+
+  const dejaPris = await queryOne<{ id: string }>("SELECT id FROM benevoles WHERE numero_fixe = ?", [numero]);
+  if (dejaPris) return { error: `Le numéro ${numero} est déjà attribué à un autre bénévole.` };
 
   const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1");
 
   try {
     await withTransaction(async (conn) => {
       const vendeurId = nouvelId();
-      await conn.query("INSERT INTO vendeurs (id, nom, telephone, email) VALUES (?, ?, ?, ?)", [
-        vendeurId,
-        nom,
-        telephone || null,
-        email || null,
-      ]);
-
-      const [rows] = await conn.query<import("mysql2").RowDataPacket[]>(
-        "SELECT COALESCE(MAX(numero_fixe), 902) + 1 AS suivant FROM benevoles",
-      );
-      const numeroFixe = rows[0].suivant as number;
+      await conn.query("INSERT INTO vendeurs (id, nom) VALUES (?, ?)", [vendeurId, nom]);
 
       await conn.query("INSERT INTO benevoles (id, vendeur_id, numero_fixe) VALUES (?, ?, ?)", [
         nouvelId(),
         vendeurId,
-        numeroFixe,
+        numero,
       ]);
 
       // S'il y a une édition active, le bénévole peut déposer tout de suite
@@ -39,7 +34,7 @@ export async function creerBenevole(_prevState: FormState, formData: FormData): 
       if (edition) {
         await conn.query(
           "INSERT INTO participations (id, edition_id, vendeur_id, numero_vendeur, code_confirmation, est_benevole) VALUES (?, ?, ?, ?, ?, 1)",
-          [nouvelId(), edition.id, vendeurId, numeroFixe, nouveauCode()],
+          [nouvelId(), edition.id, vendeurId, numero, nouveauCode()],
         );
       }
     });
