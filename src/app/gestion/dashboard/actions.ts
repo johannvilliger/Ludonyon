@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nouveauCode as genererCode, nouvelId, query, queryOne, withTransaction } from "@/lib/db";
+import { CATEGORIES_ARTICLES } from "@/lib/categories";
 import { dashboardEstConnecte } from "@/lib/gestion";
 import { genererSauvegardeSql } from "@/lib/sauvegarde";
 import { NB_VENDEURS_TEST, PRIX_ARTICLES_TEST } from "@/lib/test-data";
@@ -78,6 +79,17 @@ export async function creerEdition(_prevState: FormState, formData: FormData): P
           editionId,
           `Caisse ${poste.numero}`,
           poste.id,
+        ]);
+      }
+
+      // Catégories fixes pour le classement automatique des articles
+      // (voir /gestion/dashboard/vendeurs, bouton "Classer les articles").
+      for (let i = 0; i < CATEGORIES_ARTICLES.length; i++) {
+        await conn.query("INSERT INTO categories (id, edition_id, nom, ordre) VALUES (?, ?, ?, ?)", [
+          nouvelId(),
+          editionId,
+          CATEGORIES_ARTICLES[i],
+          i,
         ]);
       }
 

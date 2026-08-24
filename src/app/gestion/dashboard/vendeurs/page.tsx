@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
+import { ClasserButton } from "./classer-button";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ type ArticleLigne = {
   nom: string;
   prix: number;
   statut: string;
+  categorie: string | null;
 };
 
 const STATUT_LABELS: Record<string, string> = {
@@ -54,9 +56,10 @@ export default async function VendeursDashboardPage() {
 
   const articles = edition
     ? await query<ArticleLigne>(
-        `SELECT a.participation_id, a.numero_article, a.nom, a.prix, a.statut
+        `SELECT a.participation_id, a.numero_article, a.nom, a.prix, a.statut, c.nom AS categorie
          FROM articles a
          JOIN participations p ON p.id = a.participation_id
+         LEFT JOIN categories c ON c.id = a.categorie_id
          WHERE p.edition_id = ?
          ORDER BY a.numero_article`,
         [edition.id],
@@ -79,6 +82,12 @@ export default async function VendeursDashboardPage() {
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">Vendeurs</h1>
 
       {!edition && <p className="mt-6 text-sm text-zinc-500">Aucune édition active.</p>}
+
+      {edition && (
+        <div className="mt-4">
+          <ClasserButton />
+        </div>
+      )}
 
       {edition && vendeurs.length === 0 && (
         <p className="mt-6 text-sm text-zinc-500">Aucun vendeur pour cette édition.</p>
@@ -112,6 +121,11 @@ export default async function VendeursDashboardPage() {
                   <li key={a.numero_article} className="flex items-center justify-between py-2 text-sm">
                     <span>
                       {String(a.numero_article).padStart(2, "0")} — {a.nom}
+                      {a.categorie && (
+                        <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-500">
+                          {a.categorie}
+                        </span>
+                      )}
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="font-mono">{a.prix}.–</span>

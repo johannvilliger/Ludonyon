@@ -28,8 +28,13 @@ MariaDB (hébergée chez Infomaniak, accès direct via `mysql2`).
       direct (ventes/cash, alerte clignotante au-delà de 2000.–, caisses
       clôturées mises à l'écart), bénéfice cumulé, vidage de caisse tracé,
       historique par caisse, codes d'accès masqués par défaut, liste des
-      vendeurs avec statut de chaque article (`/gestion/dashboard/vendeurs`).
-      Rafraîchissement automatique (toutes les 3s), pas besoin de recharger.
+      vendeurs avec statut de chaque article (`/gestion/dashboard/vendeurs`),
+      classement automatique des articles par catégorie (Jeux/Jouets/
+      Puériculture/Puzzle/Livres/Sport/Autre) via l'API Claude à partir du
+      nom saisi par le vendeur — nécessite `ANTHROPIC_API_KEY` (optionnel,
+      voir `.env.local.example`), sauvegarde manuelle de toute la base en
+      un clic (fichier `.sql` téléchargeable). Rafraîchissement automatique
+      (toutes les 3s), pas besoin de recharger.
 - [x] Connexion caisse bloquée tant que l'édition n'est pas en phase
       "Caisse" ; chaque caisse peut se clôturer elle-même
       (`/caisse/[numero]`), ce qui l'empêche de se reconnecter ensuite pour
@@ -83,7 +88,9 @@ Générés par la migration, à changer avant toute utilisation réelle (section
 - Commande d'exécution : `npm start`
 - Renseigne les variables d'environnement `DB_HOST`, `DB_PORT`, `DB_USER`,
   `DB_PASSWORD`, `DB_NAME` dans les réglages de l'application Node.js
-  (jamais dans un fichier commité au dépôt).
+  (jamais dans un fichier commité au dépôt). Ajoute aussi
+  `ANTHROPIC_API_KEY` si tu veux utiliser le classement automatique des
+  articles — sinon le reste de l'appli fonctionne sans.
 - Une fois l'app importée et les variables d'environnement en place, lance
   `npm run db:migrate` une fois depuis la console SSH pour créer les tables.
 
