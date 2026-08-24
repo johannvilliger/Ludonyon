@@ -29,6 +29,18 @@ export default function NouvelleListePage() {
       </p>
 
       <form action={formAction} className="mt-8 space-y-8">
+        {/* Honeypot anti-spam : invisible et inatteignable au clavier pour un
+            vrai visiteur, mais que la plupart des bots remplissent quand même
+            (voir la vérification côté serveur dans actions.ts). */}
+        <input
+          type="text"
+          name="site_web"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
+        />
+
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <div className="grid flex-1 gap-4 sm:grid-cols-2">
             <label className="block">

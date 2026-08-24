@@ -9,6 +9,14 @@ export type FormState = { error: string | null };
 type ArticleInput = { nom: string; prix: number };
 
 export async function soumettreListe(_prevState: FormState, formData: FormData): Promise<FormState> {
+  // Honeypot anti-spam : champ masqué visuellement (voir page.tsx) qu'un
+  // vrai visiteur ne peut pas remplir, mais que la plupart des bots
+  // remplissent automatiquement. On rejette silencieusement, sans indice
+  // sur la vraie cause, pour ne pas aider un bot à s'adapter.
+  if (String(formData.get("site_web") ?? "").trim() !== "") {
+    return { error: "Impossible d'enregistrer votre liste, réessayez." };
+  }
+
   const nom = String(formData.get("nom") ?? "").trim();
   const telephone = String(formData.get("telephone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
