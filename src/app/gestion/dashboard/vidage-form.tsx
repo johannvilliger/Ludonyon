@@ -5,7 +5,7 @@ import { enregistrerVidage, type VidageState } from "./actions";
 
 const initialState: VidageState = { error: null };
 
-export function VidageForm({ caisseId }: { caisseId: string }) {
+export function VidageForm({ caisseId, nbArticlesVendus }: { caisseId: string; nbArticlesVendus: number }) {
   const [state, formAction, pending] = useActionState(enregistrerVidage, initialState);
 
   return (
@@ -33,6 +33,9 @@ export function VidageForm({ caisseId }: { caisseId: string }) {
       >
         {pending ? "…" : "Vider"}
       </button>
+      <span className="text-xs text-zinc-400">
+        {nbArticlesVendus} art. vendu{nbArticlesVendus > 1 ? "s" : ""}
+      </span>
       {state.error && <p className="w-full text-xs text-red-600">{state.error}</p>}
     </form>
   );

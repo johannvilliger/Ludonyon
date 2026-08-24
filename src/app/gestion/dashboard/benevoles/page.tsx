@@ -3,11 +3,13 @@ import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
+import { BenevoleEditRow } from "./benevole-edit-row";
 import { BenevoleForm } from "./benevole-form";
 
 export const dynamic = "force-dynamic";
 
 type BenevoleLigne = {
+  id: string;
   numero_fixe: number;
   nom: string;
   code_confirmation: string | null;
@@ -19,7 +21,7 @@ export default async function BenevolesPage() {
   const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1");
 
   const benevoles = await query<BenevoleLigne>(
-    `SELECT b.numero_fixe, v.nom, p.code_confirmation
+    `SELECT b.id, b.numero_fixe, v.nom, p.code_confirmation
      FROM benevoles b
      JOIN vendeurs v ON v.id = b.vendeur_id
      LEFT JOIN participations p ON p.vendeur_id = b.vendeur_id AND p.edition_id = ?
@@ -52,7 +54,7 @@ export default async function BenevolesPage() {
         {benevoles.map((b) => {
           const special = estVendeurSpecial(b.numero_fixe);
           return (
-            <li key={b.numero_fixe} className="flex items-center justify-between px-4 py-3 text-sm">
+            <li key={b.numero_fixe} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
               <span>
                 <span className="font-mono text-zinc-500">#{b.numero_fixe}</span>{" "}
                 <span className="font-medium">{b.nom}</span>
@@ -61,6 +63,7 @@ export default async function BenevolesPage() {
                 )}
               </span>
               <span className="flex items-center gap-3">
+                {!special && <BenevoleEditRow benevoleId={b.id} numeroFixe={b.numero_fixe} nom={b.nom} />}
                 {b.code_confirmation && (
                   <Link
                     href={`/accueil/vendeur/${b.code_confirmation}`}

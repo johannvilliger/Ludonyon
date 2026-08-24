@@ -24,8 +24,10 @@ export default async function EtiquettesPage({
 
   if (!participation) notFound();
 
+  // Un article refusé (mauvais état / sale / cassé) est repris par le
+  // vendeur et jamais mis en vente : pas la peine de gâcher une étiquette.
   const articles = await query<Article>(
-    "SELECT numero_article, nom, prix FROM articles WHERE participation_id = ? ORDER BY numero_article",
+    "SELECT numero_article, nom, prix FROM articles WHERE participation_id = ? AND statut != 'refuse' ORDER BY numero_article",
     [participation.id],
   );
 

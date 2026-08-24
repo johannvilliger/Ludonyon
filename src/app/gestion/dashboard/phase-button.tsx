@@ -8,11 +8,13 @@ export function PhaseButton({
   label,
   active,
   onChange,
+  avertissement,
 }: {
   phase: Phase;
   label: string;
   active: boolean;
   onChange: (phase: Phase) => Promise<void>;
+  avertissement?: string;
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -21,7 +23,10 @@ export function PhaseButton({
       type="button"
       disabled={active || pending}
       onClick={() => {
-        if (!window.confirm(`Passer l'édition en phase « ${label} » ?`)) return;
+        const message = avertissement
+          ? `Passer l'édition en phase « ${label} » ?\n\n⚠️ ${avertissement}`
+          : `Passer l'édition en phase « ${label} » ?`;
+        if (!window.confirm(message)) return;
         startTransition(() => onChange(phase));
       }}
       className={

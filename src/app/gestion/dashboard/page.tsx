@@ -40,6 +40,7 @@ type PosteLigne = {
   montant_cloture: number | null;
   total_ventes: number;
   total_vidages: number;
+  nb_articles_vendus: number;
 };
 type Totaux = { total_encaisse: number; total_du_vendeurs: number };
 
@@ -69,7 +70,8 @@ export default async function DashboardGestionPage() {
        c.fond_initial,
        c.montant_cloture,
        COALESCE(SUM(va.prix_encaisse), 0) AS total_ventes,
-       COALESCE((SELECT SUM(mc.montant) FROM mouvements_caisse mc WHERE mc.caisse_id = c.id), 0) AS total_vidages
+       COALESCE((SELECT SUM(mc.montant) FROM mouvements_caisse mc WHERE mc.caisse_id = c.id), 0) AS total_vidages,
+       COUNT(va.id) AS nb_articles_vendus
      FROM postes_caisse pc
      LEFT JOIN caisses c ON c.poste_caisse_id = pc.id AND c.edition_id = ?
      LEFT JOIN ventes v ON v.caisse_id = c.id
@@ -78,6 +80,14 @@ export default async function DashboardGestionPage() {
      ORDER BY pc.numero`,
     [edition?.id ?? null],
   );
+
+  const controlesManquants = edition
+    ? await queryOne<{ nb: number }>(
+        "SELECT COUNT(*) AS nb FROM participations WHERE edition_id = ? AND statut = 'liste_soumise'",
+        [edition.id],
+      )
+    : null;
+  const nbControlesManquants = Number(controlesManquants?.nb ?? 0);
 
   const totaux = edition
     ? await queryOne<Totaux>(
@@ -150,6 +160,11 @@ export default async function DashboardGestionPage() {
                     label={LABELS_PHASE[phase]}
                     active={phase === edition.phase}
                     onChange={changerPhase}
+                    avertissement={
+                      phase === "caisse" && edition.phase === "reception" && nbControlesManquants > 0
+                        ? `${nbControlesManquants} vendeur${nbControlesManquants > 1 ? "s" : ""} sans contrôle. Vous pourrez faire les contrôles manquants plus tard depuis la liste des vendeurs.`
+                        : undefined
+                    }
                   />
                 ))}
               </div>
@@ -227,7 +242,7 @@ export default async function DashboardGestionPage() {
                         (fonds {p.fond_initial}.– − vidages {vidages}.–)
                       </p>
                       <div className="mt-2">
-                        <VidageForm caisseId={p.caisse_id} />
+                        <VidageForm caisseId={p.caisse_id} nbArticlesVendus={Number(p.nb_articles_vendus)} />
                       </div>
                     </>
                   ) : (

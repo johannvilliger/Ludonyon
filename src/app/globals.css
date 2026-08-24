@@ -151,3 +151,16 @@ body {
 .caisse-alerte {
   animation: clignote-rouge 1s step-end infinite;
 }
+
+/* Pas de flèches +/- sur les champs numériques (prix, montants...) : sur cet
+   outil de saisie rapide elles ne servent à rien et gênent plus qu'autre
+   chose. */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

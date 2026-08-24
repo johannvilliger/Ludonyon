@@ -3,7 +3,7 @@ import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
 import { AjouterArticleForm } from "./ajouter-article-form";
 import { ArticleEditableRow } from "./article-editable-row";
-import { basculerRecu, definirBenevole, marquerControlee, terminerReception } from "./actions";
+import { accepterArticle, definirBenevole, marquerControlee, refuserArticle, terminerReception } from "./actions";
 
 type Article = { id: string; numero_article: number; nom: string; prix: number; statut: string };
 type Participation = {
@@ -28,6 +28,7 @@ const STATUT_ARTICLE_LABELS: Record<string, string> = {
   recu: "Reçu",
   vendu: "Vendu",
   invendu: "Invendu",
+  refuse: "Refusé",
 };
 
 const STATUT_ARTICLE_STYLES: Record<string, string> = {
@@ -35,6 +36,7 @@ const STATUT_ARTICLE_STYLES: Record<string, string> = {
   recu: "bg-emerald-100 text-emerald-800",
   vendu: "bg-blue-100 text-blue-800",
   invendu: "bg-amber-100 text-amber-800",
+  refuse: "bg-red-100 text-red-800",
 };
 
 export default async function VendeurAccueilPage({
@@ -88,18 +90,20 @@ export default async function VendeurAccueilPage({
       </div>
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <form action={definirBenevole.bind(null, code, !participation.est_benevole)}>
-          <button
-            type="submit"
-            className={
-              participation.est_benevole
-                ? "rounded-md bg-amber-100 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-200"
-                : "rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:border-zinc-400"
-            }
-          >
-            {participation.est_benevole ? "✓ Vendeur bénévole" : "Marquer comme bénévole"}
-          </button>
-        </form>
+        {participation.numero_vendeur >= 900 && (
+          <form action={definirBenevole.bind(null, code, !participation.est_benevole)}>
+            <button
+              type="submit"
+              className={
+                participation.est_benevole
+                  ? "rounded-md bg-amber-100 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-200"
+                  : "rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:border-zinc-400"
+              }
+            >
+              {participation.est_benevole ? "✓ Vendeur bénévole" : "Marquer comme bénévole"}
+            </button>
+          </form>
+        )}
 
         <Link
           href={`/accueil/vendeur/${code}/etiquettes`}
@@ -136,32 +140,54 @@ export default async function VendeurAccueilPage({
       </h2>
       <ul className="mt-3 divide-y divide-zinc-200">
         {articles.map((a) => {
-          const modifiable = a.statut === "non_recu" || a.statut === "recu";
+          const modifiable = a.statut === "non_recu" || a.statut === "recu" || a.statut === "refuse";
           return (
-            <li key={a.id} className="flex items-center gap-3 py-2 text-sm">
-              <span className="w-6 shrink-0 text-zinc-400">{String(a.numero_article).padStart(2, "0")}</span>
+            <li key={a.id} className="flex items-stretch gap-3 py-2 text-sm">
+              <span className="w-6 shrink-0 self-center text-zinc-400">
+                {String(a.numero_article).padStart(2, "0")}
+              </span>
               {modifiable ? (
-                <ArticleEditableRow articleId={a.id} code={code} nomInitial={a.nom} prixInitial={a.prix} />
+                <>
+                  <ArticleEditableRow articleId={a.id} code={code} nomInitial={a.nom} prixInitial={a.prix} />
+                  <div className="w-px shrink-0 self-stretch bg-zinc-200" />
+                  <div className="flex shrink-0 items-center gap-2">
+                    <form action={accepterArticle.bind(null, a.id, code)}>
+                      <button
+                        type="submit"
+                        className={
+                          a.statut === "recu"
+                            ? "rounded-md bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800"
+                            : "rounded-md border border-zinc-300 px-3 py-1 text-xs font-medium hover:border-emerald-400 hover:text-emerald-700"
+                        }
+                      >
+                        {a.statut === "recu" ? "✓ Accepté" : "Accepter"}
+                      </button>
+                    </form>
+                    <form action={refuserArticle.bind(null, a.id, code)}>
+                      <button
+                        type="submit"
+                        className={
+                          a.statut === "refuse"
+                            ? "rounded-md bg-red-100 px-3 py-1 text-xs font-medium text-red-800"
+                            : "rounded-md border border-zinc-300 px-3 py-1 text-xs font-medium hover:border-red-400 hover:text-red-700"
+                        }
+                      >
+                        {a.statut === "refuse" ? "✓ Refusé" : "Refuser"}
+                      </button>
+                    </form>
+                  </div>
+                </>
               ) : (
-                <span className="flex-1">
-                  {a.nom} <span className="font-mono text-zinc-500">{a.prix}.–</span>
-                </span>
-              )}
-              {modifiable ? (
-                <form action={basculerRecu.bind(null, a.id, code)}>
-                  <button
-                    type="submit"
-                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_ARTICLE_STYLES[a.statut]}`}
+                <>
+                  <span className="flex-1 self-center">
+                    {a.nom} <span className="font-mono text-zinc-500">{a.prix}.–</span>
+                  </span>
+                  <span
+                    className={`shrink-0 self-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_ARTICLE_STYLES[a.statut] ?? "bg-zinc-100 text-zinc-600"}`}
                   >
                     {STATUT_ARTICLE_LABELS[a.statut] ?? a.statut}
-                  </button>
-                </form>
-              ) : (
-                <span
-                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_ARTICLE_STYLES[a.statut] ?? "bg-zinc-100 text-zinc-600"}`}
-                >
-                  {STATUT_ARTICLE_LABELS[a.statut] ?? a.statut}
-                </span>
+                  </span>
+                </>
               )}
             </li>
           );

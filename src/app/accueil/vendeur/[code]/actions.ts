@@ -17,11 +17,22 @@ export async function marquerControlee(code: string) {
   revalidatePath(`/accueil/vendeur/${code}`);
 }
 
-export async function basculerRecu(articleId: string, code: string) {
-  // On ne touche jamais un article déjà vendu ou invendu — seul le
-  // va-et-vient non_recu <-> recu est piloté depuis l'accueil.
+export async function accepterArticle(articleId: string, code: string) {
+  // On ne touche jamais un article déjà vendu ou invendu — accepter/refuser
+  // ne concerne que la réception, avant la mise en vente.
   await query(
-    "UPDATE articles SET statut = IF(statut = 'non_recu', 'recu', 'non_recu') WHERE id = ? AND statut IN ('non_recu', 'recu')",
+    "UPDATE articles SET statut = 'recu' WHERE id = ? AND statut IN ('non_recu', 'recu', 'refuse')",
+    [articleId],
+  );
+
+  revalidatePath(`/accueil/vendeur/${code}`);
+}
+
+export async function refuserArticle(articleId: string, code: string) {
+  // Article repris par le vendeur (mauvais état / sale / cassé) : jamais
+  // mis en vente. Statut terminal distinct de « invendu ».
+  await query(
+    "UPDATE articles SET statut = 'refuse' WHERE id = ? AND statut IN ('non_recu', 'recu', 'refuse')",
     [articleId],
   );
 
@@ -42,7 +53,7 @@ export async function modifierArticle(articleId: string, code: string, nom: stri
 
   // Un article déjà vendu ou invendu est verrouillé — on ne corrige jamais
   // une vente déjà encaissée depuis l'accueil.
-  await query("UPDATE articles SET nom = ?, prix = ? WHERE id = ? AND statut IN ('non_recu', 'recu')", [
+  await query("UPDATE articles SET nom = ?, prix = ? WHERE id = ? AND statut IN ('non_recu', 'recu', 'refuse')", [
     nomTrim,
     prixArrondi,
     articleId,

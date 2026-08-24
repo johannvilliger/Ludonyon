@@ -19,6 +19,7 @@ const STATUT_LABELS: Record<string, string> = {
   recu: "Reçu",
   vendu: "Vendu",
   invendu: "Invendu",
+  refuse: "Refusé",
 };
 
 export default async function ImprimerListeVendeurPage({

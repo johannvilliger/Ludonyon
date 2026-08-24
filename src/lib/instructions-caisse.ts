@@ -6,8 +6,8 @@ export const INSTRUCTIONS_CAISSE = {
     "Scanner le QR Code sur l'article",
     "Si l'acheteur est bénévole, cocher la case « Acheteur bénévole » pour ne pas ajouter les 10%",
     "Contrôler que le panier contienne bien le bon nombre d'articles et les bons",
+    "Indiquer le montant payé, rendre le montant indiqué",
     "Encaisser",
-    "Indiquer le montant reçu, la caisse vous donnera le rendu à faire",
   ],
 };
 

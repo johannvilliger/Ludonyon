@@ -25,6 +25,7 @@ const STATUT_LABELS: Record<string, string> = {
   recu: "Reçu",
   vendu: "Vendu",
   invendu: "Invendu",
+  refuse: "Refusé",
 };
 
 const STATUT_STYLES: Record<string, string> = {
@@ -32,6 +33,7 @@ const STATUT_STYLES: Record<string, string> = {
   recu: "bg-emerald-100 text-emerald-800",
   vendu: "bg-blue-100 text-blue-800",
   invendu: "bg-amber-100 text-amber-800",
+  refuse: "bg-red-100 text-red-800",
 };
 
 export default async function VendeursDashboardPage() {

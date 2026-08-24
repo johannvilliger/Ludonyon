@@ -5,6 +5,54 @@ import { nouveauCode, nouvelId, queryOne, withTransaction } from "@/lib/db";
 
 export type FormState = { error: string | null };
 
+export async function modifierBenevole(
+  benevoleId: string,
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const nom = String(formData.get("nom") ?? "").trim();
+  const numero = Math.round(Number(formData.get("numero")));
+  if (!nom) return { error: "Le nom est obligatoire." };
+  if (!Number.isFinite(numero) || numero < 903) {
+    return { error: "Le numéro doit être un entier à partir de 903 (901 et 902 sont réservés)." };
+  }
+
+  const benevole = await queryOne<{ vendeur_id: string; numero_fixe: number }>(
+    "SELECT vendeur_id, numero_fixe FROM benevoles WHERE id = ?",
+    [benevoleId],
+  );
+  if (!benevole) return { error: "Bénévole introuvable." };
+
+  if (numero !== benevole.numero_fixe) {
+    const dejaPris = await queryOne<{ id: string }>(
+      "SELECT id FROM benevoles WHERE numero_fixe = ? AND id != ?",
+      [numero, benevoleId],
+    );
+    if (dejaPris) return { error: `Le numéro ${numero} est déjà attribué à un autre bénévole.` };
+  }
+
+  try {
+    await withTransaction(async (conn) => {
+      await conn.query("UPDATE vendeurs SET nom = ? WHERE id = ?", [nom, benevole.vendeur_id]);
+      await conn.query("UPDATE benevoles SET numero_fixe = ? WHERE id = ?", [numero, benevoleId]);
+      // Garde participations.numero_vendeur (copie figée par édition) en
+      // phase avec le numéro fixe du bénévole, sur toutes les éditions —
+      // pas de raison qu'ils divergent.
+      if (numero !== benevole.numero_fixe) {
+        await conn.query(
+          "UPDATE participations SET numero_vendeur = ? WHERE vendeur_id = ? AND numero_vendeur = ?",
+          [numero, benevole.vendeur_id, benevole.numero_fixe],
+        );
+      }
+    });
+  } catch {
+    return { error: "Impossible de modifier le bénévole, réessayez." };
+  }
+
+  revalidatePath("/gestion/dashboard/benevoles");
+  return { error: null };
+}
+
 export async function creerBenevole(_prevState: FormState, formData: FormData): Promise<FormState> {
   const nom = String(formData.get("nom") ?? "").trim();
   const numero = Math.round(Number(formData.get("numero")));
