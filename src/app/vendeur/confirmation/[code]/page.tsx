@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { query, queryOne } from "@/lib/db";
+import { PrintButton } from "./print-button";
 
 type Participation = { id: string; numero_vendeur: number; code_confirmation: string };
 type Article = { numero_article: number; nom: string; prix: number };
@@ -44,6 +45,7 @@ export default async function ConfirmationPage({ params }: { params: Promise<{ c
           height={180}
         />
         <p className="font-mono text-sm text-zinc-500">{participation.code_confirmation}</p>
+        <PrintButton />
       </div>
 
       <h2 className="mt-8 text-lg font-medium">
