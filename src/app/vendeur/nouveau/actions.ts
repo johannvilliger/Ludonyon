@@ -36,6 +36,7 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
     .filter((a) => a.nom.length > 0 && Number.isFinite(a.prix));
 
   if (!nom) return { error: "Le nom est obligatoire." };
+  if (!telephone) return { error: "Le téléphone est obligatoire." };
   if (articles.length === 0) return { error: "Ajoutez au moins un article." };
   if (articles.length > 30) return { error: "30 articles maximum par liste." };
 

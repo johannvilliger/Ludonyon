@@ -5,6 +5,7 @@ import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 import { CameraScanner } from "./camera-scanner";
 import {
   encaisserPanier,
+  libererArticle,
   rechercherArticle,
   type ArticleTrouve,
 } from "./actions";
@@ -52,7 +53,7 @@ export function CaisseScanner({
   // et par le scan caméra — un seul chemin pour chercher l'article et
   // l'ajouter au panier.
   async function traiterCode(valeur: string): Promise<{ ok: true; nom: string } | { ok: false; erreur: string }> {
-    const resultat = await rechercherArticle(editionId, valeur);
+    const resultat = await rechercherArticle(editionId, valeur, caisseId);
     if (!resultat.ok) return { ok: false, erreur: resultat.error };
 
     if (panier.some((a) => a.articleId === resultat.article.articleId)) {
@@ -84,6 +85,7 @@ export function CaisseScanner({
 
   function retirer(articleId: string) {
     setPanier((prev) => prev.filter((a) => a.articleId !== articleId));
+    void libererArticle(articleId, caisseId);
   }
 
   async function handleEncaisser() {

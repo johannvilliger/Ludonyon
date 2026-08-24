@@ -18,7 +18,15 @@ export type ArticleTrouve = {
 
 export type RechercheResult = { ok: true; article: ArticleTrouve } | { ok: false; error: string };
 
-export async function rechercherArticle(editionId: string, codeBrut: string): Promise<RechercheResult> {
+async function nomCaisse(caisseId: string): Promise<string> {
+  const caisse = await queryOne<{ numero: number }>(
+    `SELECT pc.numero FROM caisses c JOIN postes_caisse pc ON pc.id = c.poste_caisse_id WHERE c.id = ?`,
+    [caisseId],
+  );
+  return caisse ? `n° ${caisse.numero}` : "inconnue";
+}
+
+export async function rechercherArticle(editionId: string, codeBrut: string, caisseId: string): Promise<RechercheResult> {
   const match = codeBrut.trim().match(/^(\d+)-(\d+)-(\d+)$/);
   if (!match) return { ok: false, error: `Code illisible : « ${codeBrut} »` };
 
@@ -58,6 +66,36 @@ export async function rechercherArticle(editionId: string, codeBrut: string): Pr
     return { ok: false, error: `« ${article.nom} » (vendeur n° ${numeroVendeur}) a déjà été vendu.` };
   }
 
+  // Réservation exclusive de l'article pour cette caisse : purge d'abord les
+  // réservations trop anciennes (caissier qui a scanné puis rechargé sans
+  // vider son panier), puis tente la réservation elle-même. La clé primaire
+  // sur article_id fait respecter l'exclusivité au niveau de la base, pas
+  // par une simple vérification applicative sujette aux courses.
+  await query("DELETE FROM articles_reserves WHERE article_id = ? AND reserve_le < (NOW() - INTERVAL 10 MINUTE)", [
+    article.id,
+  ]);
+
+  try {
+    await query("INSERT INTO articles_reserves (article_id, caisse_id) VALUES (?, ?)", [article.id, caisseId]);
+  } catch (err) {
+    const mysqlErr = err as { code?: string };
+    if (mysqlErr.code !== "ER_DUP_ENTRY") throw err;
+
+    const reservation = await queryOne<{ caisse_id: string }>(
+      "SELECT caisse_id FROM articles_reserves WHERE article_id = ?",
+      [article.id],
+    );
+
+    if (reservation && reservation.caisse_id !== caisseId) {
+      const autreCaisse = await nomCaisse(reservation.caisse_id);
+      return {
+        ok: false,
+        error: `« ${article.nom} » (vendeur n° ${numeroVendeur}) est déjà dans le panier de la caisse ${autreCaisse} — un seul panier à la fois.`,
+      };
+    }
+    // Sinon : déjà réservé par cette caisse elle-même (rescan), rien à faire.
+  }
+
   return {
     ok: true,
     article: {
@@ -70,6 +108,29 @@ export async function rechercherArticle(editionId: string, codeBrut: string): Pr
       estBenevole: Boolean(participation.est_benevole),
     },
   };
+}
+
+async function articlesDejaVendus(
+  articleIds: string[],
+): Promise<{ id: string; nom: string; numero_vendeur: number }[]> {
+  if (articleIds.length === 0) return [];
+  const placeholders = articleIds.map(() => "?").join(", ");
+  return query<{ id: string; nom: string; numero_vendeur: number }>(
+    `SELECT a.id, a.nom, p.numero_vendeur
+     FROM articles a
+     JOIN participations p ON p.id = a.participation_id
+     JOIN vente_articles va ON va.article_id = a.id
+     WHERE a.id IN (${placeholders})`,
+    articleIds,
+  );
+}
+
+function messageArticlesDejaVendus(articles: { nom: string; numero_vendeur: number }[]): string {
+  const pluriel = articles.length > 1;
+  const noms = articles.map((a) => `« ${a.nom} » (vendeur n° ${a.numero_vendeur})`).join(", ");
+  return `${pluriel ? "Ces articles ont" : "Cet article a"} déjà été vendu : ${noms} — retirez-${
+    pluriel ? "les" : "le"
+  } du panier et réessayez.`;
 }
 
 export type EncaissementResult = { ok: true; total: number } | { ok: false; error: string };
@@ -95,6 +156,11 @@ export async function encaisserPanier(
 
   if (articles.length !== articleIds.length) {
     return { ok: false, error: "Un des articles du panier n'existe plus." };
+  }
+
+  const vendus = await articlesDejaVendus(articleIds);
+  if (vendus.length > 0) {
+    return { ok: false, error: messageArticlesDejaVendus(vendus) };
   }
 
   const venteId = nouvelId();
@@ -126,13 +192,18 @@ export async function encaisserPanier(
       }
 
       await conn.query(`UPDATE articles SET statut = 'vendu' WHERE id IN (${placeholders})`, articleIds);
+      await conn.query(`DELETE FROM articles_reserves WHERE article_id IN (${placeholders})`, articleIds);
     });
   } catch (err) {
     const mysqlErr = err as { code?: string };
     if (mysqlErr.code === "ER_DUP_ENTRY") {
+      const vendusEntreTemps = await articlesDejaVendus(articleIds);
       return {
         ok: false,
-        error: "Un des articles vient d'être vendu depuis une autre caisse entre-temps — retirez-le du panier et réessayez.",
+        error:
+          vendusEntreTemps.length > 0
+            ? messageArticlesDejaVendus(vendusEntreTemps)
+            : "Un des articles vient d'être vendu depuis une autre caisse entre-temps — retirez-le du panier et réessayez.",
       };
     }
     return { ok: false, error: "Impossible d'encaisser, réessayez." };
@@ -140,6 +211,10 @@ export async function encaisserPanier(
 
   const total = lignes.reduce((sum, l) => sum + l.prix_encaisse, 0);
   return { ok: true, total };
+}
+
+export async function libererArticle(articleId: string, caisseId: string) {
+  await query("DELETE FROM articles_reserves WHERE article_id = ? AND caisse_id = ?", [articleId, caisseId]);
 }
 
 export async function voirInstructions(posteId: string) {
@@ -159,6 +234,7 @@ export async function theoriqueCaisse(caisseId: string): Promise<number> {
 }
 
 export async function cloturerCaisse(caisseId: string, posteId: string, montantCompte: number) {
+  await query("DELETE FROM articles_reserves WHERE caisse_id = ?", [caisseId]);
   await query("UPDATE caisses SET cloturee = 1, montant_cloture = ? WHERE id = ?", [montantCompte, caisseId]);
   await query("UPDATE postes_caisse SET connecte = 0, session_token = NULL, demande_en_attente = 0 WHERE id = ?", [
     posteId,
