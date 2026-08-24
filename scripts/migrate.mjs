@@ -2,6 +2,9 @@
 // variables d'environnement (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME).
 // Usage : npm run db:migrate
 //
+// Garde la trace des fichiers déjà appliqués dans la table _migrations, donc
+// relancer la commande ne rejoue que les fichiers nouveaux.
+//
 // Lit .env.local ou .env s'il en existe un dans le dossier courant (un
 // simple `node` ne charge pas ces fichiers automatiquement, contrairement à
 // `next dev`/`next build`/`next start`).
@@ -44,11 +47,28 @@ const connection = await mysql.createConnection({
   multipleStatements: true,
 });
 
+await connection.query(
+  `CREATE TABLE IF NOT EXISTS _migrations (
+     fichier VARCHAR(255) NOT NULL PRIMARY KEY,
+     applique_le DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+   ) ENGINE = InnoDB`,
+);
+
+const [dejaAppliquees] = await connection.query("SELECT fichier FROM _migrations");
+const appliquees = new Set(dejaAppliquees.map((r) => r.fichier));
+
+let nbAppliques = 0;
 for (const fichier of fichiers) {
+  if (appliquees.has(fichier)) {
+    console.log(`= ${fichier} (déjà appliqué)`);
+    continue;
+  }
   console.log(`→ ${fichier}`);
   const sql = readFileSync(join(migrationsDir, fichier), "utf8");
   await connection.query(sql);
+  await connection.query("INSERT INTO _migrations (fichier) VALUES (?)", [fichier]);
+  nbAppliques += 1;
 }
 
-console.log(`${fichiers.length} fichier(s) de migration appliqué(s).`);
+console.log(nbAppliques > 0 ? `${nbAppliques} nouveau(x) fichier(s) appliqué(s).` : "Rien à appliquer, tout est à jour.");
 await connection.end();

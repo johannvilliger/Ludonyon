@@ -4,7 +4,7 @@
 
 SET NAMES utf8mb4;
 
-CREATE TABLE editions (
+CREATE TABLE IF NOT EXISTS editions (
   id CHAR(36) NOT NULL PRIMARY KEY,
   annee INT NOT NULL,
   date_depot DATE NULL,
@@ -23,7 +23,7 @@ CREATE TABLE editions (
   UNIQUE KEY editions_une_seule_ouverte (ouverte_flag)
 ) ENGINE = InnoDB;
 
-CREATE TABLE vendeurs (
+CREATE TABLE IF NOT EXISTS vendeurs (
   id CHAR(36) NOT NULL PRIMARY KEY,
   nom VARCHAR(255) NOT NULL,
   telephone VARCHAR(50) NULL,
@@ -31,7 +31,7 @@ CREATE TABLE vendeurs (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE = InnoDB;
 
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
   id CHAR(36) NOT NULL PRIMARY KEY,
   edition_id CHAR(36) NOT NULL,
   nom VARCHAR(255) NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE categories (
 -- Le numéro de vendeur est attribué par l'application (voir src/lib/db.ts,
 -- assignerNumeroVendeur) à l'aide d'un verrou nommé MariaDB (GET_LOCK),
 -- l'équivalent applicatif de pg_advisory_xact_lock côté Postgres.
-CREATE TABLE participations (
+CREATE TABLE IF NOT EXISTS participations (
   id CHAR(36) NOT NULL PRIMARY KEY,
   edition_id CHAR(36) NOT NULL,
   vendeur_id CHAR(36) NOT NULL,
@@ -58,7 +58,7 @@ CREATE TABLE participations (
   FOREIGN KEY (vendeur_id) REFERENCES vendeurs(id) ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
-CREATE TABLE articles (
+CREATE TABLE IF NOT EXISTS articles (
   id CHAR(36) NOT NULL PRIMARY KEY,
   participation_id CHAR(36) NOT NULL,
   numero_article INT NOT NULL,
@@ -73,7 +73,7 @@ CREATE TABLE articles (
   FOREIGN KEY (categorie_id) REFERENCES categories(id)
 ) ENGINE = InnoDB;
 
-CREATE TABLE caisses (
+CREATE TABLE IF NOT EXISTS caisses (
   id CHAR(36) NOT NULL PRIMARY KEY,
   edition_id CHAR(36) NOT NULL,
   nom VARCHAR(255) NOT NULL,
@@ -82,7 +82,7 @@ CREATE TABLE caisses (
   FOREIGN KEY (edition_id) REFERENCES editions(id) ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
-CREATE TABLE ventes (
+CREATE TABLE IF NOT EXISTS ventes (
   id CHAR(36) NOT NULL PRIMARY KEY,
   edition_id CHAR(36) NOT NULL,
   caisse_id CHAR(36) NOT NULL,
@@ -95,7 +95,7 @@ CREATE TABLE ventes (
 -- UNIQUE sur article_id : un même article ne peut pas être vendu deux fois,
 -- même depuis deux caisses différentes — blocage anti-double-scan au
 -- niveau de la base, pas seulement côté application.
-CREATE TABLE vente_articles (
+CREATE TABLE IF NOT EXISTS vente_articles (
   id CHAR(36) NOT NULL PRIMARY KEY,
   vente_id CHAR(36) NOT NULL,
   article_id CHAR(36) NOT NULL,
@@ -106,7 +106,7 @@ CREATE TABLE vente_articles (
   FOREIGN KEY (article_id) REFERENCES articles(id)
 ) ENGINE = InnoDB;
 
-CREATE TABLE mouvements_caisse (
+CREATE TABLE IF NOT EXISTS mouvements_caisse (
   id CHAR(36) NOT NULL PRIMARY KEY,
   caisse_id CHAR(36) NOT NULL,
   montant INT NOT NULL CHECK (montant > 0),
@@ -115,7 +115,7 @@ CREATE TABLE mouvements_caisse (
   FOREIGN KEY (caisse_id) REFERENCES caisses(id) ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
-CREATE TABLE clotures (
+CREATE TABLE IF NOT EXISTS clotures (
   id CHAR(36) NOT NULL PRIMARY KEY,
   participation_id CHAR(36) NOT NULL,
   montant_calcule INT NOT NULL,
