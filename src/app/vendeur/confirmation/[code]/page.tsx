@@ -28,7 +28,7 @@ export default async function ConfirmationPage({ params }: { params: Promise<{ c
   const total = articles.reduce((sum, a) => sum + a.prix, 0);
 
   return (
-    <main className="mx-auto max-w-xl px-6 py-12">
+    <main className="mx-auto w-full max-w-xl px-6 py-12">
       <h1 className="text-3xl font-semibold tracking-tight">Liste enregistrée</h1>
       <p className="mt-2 text-zinc-600">
         Vendeur n° <strong>{participation.numero_vendeur}</strong> — présentez ce code au dépôt,

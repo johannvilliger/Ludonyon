@@ -13,8 +13,10 @@ import {
   type Phase,
 } from "./actions";
 import { AutoRefresh } from "./auto-refresh";
+import { ClotureVenteButton } from "./cloture-vente-button";
 import { CodeEditor } from "./code-editor";
 import { EditionForm } from "./edition-form";
+import { EditionPanel } from "./edition-panel";
 import { PhaseButton } from "./phase-button";
 import { ResetTestDataButton } from "./reset-test-data-button";
 import { TerminerEditionButton } from "./terminer-edition-button";
@@ -35,6 +37,7 @@ type PosteLigne = {
   caisse_id: string | null;
   cloturee: number;
   fond_initial: number | null;
+  montant_cloture: number | null;
   total_ventes: number;
   total_vidages: number;
 };
@@ -64,13 +67,14 @@ export default async function DashboardGestionPage() {
        c.id AS caisse_id,
        COALESCE(c.cloturee, 0) AS cloturee,
        c.fond_initial,
+       c.montant_cloture,
        COALESCE(SUM(va.prix_encaisse), 0) AS total_ventes,
        COALESCE((SELECT SUM(mc.montant) FROM mouvements_caisse mc WHERE mc.caisse_id = c.id), 0) AS total_vidages
      FROM postes_caisse pc
      LEFT JOIN caisses c ON c.poste_caisse_id = pc.id AND c.edition_id = ?
      LEFT JOIN ventes v ON v.caisse_id = c.id
      LEFT JOIN vente_articles va ON va.vente_id = v.id
-     GROUP BY pc.id, pc.numero, pc.code_acces, pc.connecte, pc.demande_en_attente, c.id, c.cloturee, c.fond_initial
+     GROUP BY pc.id, pc.numero, pc.code_acces, pc.connecte, pc.demande_en_attente, c.id, c.cloturee, c.fond_initial, c.montant_cloture
      ORDER BY pc.numero`,
     [edition?.id ?? null],
   );
@@ -80,7 +84,11 @@ export default async function DashboardGestionPage() {
         `SELECT
            COALESCE(SUM(va.prix_encaisse), 0) AS total_encaisse,
            COALESCE(SUM(
-             CASE WHEN p.est_benevole = 1 THEN a.prix ELSE ROUND(a.prix * (1 - e.taux_vendeur)) END
+             CASE
+               WHEN p.numero_vendeur IN (901, 902) THEN 0
+               WHEN p.est_benevole = 1 THEN a.prix
+               ELSE ROUND(a.prix * (1 - e.taux_vendeur))
+             END
            ), 0) AS total_du_vendeurs
          FROM vente_articles va
          JOIN ventes v ON v.id = va.vente_id
@@ -102,14 +110,22 @@ export default async function DashboardGestionPage() {
   const postesClotures = postes.filter((p) => p.cloturee);
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
+    <main className="mx-auto w-full max-w-6xl px-6 py-12">
       <AutoRefresh />
 
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-        <Link href="/gestion/dashboard/vendeurs" className="text-sm text-zinc-500 hover:underline">
-          Vendeurs →
-        </Link>
+        <div className="flex gap-4">
+          <Link href="/gestion/dashboard/bilans" className="text-sm text-zinc-500 hover:underline">
+            Bilans →
+          </Link>
+          <Link href="/gestion/dashboard/benevoles" className="text-sm text-zinc-500 hover:underline">
+            Bénévoles →
+          </Link>
+          <Link href="/gestion/dashboard/vendeurs" className="text-sm text-zinc-500 hover:underline">
+            Vendeurs →
+          </Link>
+        </div>
       </div>
 
       {/* Édition */}
@@ -124,34 +140,35 @@ export default async function DashboardGestionPage() {
           </div>
         )}
         {edition && (
-          <div className="mt-3 rounded-md border border-zinc-200 p-4">
-            <p className="text-sm text-zinc-600">
-              Édition <strong>{edition.annee}</strong> — phase actuelle :{" "}
-              <strong>{LABELS_PHASE[edition.phase]}</strong>
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {ORDRE_PHASES.map((phase) => (
-                <PhaseButton
-                  key={phase}
-                  phase={phase}
-                  label={LABELS_PHASE[phase]}
-                  active={phase === edition.phase}
-                  onChange={changerPhase}
-                />
-              ))}
-            </div>
-            {edition.phase === "post_vente" && (
-              <div className="mt-4 border-t border-zinc-200 pt-4">
-                <TerminerEditionButton />
+          <div className="mt-3">
+            <EditionPanel resume={`Édition ${edition.annee} — phase actuelle : ${LABELS_PHASE[edition.phase]}`}>
+              <div className="flex flex-wrap gap-2">
+                {ORDRE_PHASES.map((phase) => (
+                  <PhaseButton
+                    key={phase}
+                    phase={phase}
+                    label={LABELS_PHASE[phase]}
+                    active={phase === edition.phase}
+                    onChange={changerPhase}
+                  />
+                ))}
               </div>
-            )}
+              {edition.phase === "post_vente" && (
+                <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-zinc-200 pt-4">
+                  <ClotureVenteButton />
+                  <TerminerEditionButton />
+                </div>
+              )}
+            </EditionPanel>
           </div>
         )}
       </section>
 
-      {/* Stats globales */}
-      {edition && (
-        <section className="mt-8">
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]">
+        <div>
+          {/* Stats globales */}
+          {edition && (
+        <section>
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-md border border-zinc-200 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Encaissé</p>
@@ -166,60 +183,6 @@ export default async function DashboardGestionPage() {
               <p className="mt-1 text-2xl font-semibold text-emerald-700">{benefice}.–</p>
             </div>
           </div>
-        </section>
-      )}
-
-      {/* Demandes de connexion en attente */}
-      {edition && demandes.length > 0 && (
-        <section className="mt-8">
-          <h2 className="text-lg font-medium">Demandes de connexion</h2>
-          <ul className="mt-3 space-y-2">
-            {demandes.map((p) => (
-              <li
-                key={p.poste_id}
-                className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-4 py-3"
-              >
-                <span className="text-sm font-medium">Caisse {p.numero} veut se connecter</span>
-                <div className="flex gap-2">
-                  <form action={validerConnexionCaisse.bind(null, p.poste_id)}>
-                    <button
-                      type="submit"
-                      className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
-                    >
-                      Valider
-                    </button>
-                  </form>
-                  <form action={refuserConnexionCaisse.bind(null, p.poste_id)}>
-                    <button
-                      type="submit"
-                      className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:border-zinc-400"
-                    >
-                      Refuser
-                    </button>
-                  </form>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* Caisses connectées */}
-      {edition && connectees.length > 0 && (
-        <section className="mt-8">
-          <h2 className="text-lg font-medium">Caisses connectées</h2>
-          <ul className="mt-3 space-y-2">
-            {connectees.map((p) => (
-              <li key={p.poste_id} className="flex items-center justify-between rounded-md border border-zinc-200 px-4 py-3">
-                <span className="text-sm font-medium">Caisse {p.numero}</span>
-                <form action={deconnecterCaisse.bind(null, p.poste_id)}>
-                  <button type="submit" className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:border-red-400 hover:text-red-600">
-                    Déconnecter
-                  </button>
-                </form>
-              </li>
-            ))}
-          </ul>
         </section>
       )}
 
@@ -279,20 +242,34 @@ export default async function DashboardGestionPage() {
             <div className="mt-6">
               <h3 className="text-sm font-medium text-zinc-500">Caisses clôturées</h3>
               <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {postesClotures.map((p) => (
-                  <div key={p.poste_id} className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 opacity-70">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Caisse {p.numero}</span>
-                      <Link
-                        href={`/gestion/dashboard/historique/${p.numero}`}
-                        className="text-xs text-zinc-500 hover:underline"
-                      >
-                        Historique →
-                      </Link>
+                {postesClotures.map((p) => {
+                  const theorique = Number(p.total_ventes) - Number(p.total_vidages);
+                  const compte = p.montant_cloture != null ? Number(p.montant_cloture) : null;
+                  const ecart = compte != null ? compte - theorique : null;
+                  return (
+                    <div key={p.poste_id} className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 opacity-70">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Caisse {p.numero}</span>
+                        <Link
+                          href={`/gestion/dashboard/historique/${p.numero}`}
+                          className="text-xs text-zinc-500 hover:underline"
+                        >
+                          Historique →
+                        </Link>
+                      </div>
+                      <p className="mt-1 text-xs text-zinc-400">Clôturée</p>
+                      <p className="mt-1 text-xs text-zinc-600">
+                        Théorique : {theorique}.– · Compté : {compte ?? "—"}.–
+                      </p>
+                      {ecart != null && ecart !== 0 && (
+                        <p className="text-xs font-medium text-red-600">
+                          Écart : {ecart > 0 ? "+" : ""}
+                          {ecart}.–
+                        </p>
+                      )}
                     </div>
-                    <p className="mt-1 text-xs text-zinc-400">Clôturée</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -364,6 +341,66 @@ export default async function DashboardGestionPage() {
           </div>
         </section>
       )}
+        </div>
+
+        {/* Sidebar : demandes de connexion + caisses connectées */}
+        <div className="space-y-6">
+          {edition && demandes.length > 0 && (
+            <section>
+              <h2 className="text-lg font-medium">Demandes de connexion</h2>
+              <ul className="mt-3 space-y-2">
+                {demandes.map((p) => (
+                  <li
+                    key={p.poste_id}
+                    className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3"
+                  >
+                    <p className="text-sm font-medium">Caisse {p.numero} veut se connecter</p>
+                    <div className="mt-2 flex gap-2">
+                      <form action={validerConnexionCaisse.bind(null, p.poste_id)}>
+                        <button
+                          type="submit"
+                          className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
+                        >
+                          Valider
+                        </button>
+                      </form>
+                      <form action={refuserConnexionCaisse.bind(null, p.poste_id)}>
+                        <button
+                          type="submit"
+                          className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:border-zinc-400"
+                        >
+                          Refuser
+                        </button>
+                      </form>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {edition && connectees.length > 0 && (
+            <section>
+              <h2 className="text-lg font-medium">Caisses connectées</h2>
+              <ul className="mt-3 space-y-2">
+                {connectees.map((p) => (
+                  <li key={p.poste_id} className="rounded-md border border-zinc-200 px-4 py-3">
+                    <p className="text-sm font-medium">Caisse {p.numero}</p>
+                    <form action={deconnecterCaisse.bind(null, p.poste_id)}>
+                      <button
+                        type="submit"
+                        className="mt-2 rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:border-red-400 hover:text-red-600"
+                      >
+                        Déconnecter
+                      </button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+      </div>
     </main>
   );
 }

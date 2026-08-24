@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { nouvelId, query, queryOne, withTransaction } from "@/lib/db";
 import { COOKIE_CAISSE } from "@/lib/gestion";
+import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 
 export type ArticleTrouve = {
   articleId: string;
@@ -85,8 +86,10 @@ export async function encaisserPanier(
   if (!edition) return { ok: false, error: "Édition introuvable." };
 
   const placeholders = articleIds.map(() => "?").join(", ");
-  const articles = await query<{ id: string; prix: number }>(
-    `SELECT id, prix FROM articles WHERE id IN (${placeholders})`,
+  const articles = await query<{ id: string; prix: number; numero_vendeur: number }>(
+    `SELECT a.id, a.prix, p.numero_vendeur
+     FROM articles a JOIN participations p ON p.id = a.participation_id
+     WHERE a.id IN (${placeholders})`,
     articleIds,
   );
 
@@ -95,11 +98,14 @@ export async function encaisserPanier(
   }
 
   const venteId = nouvelId();
-  const lignes = articles.map((a) => ({
-    id: nouvelId(),
-    article_id: a.id,
-    prix_encaisse: acheteurBenevole ? a.prix : Math.round(a.prix * (1 + Number(edition.taux_achat))),
-  }));
+  const lignes = articles.map((a) => {
+    const gratuit = acheteurBenevole && estVendeurSpecial(a.numero_vendeur);
+    return {
+      id: nouvelId(),
+      article_id: a.id,
+      prix_encaisse: gratuit ? 0 : acheteurBenevole ? a.prix : Math.round(a.prix * (1 + Number(edition.taux_achat))),
+    };
+  });
 
   try {
     await withTransaction(async (conn) => {
@@ -142,8 +148,8 @@ export async function voirInstructions(posteId: string) {
   ]);
 }
 
-export async function cloturerCaisse(caisseId: string, posteId: string) {
-  await query("UPDATE caisses SET cloturee = 1 WHERE id = ?", [caisseId]);
+export async function cloturerCaisse(caisseId: string, posteId: string, montantCompte: number) {
+  await query("UPDATE caisses SET cloturee = 1, montant_cloture = ? WHERE id = ?", [montantCompte, caisseId]);
   await query("UPDATE postes_caisse SET connecte = 0, session_token = NULL, demande_en_attente = 0 WHERE id = ?", [
     posteId,
   ]);

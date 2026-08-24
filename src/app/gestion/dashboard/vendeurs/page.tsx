@@ -69,7 +69,7 @@ export default async function VendeursDashboardPage() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
+    <main className="mx-auto w-full max-w-4xl px-6 py-12">
       <Link href="/gestion/dashboard" className="text-sm text-zinc-500 hover:underline">
         ← Dashboard
       </Link>
@@ -93,8 +93,16 @@ export default async function VendeursDashboardPage() {
                   Vendeur #{v.numero_vendeur} — {v.nom_vendeur}
                   {Boolean(v.est_benevole) && <span className="ml-2 text-xs text-amber-700">(bénévole)</span>}
                 </span>
-                <span className="text-zinc-500">
-                  {liste.length} article{liste.length > 1 ? "s" : ""} · {total}.–
+                <span className="flex items-center gap-3">
+                  <span className="text-zinc-500">
+                    {liste.length} article{liste.length > 1 ? "s" : ""} · {total}.–
+                  </span>
+                  <Link
+                    href={`/gestion/dashboard/vendeurs/${v.participation_id}/imprimer`}
+                    className="rounded border border-zinc-300 px-2 py-1 text-xs font-normal hover:border-zinc-400"
+                  >
+                    Imprimer
+                  </Link>
                 </span>
               </summary>
               <ul className="mt-3 divide-y divide-zinc-200">

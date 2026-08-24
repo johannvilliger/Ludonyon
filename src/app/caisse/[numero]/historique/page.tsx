@@ -24,7 +24,7 @@ export default async function HistoriqueCaissePage({ params }: { params: Promise
   const lignes = caisse ? await historiqueVentesCaisse(caisse.id) : [];
 
   return (
-    <main className="mx-auto max-w-xl px-6 py-12">
+    <main className="mx-auto w-full max-w-xl px-6 py-12">
       <Link href={`/caisse/${numeroInt}`} className="text-sm text-zinc-500 hover:underline">
         ← Caisse {numeroInt}
       </Link>

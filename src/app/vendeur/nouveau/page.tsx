@@ -10,7 +10,7 @@ export default function NouvelleListePage() {
   const [state, formAction, pending] = useActionState(soumettreListe, initialState);
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
+    <main className="mx-auto w-full max-w-2xl px-6 py-12">
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">Déposer ma liste</h1>
         <a

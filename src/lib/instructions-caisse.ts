@@ -10,3 +10,12 @@ export const INSTRUCTIONS_CAISSE = {
     "Indiquer le montant reçu, la caisse vous donnera le rendu à faire",
   ],
 };
+
+export const INSTRUCTIONS_CLOTURE = {
+  titre: "Pour clôturer et contrôler votre caisse :",
+  etapes: [
+    "Enlevez les 250.– de fond de caisse.",
+    "Comptez le reste.",
+    "Indiquez ci-dessous le montant réel de votre caisse (sans les 250.–).",
+  ],
+};

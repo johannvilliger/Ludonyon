@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
-import { basculerRecu, definirBenevole, marquerControlee } from "./actions";
+import { ArticleEditableRow } from "./article-editable-row";
+import { basculerRecu, definirBenevole, marquerControlee, terminerReception } from "./actions";
 
 type Article = { id: string; numero_article: number; nom: string; prix: number; statut: string };
 type Participation = {
@@ -17,6 +18,7 @@ type Participation = {
 const STATUT_LABELS: Record<string, string> = {
   liste_soumise: "Liste soumise",
   controlee: "Contrôlée",
+  validee: "Liste validée",
   cloturee: "Clôturée",
 };
 
@@ -62,9 +64,10 @@ export default async function VendeurAccueilPage({
   );
 
   const total = articles.reduce((sum, a) => sum + a.prix, 0);
+  const receptionTerminee = articles.length > 0 && !articles.some((a) => a.statut === "non_recu");
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
+    <main className="mx-auto w-full max-w-2xl px-6 py-12">
       <Link href="/accueil" className="text-sm text-zinc-500 hover:underline">
         ← Recherche
       </Link>
@@ -114,6 +117,17 @@ export default async function VendeurAccueilPage({
             </button>
           </form>
         )}
+
+        {receptionTerminee && participation.statut !== "validee" && (
+          <form action={terminerReception.bind(null, code)}>
+            <button
+              type="submit"
+              className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+            >
+              Terminer
+            </button>
+          </form>
+        )}
       </div>
 
       <h2 className="mt-8 text-lg font-medium">
@@ -123,29 +137,31 @@ export default async function VendeurAccueilPage({
         {articles.map((a) => {
           const modifiable = a.statut === "non_recu" || a.statut === "recu";
           return (
-            <li key={a.id} className="flex items-center justify-between py-2 text-sm">
-              <span>
-                {String(a.numero_article).padStart(2, "0")} — {a.nom}
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="font-mono">{a.prix}.–</span>
-                {modifiable ? (
-                  <form action={basculerRecu.bind(null, a.id, code)}>
-                    <button
-                      type="submit"
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_ARTICLE_STYLES[a.statut]}`}
-                    >
-                      {STATUT_ARTICLE_LABELS[a.statut] ?? a.statut}
-                    </button>
-                  </form>
-                ) : (
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_ARTICLE_STYLES[a.statut] ?? "bg-zinc-100 text-zinc-600"}`}
+            <li key={a.id} className="flex items-center gap-3 py-2 text-sm">
+              <span className="w-6 shrink-0 text-zinc-400">{String(a.numero_article).padStart(2, "0")}</span>
+              {modifiable ? (
+                <ArticleEditableRow articleId={a.id} code={code} nomInitial={a.nom} prixInitial={a.prix} />
+              ) : (
+                <span className="flex-1">
+                  {a.nom} <span className="font-mono text-zinc-500">{a.prix}.–</span>
+                </span>
+              )}
+              {modifiable ? (
+                <form action={basculerRecu.bind(null, a.id, code)}>
+                  <button
+                    type="submit"
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_ARTICLE_STYLES[a.statut]}`}
                   >
                     {STATUT_ARTICLE_LABELS[a.statut] ?? a.statut}
-                  </span>
-                )}
-              </div>
+                  </button>
+                </form>
+              ) : (
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_ARTICLE_STYLES[a.statut] ?? "bg-zinc-100 text-zinc-600"}`}
+                >
+                  {STATUT_ARTICLE_LABELS[a.statut] ?? a.statut}
+                </span>
+              )}
             </li>
           );
         })}

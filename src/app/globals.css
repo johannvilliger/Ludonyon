@@ -83,6 +83,39 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Étiquette coordonnées : à coller sur l'enveloppe du vendeur pour la
+   retrouver facilement, en plus des étiquettes articles. */
+.label--contact {
+  justify-content: flex-start;
+  gap: 1mm;
+}
+
+.label__contact-nom {
+  font: 700 3.4mm/1.15 Arial, sans-serif;
+}
+
+.label__contact-tel {
+  font: 500 3mm/1 Arial, sans-serif;
+  color: #444;
+}
+
+/* Étiquette de clôture de vente : à coller sur l'enveloppe une fois la
+   vente terminée, à côté de l'étiquette coordonnées posée à la réception. */
+.label--cloture {
+  justify-content: flex-start;
+  gap: 0.8mm;
+}
+
+.label__cloture-detail {
+  font: 500 2.6mm/1 Arial, sans-serif;
+  color: #444;
+}
+
+.label__cloture-du {
+  font: 900 5mm/1 Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
 .qr-wrap {
   width: 8.5mm;
   height: 8.5mm;

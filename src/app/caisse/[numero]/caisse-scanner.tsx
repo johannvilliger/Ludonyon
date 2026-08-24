@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 import {
   encaisserPanier,
   rechercherArticle,
@@ -8,6 +9,7 @@ import {
 } from "./actions";
 
 function prixAffiche(article: ArticleTrouve, acheteurBenevole: boolean, tauxAchat: number) {
+  if (acheteurBenevole && estVendeurSpecial(article.numeroVendeur)) return 0;
   return acheteurBenevole ? article.prix : Math.round(article.prix * (1 + tauxAchat));
 }
 

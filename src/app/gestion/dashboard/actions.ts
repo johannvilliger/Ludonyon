@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { nouveauCode as genererCode, nouvelId, query, queryOne, withTransaction } from "@/lib/db";
 import { NB_VENDEURS_TEST, PRIX_ARTICLES_TEST } from "@/lib/test-data";
+import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 
 export type FormState = { error: string | null };
 
@@ -14,6 +16,9 @@ export async function creerEdition(_prevState: FormState, formData: FormData): P
   if (existante) return { error: "Une édition est déjà active — clôture-la avant d'en créer une nouvelle." };
 
   const postes = await query<{ id: string; numero: number }>("SELECT id, numero FROM postes_caisse ORDER BY numero");
+  const benevoles = await query<{ vendeur_id: string; numero_fixe: number }>(
+    "SELECT vendeur_id, numero_fixe FROM benevoles ORDER BY numero_fixe",
+  );
 
   try {
     await withTransaction(async (conn) => {
@@ -27,6 +32,16 @@ export async function creerEdition(_prevState: FormState, formData: FormData): P
           `Caisse ${poste.numero}`,
           poste.id,
         ]);
+      }
+
+      // Bénévoles (base fixe) + 901/902 : présents automatiquement à chaque
+      // édition avec leur numéro permanent, même s'ils finissent par n'avoir
+      // aucun article — voir migration 0007.
+      for (const b of benevoles) {
+        await conn.query(
+          "INSERT INTO participations (id, edition_id, vendeur_id, numero_vendeur, code_confirmation, est_benevole) VALUES (?, ?, ?, ?, ?, ?)",
+          [nouvelId(), editionId, b.vendeur_id, b.numero_fixe, genererCode(), !estVendeurSpecial(b.numero_fixe)],
+        );
       }
     });
   } catch {
@@ -54,6 +69,25 @@ export async function changerPhase(nouvellePhase: Phase) {
 export async function terminerEdition() {
   await query("UPDATE editions SET phase = 'terminee' WHERE active_flag = 1", []);
   revalidatePath("/gestion/dashboard");
+}
+
+// Bascule tout ce qui n'a pas été vendu en "invendu" pour figer les
+// chiffres de l'étiquette enveloppe (nb ventes/invendus/dû), puis emmène
+// directement sur la page d'impression.
+export async function lancerClotureVente() {
+  const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1");
+  if (!edition) throw new Error("Aucune édition active.");
+
+  await query(
+    `UPDATE articles a
+     JOIN participations p ON p.id = a.participation_id
+     SET a.statut = 'invendu'
+     WHERE p.edition_id = ? AND a.statut IN ('non_recu', 'recu')`,
+    [edition.id],
+  );
+
+  revalidatePath("/gestion/dashboard");
+  redirect("/gestion/dashboard/cloture-vente");
 }
 
 export async function modifierCodeCaisse(posteId: string, nouveauCode: string) {
@@ -123,14 +157,19 @@ export async function reinitialiserDonneesTest() {
 
   await withTransaction(async (conn) => {
     // Ventes (et vente_articles en cascade), vidages, puis vendeurs (et
-    // participations + articles en cascade) de l'édition en cours.
+    // participations + articles en cascade) de l'édition en cours — sauf les
+    // bénévoles/901/902, qui sont une base fixe et ne doivent jamais être
+    // effacés par un simple reset de données de test.
     await conn.query("DELETE FROM ventes WHERE edition_id = ?", [edition.id]);
     await conn.query(
       "DELETE mc FROM mouvements_caisse mc JOIN caisses c ON c.id = mc.caisse_id WHERE c.edition_id = ?",
       [edition.id],
     );
     await conn.query(
-      "DELETE v FROM vendeurs v JOIN participations p ON p.vendeur_id = v.id WHERE p.edition_id = ?",
+      `DELETE v FROM vendeurs v
+       JOIN participations p ON p.vendeur_id = v.id
+       LEFT JOIN benevoles b ON b.vendeur_id = v.id
+       WHERE p.edition_id = ? AND b.id IS NULL`,
       [edition.id],
     );
     await conn.query("UPDATE caisses SET fond_initial = 250, cloturee = 0, instructions_vues = 0 WHERE edition_id = ?", [

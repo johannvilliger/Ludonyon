@@ -24,7 +24,7 @@ export default async function HistoriqueDashboardPage({ params }: { params: Prom
   const lignes = caisse ? await historiqueVentesCaisse(caisse.id) : [];
 
   return (
-    <main className="mx-auto max-w-xl px-6 py-12">
+    <main className="mx-auto w-full max-w-xl px-6 py-12">
       <Link href="/gestion/dashboard" className="text-sm text-zinc-500 hover:underline">
         ← Dashboard
       </Link>

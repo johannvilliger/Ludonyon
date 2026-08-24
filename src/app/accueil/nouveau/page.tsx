@@ -11,7 +11,7 @@ export default function NouvelleListeAccueilPage() {
   const [state, formAction, pending] = useActionState(creerListeAccueil, initialState);
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
+    <main className="mx-auto w-full max-w-2xl px-6 py-12">
       <Link href="/accueil" className="text-sm text-zinc-500 hover:underline">
         ← Accueil
       </Link>

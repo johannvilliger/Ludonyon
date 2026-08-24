@@ -3,7 +3,7 @@ import Link from "next/link";
 import { queryOne } from "@/lib/db";
 import { posteCaisseAutorise } from "@/lib/gestion";
 import { CaisseScanner } from "./caisse-scanner";
-import { ClotureButton } from "./cloture-button";
+import { ClotureCaisse } from "./cloture-caisse";
 import { InstructionsCaisse } from "./instructions-modal";
 
 type Caisse = { id: string; edition_id: string; taux_achat: number; cloturee: number; instructions_vues: number };
@@ -26,8 +26,18 @@ export default async function CaisseDetailPage({ params }: { params: Promise<{ n
     [autorisation.posteId],
   );
 
+  const theorique = caisse
+    ? await queryOne<{ ventes: number; vidages: number }>(
+        `SELECT
+           COALESCE((SELECT SUM(va.prix_encaisse) FROM vente_articles va JOIN ventes v ON v.id = va.vente_id WHERE v.caisse_id = ?), 0) AS ventes,
+           COALESCE((SELECT SUM(mc.montant) FROM mouvements_caisse mc WHERE mc.caisse_id = ?), 0) AS vidages`,
+        [caisse.id, caisse.id],
+      )
+    : null;
+  const montantTheorique = theorique ? Number(theorique.ventes) - Number(theorique.vidages) : 0;
+
   return (
-    <main className="mx-auto max-w-xl px-6 py-12">
+    <main className="mx-auto w-full max-w-xl px-6 py-12">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold tracking-tight">Caisse {numeroInt}</h1>
         <Link href={`/caisse/${numeroInt}/historique`} className="text-sm text-zinc-500 hover:underline">
@@ -44,7 +54,7 @@ export default async function CaisseDetailPage({ params }: { params: Promise<{ n
             <CaisseScanner caisseId={caisse.id} editionId={caisse.edition_id} tauxAchat={Number(caisse.taux_achat)} />
           </div>
           <div className="mt-8 border-t border-zinc-200 pt-4">
-            <ClotureButton caisseId={caisse.id} posteId={autorisation.posteId} />
+            <ClotureCaisse caisseId={caisse.id} posteId={autorisation.posteId} montantTheorique={montantTheorique} />
           </div>
         </div>
       )}

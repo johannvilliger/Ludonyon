@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import { query, queryOne } from "@/lib/db";
 import { PrintButton } from "./print-button";
 
-type Participation = { id: string; numero_vendeur: number };
+type Participation = { id: string; numero_vendeur: number; nom_vendeur: string; telephone: string | null };
 type Article = { numero_article: number; nom: string; prix: number };
 
 export default async function EtiquettesPage({
@@ -15,7 +15,10 @@ export default async function EtiquettesPage({
   const { code } = await params;
 
   const participation = await queryOne<Participation>(
-    "SELECT id, numero_vendeur FROM participations WHERE code_confirmation = ?",
+    `SELECT p.id, p.numero_vendeur, v.nom AS nom_vendeur, v.telephone
+     FROM participations p
+     JOIN vendeurs v ON v.id = p.vendeur_id
+     WHERE p.code_confirmation = ?`,
     [code],
   );
 
@@ -42,7 +45,7 @@ export default async function EtiquettesPage({
   );
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+    <main className="mx-auto w-full max-w-4xl px-6 py-10">
       <div className="mb-6 flex items-center justify-between print:hidden">
         <div>
           <Link href={`/accueil/vendeur/${code}`} className="text-sm text-zinc-500 hover:underline">
@@ -56,6 +59,13 @@ export default async function EtiquettesPage({
       </div>
 
       <div className="label-sheet">
+        <div className="label label--contact">
+          <div className="label__row">
+            <span className="label__vendor">#{participation.numero_vendeur}</span>
+          </div>
+          <div className="label__contact-nom">{participation.nom_vendeur}</div>
+          <div className="label__contact-tel">{participation.telephone || "—"}</div>
+        </div>
         {labels.map((l) => (
           <div key={l.numero_article} className="label">
             <div className="label__row">

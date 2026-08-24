@@ -54,7 +54,7 @@ export default async function AccueilPage({
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
+    <main className="mx-auto w-full max-w-2xl px-6 py-12">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Accueil</h1>
