@@ -23,6 +23,18 @@ body {
 /*
  * Étiquettes vendeur : toujours blanc/noir, indépendamment du thème de
  * l'appli — ce sont de vrais autocollants imprimés, pas un élément d'UI.
+ *
+ * Planche retenue : Herma 4357 (48,5 x 25,4 mm, 40 étiquettes/feuille A4,
+ * grille 4 colonnes x 10 lignes). Marges calculées par géométrie (à
+ * confirmer physiquement dès réception d'une vraie planche, avant de caler
+ * l'impression dessus) :
+ *   - marge haut : 21,5 mm
+ *   - marge gauche : 8 mm
+ *   - aucun espacement horizontal ni vertical entre étiquettes (elles se
+ *     touchent — pas de gouttière)
+ * La mise en page actuelle (.label-sheet en flex-wrap, étiquettes 40x25mm)
+ * n'est pas encore calée sur cette grille — à faire une fois la planche
+ * vérifiée en vrai.
  */
 .label-sheet {
   display: flex;
