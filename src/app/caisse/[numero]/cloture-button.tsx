@@ -13,7 +13,7 @@ export function ClotureButton({ caisseId, posteId }: { caisseId: string; posteId
       onClick={() => {
         if (
           !window.confirm(
-            "Clôturer définitivement cette caisse pour cette édition ? Tu ne pourras plus t'y reconnecter ensuite.",
+            "Clôturer définitivement cette caisse pour cette édition ? Vous ne pourrez plus vous y reconnecter ensuite.",
           )
         )
           return;

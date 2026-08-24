@@ -139,9 +139,6 @@ export default async function DashboardGestionPage() {
                 />
               ))}
             </div>
-            <p className="mt-2 text-xs text-zinc-400">
-              Tu peux avancer ou revenir en arrière librement — seul le dashboard pilote les phases.
-            </p>
           </div>
         )}
       </section>

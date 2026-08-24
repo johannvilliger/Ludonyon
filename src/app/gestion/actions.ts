@@ -9,7 +9,7 @@ export type CodeState = { error: string | null };
 
 export async function validerCode(_prevState: CodeState, formData: FormData): Promise<CodeState> {
   const code = String(formData.get("code") ?? "").trim();
-  if (!code) return { error: "Entre un code." };
+  if (!code) return { error: "Entrez un code." };
 
   const dashboard = await queryOne<{ id: number }>("SELECT id FROM parametres_gestion WHERE code_dashboard = ?", [
     code,

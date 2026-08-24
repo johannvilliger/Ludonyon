@@ -26,15 +26,16 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
       nom: String((a as ArticleInput)?.nom ?? "").trim(),
       prix: Math.round(Number((a as ArticleInput)?.prix)),
     }))
-    .filter((a) => a.nom.length > 0 && Number.isFinite(a.prix) && a.prix >= 0);
+    .filter((a) => a.nom.length > 0 && Number.isFinite(a.prix));
 
   if (!nom) return { error: "Le nom est obligatoire." };
-  if (articles.length === 0) return { error: "Ajoute au moins un article." };
+  if (articles.length === 0) return { error: "Ajoutez au moins un article." };
   if (articles.length > 30) return { error: "30 articles maximum par liste." };
 
   for (const a of articles) {
     const mot = motInterdit(a.nom);
     if (mot) return { error: messageMotInterdit(mot) };
+    if (a.prix <= 0) return { error: `Indiquez un prix supérieur à 0.– pour « ${a.nom} ».` };
   }
 
   const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1 LIMIT 1");
@@ -71,7 +72,7 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
       }
     });
   } catch {
-    return { error: "Impossible d'enregistrer la liste, réessaie." };
+    return { error: "Impossible d'enregistrer la liste, réessayez." };
   }
 
   redirect(`/accueil/vendeur/${codeConfirmation}`);

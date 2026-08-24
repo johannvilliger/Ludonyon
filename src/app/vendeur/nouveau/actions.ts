@@ -25,20 +25,21 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
       nom: String((a as ArticleInput)?.nom ?? "").trim(),
       prix: Math.round(Number((a as ArticleInput)?.prix)),
     }))
-    .filter((a) => a.nom.length > 0 && Number.isFinite(a.prix) && a.prix >= 0);
+    .filter((a) => a.nom.length > 0 && Number.isFinite(a.prix));
 
   if (!nom) return { error: "Le nom est obligatoire." };
-  if (articles.length === 0) return { error: "Ajoute au moins un article." };
+  if (articles.length === 0) return { error: "Ajoutez au moins un article." };
   if (articles.length > 30) return { error: "30 articles maximum par liste." };
 
   for (const a of articles) {
     const mot = motInterdit(a.nom);
     if (mot) return { error: messageMotInterdit(mot) };
+    if (a.prix <= 0) return { error: `Indiquez un prix supérieur à 0.– pour « ${a.nom} ».` };
   }
 
   const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE phase = 'depot' LIMIT 1");
   if (!edition) {
-    return { error: "Le dépôt en ligne n'est pas ouvert pour le moment — passe par l'accueil sur place." };
+    return { error: "Le dépôt en ligne n'est pas ouvert pour le moment — passez par l'accueil sur place." };
   }
 
   let codeConfirmation = "";
@@ -70,7 +71,7 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
       }
     });
   } catch {
-    return { error: "Impossible d'enregistrer ta liste, réessaie." };
+    return { error: "Impossible d'enregistrer votre liste, réessayez." };
   }
 
   redirect(`/vendeur/confirmation/${codeConfirmation}`);

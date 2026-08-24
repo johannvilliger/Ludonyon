@@ -30,11 +30,11 @@ export function PollClient({ numero }: { numero: number }) {
   if (statut === "refuse") {
     return (
       <p className="mt-4 text-sm text-red-600">
-        Demande refusée ou expirée. Retourne à{" "}
+        Demande refusée ou expirée. Retournez à{" "}
         <a href="/gestion" className="underline">
           /gestion
         </a>{" "}
-        pour retaper ton code.
+        pour retaper votre code.
       </p>
     );
   }

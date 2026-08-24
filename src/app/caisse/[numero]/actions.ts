@@ -47,7 +47,7 @@ export async function rechercherArticle(editionId: string, codeBrut: string): Pr
   if (article.prix !== prixScanne) {
     return {
       ok: false,
-      error: `Prix incohérent sur « ${article.nom} » : étiquette ${prixScanne}.– mais liste ${article.prix}.– — vérifie l'objet avant d'encaisser.`,
+      error: `Prix incohérent sur « ${article.nom} » : étiquette ${prixScanne}.– mais liste ${article.prix}.– — vérifiez l'objet avant d'encaisser.`,
     };
   }
 
@@ -126,10 +126,10 @@ export async function encaisserPanier(
     if (mysqlErr.code === "ER_DUP_ENTRY") {
       return {
         ok: false,
-        error: "Un des articles vient d'être vendu depuis une autre caisse entre-temps — retire-le du panier et réessaie.",
+        error: "Un des articles vient d'être vendu depuis une autre caisse entre-temps — retirez-le du panier et réessayez.",
       };
     }
-    return { ok: false, error: "Impossible d'encaisser, réessaie." };
+    return { ok: false, error: "Impossible d'encaisser, réessayez." };
   }
 
   const total = lignes.reduce((sum, l) => sum + l.prix_encaisse, 0);

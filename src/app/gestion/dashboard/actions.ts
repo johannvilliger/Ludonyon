@@ -30,7 +30,7 @@ export async function creerEdition(_prevState: FormState, formData: FormData): P
       }
     });
   } catch {
-    return { error: "Impossible de créer l'édition, réessaie." };
+    return { error: "Impossible de créer l'édition, réessayez." };
   }
 
   revalidatePath("/gestion/dashboard");
@@ -90,7 +90,7 @@ export async function enregistrerVidage(_prevState: VidageState, formData: FormD
 
   if (!caisseId) return { error: "Caisse manquante." };
   if (!Number.isFinite(montant) || montant <= 0) return { error: "Montant invalide." };
-  if (!effectuePar) return { error: "Indique qui effectue le vidage." };
+  if (!effectuePar) return { error: "Indiquez qui effectue le vidage." };
 
   try {
     await query("INSERT INTO mouvements_caisse (id, caisse_id, montant, effectue_par) VALUES (?, ?, ?, ?)", [
