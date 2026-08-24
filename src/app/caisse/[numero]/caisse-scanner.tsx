@@ -1,12 +1,27 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
+import { CameraScanner } from "./camera-scanner";
 import {
   encaisserPanier,
   rechercherArticle,
   type ArticleTrouve,
 } from "./actions";
+
+// navigator.userAgent est statique le temps de la session : pas besoin de
+// s'abonner à un vrai changement, juste de lire une valeur qui n'existe que
+// côté client (useSyncExternalStore gère proprement l'écart serveur/client
+// sans provoquer d'erreur d'hydratation).
+function detecterMobile(): boolean {
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+function sAbonner() {
+  return () => {};
+}
+function snapshotServeur() {
+  return false;
+}
 
 function prixAffiche(article: ArticleTrouve, acheteurBenevole: boolean, tauxAchat: number) {
   if (acheteurBenevole && estVendeurSpecial(article.numeroVendeur)) return 0;
@@ -29,7 +44,24 @@ export function CaisseScanner({
   const [erreur, setErreur] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [enCours, setEnCours] = useState(false);
+  const [scannerCameraOuvert, setScannerCameraOuvert] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const estMobile = useSyncExternalStore(sAbonner, detecterMobile, snapshotServeur);
+
+  // Utilisé à la fois par la saisie manuelle/scanner USB (formulaire texte)
+  // et par le scan caméra — un seul chemin pour chercher l'article et
+  // l'ajouter au panier.
+  async function traiterCode(valeur: string): Promise<{ ok: true; nom: string } | { ok: false; erreur: string }> {
+    const resultat = await rechercherArticle(editionId, valeur);
+    if (!resultat.ok) return { ok: false, erreur: resultat.error };
+
+    if (panier.some((a) => a.articleId === resultat.article.articleId)) {
+      return { ok: false, erreur: `« ${resultat.article.nom} » est déjà dans le panier.` };
+    }
+
+    setPanier((prev) => [...prev, resultat.article]);
+    return { ok: true, nom: resultat.article.nom };
+  }
 
   async function handleScan(e: React.FormEvent) {
     e.preventDefault();
@@ -41,18 +73,13 @@ export function CaisseScanner({
     setErreur(null);
     setConfirmation(null);
 
-    const resultat = await rechercherArticle(editionId, valeur);
-    if (!resultat.ok) {
-      setErreur(resultat.error);
-      return;
-    }
+    const resultat = await traiterCode(valeur);
+    if (!resultat.ok) setErreur(resultat.erreur);
+  }
 
-    if (panier.some((a) => a.articleId === resultat.article.articleId)) {
-      setErreur(`« ${resultat.article.nom} » est déjà dans le panier.`);
-      return;
-    }
-
-    setPanier((prev) => [...prev, resultat.article]);
+  async function handleCameraScan(valeur: string) {
+    const resultat = await traiterCode(valeur);
+    return resultat.ok ? { ok: true, message: `✓ ${resultat.nom}` } : { ok: false, message: resultat.erreur };
   }
 
   function retirer(articleId: string) {
@@ -104,6 +131,19 @@ export function CaisseScanner({
           Ajouter
         </button>
       </form>
+
+      {estMobile && (
+        <button
+          type="button"
+          onClick={() => setScannerCameraOuvert(true)}
+          className="mt-2 w-full rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:border-zinc-400"
+        >
+          📷 Scanner avec l&apos;appareil photo
+        </button>
+      )}
+      {scannerCameraOuvert && (
+        <CameraScanner onScan={handleCameraScan} onClose={() => setScannerCameraOuvert(false)} />
+      )}
 
       {erreur && <p className="mt-3 text-sm text-red-600">{erreur}</p>}
       {confirmation && <p className="mt-3 text-sm text-green-700">{confirmation}</p>}
