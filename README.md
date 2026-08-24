@@ -16,10 +16,11 @@ Stack : [Next.js](https://nextjs.org) (App Router, TypeScript, Tailwind) +
 - [x] Accueil/contrôle (`/accueil`) : recherche par nom, liste sur place
       (`/accueil/nouveau`), case "vendeur bénévole", impression des étiquettes
       (`vendeur-article-prix`), marquage "contrôlée"
-- [ ] Caisse (panier, +10% sauf acheteur bénévole, blocage double scan /
-      mismatch prix, sélection de la caisse)
-- [ ] Dashboard vente en direct (ventes par caisse, cash en caisse, bénéfice
-      cumulé)
+- [x] Caisse (`/caisse`) : sélection/ouverture d'une caisse, scan et panier,
+      case "acheteur bénévole", blocage double scan et mismatch prix,
+      encaissement
+- [x] Dashboard (`/dashboard`) : ventes par caisse, cash en caisse en direct,
+      bénéfice cumulé, vidage de caisse tracé
 - [ ] Clôture (calcul des enveloppes à −10% sauf vendeur bénévole, suivi des
       invendus)
 
