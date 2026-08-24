@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { nouveauCode, nouvelId, queryOne, withTransaction } from "@/lib/db";
+import { hasherMotDePasse } from "@/lib/mot-de-passe";
 
 export type FormState = { error: string | null };
 
@@ -12,9 +13,13 @@ export async function modifierBenevole(
 ): Promise<FormState> {
   const nom = String(formData.get("nom") ?? "").trim();
   const numero = Math.round(Number(formData.get("numero")));
+  const motDePasse = String(formData.get("mot_de_passe") ?? "").trim();
   if (!nom) return { error: "Le nom est obligatoire." };
   if (!Number.isFinite(numero) || numero < 903) {
     return { error: "Le numéro doit être un entier à partir de 903 (901 et 902 sont réservés)." };
+  }
+  if (motDePasse && motDePasse.length < 4) {
+    return { error: "Le mot de passe doit faire au moins 4 caractères." };
   }
 
   const benevole = await queryOne<{ vendeur_id: string; numero_fixe: number }>(
@@ -35,6 +40,13 @@ export async function modifierBenevole(
     await withTransaction(async (conn) => {
       await conn.query("UPDATE vendeurs SET nom = ? WHERE id = ?", [nom, benevole.vendeur_id]);
       await conn.query("UPDATE benevoles SET numero_fixe = ? WHERE id = ?", [numero, benevoleId]);
+      // Champ laissé vide = on ne touche pas au mot de passe existant.
+      if (motDePasse) {
+        await conn.query("UPDATE benevoles SET mot_de_passe_hash = ? WHERE id = ?", [
+          hasherMotDePasse(motDePasse),
+          benevoleId,
+        ]);
+      }
       // Garde participations.numero_vendeur (copie figée par édition) en
       // phase avec le numéro fixe du bénévole, sur toutes les éditions —
       // pas de raison qu'ils divergent.
@@ -56,9 +68,13 @@ export async function modifierBenevole(
 export async function creerBenevole(_prevState: FormState, formData: FormData): Promise<FormState> {
   const nom = String(formData.get("nom") ?? "").trim();
   const numero = Math.round(Number(formData.get("numero")));
+  const motDePasse = String(formData.get("mot_de_passe") ?? "").trim();
   if (!nom) return { error: "Le nom est obligatoire." };
   if (!Number.isFinite(numero) || numero < 903) {
     return { error: "Le numéro doit être un entier à partir de 903 (901 et 902 sont réservés)." };
+  }
+  if (motDePasse.length < 4) {
+    return { error: "Le mot de passe doit faire au moins 4 caractères." };
   }
 
   const dejaPris = await queryOne<{ id: string }>("SELECT id FROM benevoles WHERE numero_fixe = ?", [numero]);
@@ -71,11 +87,10 @@ export async function creerBenevole(_prevState: FormState, formData: FormData): 
       const vendeurId = nouvelId();
       await conn.query("INSERT INTO vendeurs (id, nom) VALUES (?, ?)", [vendeurId, nom]);
 
-      await conn.query("INSERT INTO benevoles (id, vendeur_id, numero_fixe) VALUES (?, ?, ?)", [
-        nouvelId(),
-        vendeurId,
-        numero,
-      ]);
+      await conn.query(
+        "INSERT INTO benevoles (id, vendeur_id, numero_fixe, mot_de_passe_hash) VALUES (?, ?, ?, ?)",
+        [nouvelId(), vendeurId, numero, hasherMotDePasse(motDePasse)],
+      );
 
       // S'il y a une édition active, le bénévole peut déposer tout de suite
       // — pas besoin d'attendre la prochaine édition.

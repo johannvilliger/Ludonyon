@@ -38,6 +38,12 @@ export function BenevoleEditRow({ benevoleId, numeroFixe, nom }: { benevoleId: s
         defaultValue={nom}
         className="w-40 rounded-md border border-zinc-300 px-2 py-1 text-sm"
       />
+      <input
+        name="mot_de_passe"
+        placeholder="Nouveau mot de passe (optionnel)"
+        minLength={4}
+        className="w-48 rounded-md border border-zinc-300 px-2 py-1 text-sm"
+      />
       <button
         type="submit"
         disabled={pending}

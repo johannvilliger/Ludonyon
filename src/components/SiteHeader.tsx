@@ -23,13 +23,18 @@ export function SiteHeader() {
 
   return (
     <header className="border-b border-zinc-200">
-      <div className="mx-auto flex max-w-5xl items-center px-6 py-3">
+      <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
         {logoCliquable ? (
           <Link href="/" className="flex items-center">
             {logo}
           </Link>
         ) : (
           <span className="flex items-center">{logo}</span>
+        )}
+        {pathname === "/" && (
+          <Link href="/benevole" className="text-sm font-medium text-zinc-600 hover:underline">
+            Login bénévole
+          </Link>
         )}
       </div>
     </header>

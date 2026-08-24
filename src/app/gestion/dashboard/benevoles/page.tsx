@@ -13,6 +13,7 @@ type BenevoleLigne = {
   numero_fixe: number;
   nom: string;
   code_confirmation: string | null;
+  mot_de_passe_hash: string;
 };
 
 export default async function BenevolesPage() {
@@ -21,7 +22,7 @@ export default async function BenevolesPage() {
   const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1");
 
   const benevoles = await query<BenevoleLigne>(
-    `SELECT b.id, b.numero_fixe, v.nom, p.code_confirmation
+    `SELECT b.id, b.numero_fixe, v.nom, p.code_confirmation, b.mot_de_passe_hash
      FROM benevoles b
      JOIN vendeurs v ON v.id = b.vendeur_id
      LEFT JOIN participations p ON p.vendeur_id = b.vendeur_id AND p.edition_id = ?
@@ -38,7 +39,9 @@ export default async function BenevolesPage() {
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">Vendeurs bénévoles</h1>
       <p className="mt-2 text-sm text-zinc-600">
         Base fixe : chaque bénévole garde son numéro d&apos;une édition à l&apos;autre. Créé ici, il sera
-        automatiquement présent (même sans article) à chaque nouvelle édition.
+        automatiquement présent (même sans article) à chaque nouvelle édition. Avec son numéro et son
+        mot de passe, il peut aussi gérer sa liste lui-même sur{" "}
+        <span className="font-mono">/benevole</span>.
       </p>
       {!edition && (
         <p className="mt-2 text-sm text-amber-700">
@@ -60,6 +63,11 @@ export default async function BenevolesPage() {
                 <span className="font-medium">{b.nom}</span>
                 {special && (
                   <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-500">système</span>
+                )}
+                {!special && !b.mot_de_passe_hash && (
+                  <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
+                    pas de mot de passe
+                  </span>
                 )}
               </span>
               <span className="flex items-center gap-3">

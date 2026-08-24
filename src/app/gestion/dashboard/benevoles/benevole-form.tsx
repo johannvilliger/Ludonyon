@@ -34,6 +34,16 @@ export function BenevoleForm() {
         <span className="text-sm font-medium text-zinc-700">Nom</span>
         <input name="nom" required className="mt-1 w-56 rounded-md border border-zinc-300 px-3 py-2" />
       </label>
+      <label className="block">
+        <span className="text-sm font-medium text-zinc-700">Mot de passe</span>
+        <input
+          name="mot_de_passe"
+          required
+          minLength={4}
+          placeholder="4 caractères min."
+          className="mt-1 w-40 rounded-md border border-zinc-300 px-3 py-2"
+        />
+      </label>
       <button
         type="submit"
         disabled={pending}
