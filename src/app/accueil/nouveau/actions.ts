@@ -3,12 +3,15 @@
 import { redirect } from "next/navigation";
 import { assignerNumeroVendeur, nouveauCode, nouvelId, queryOne, withTransaction } from "@/lib/db";
 import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
+import { accueilEstConnecte } from "@/lib/gestion";
 
 export type FormState = { error: string | null };
 
 type ArticleInput = { nom: string; prix: number };
 
 export async function creerListeAccueil(_prevState: FormState, formData: FormData): Promise<FormState> {
+  if (!(await accueilEstConnecte())) return { error: "Non autorisé." };
+
   const nom = String(formData.get("nom") ?? "").trim();
   const telephone = String(formData.get("telephone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();

@@ -13,10 +13,10 @@ MariaDB (hébergée chez Infomaniak, accès direct via `mysql2`).
       cash, règles bénévoles et système d'accès `/gestion`
 - [x] Dépôt de liste par le vendeur (`/vendeur/nouveau`) + page de confirmation
       avec QR — ouvert uniquement en phase "Dépôt en ligne"
-- [x] Accueil/contrôle (`/accueil`, jamais lié publiquement) : recherche par
-      nom, liste sur place (`/accueil/nouveau`, toujours ouvert), case
-      "vendeur bénévole", impression des étiquettes (`vendeur-article-prix`),
-      marquage "contrôlée"
+- [x] Accueil/contrôle (`/accueil`, verrouillé par code via `/gestion`) :
+      recherche par nom, liste sur place (`/accueil/nouveau`, toujours
+      ouvert), case "vendeur bénévole", impression des étiquettes
+      (`vendeur-article-prix`), marquage "contrôlée"
 - [x] `/gestion` : accès par code — 5 caisses (codes simples) + 1 dashboard
       (code complexe). Une caisse doit être validée manuellement depuis le
       dashboard pour se connecter ; codes modifiables depuis le dashboard.
@@ -72,6 +72,7 @@ Générés par la migration, à changer avant toute utilisation réelle (section
 
 | Poste     | Code par défaut    |
 |-----------|---------------------|
+| Accueil   | `7890`              |
 | Caisse 1  | `1234`              |
 | Caisse 2  | `2345`              |
 | Caisse 3  | `3456`              |

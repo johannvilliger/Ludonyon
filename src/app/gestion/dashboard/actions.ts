@@ -163,6 +163,13 @@ export async function modifierCodeDashboard(nouveauCode: string) {
   revalidatePath("/gestion/dashboard");
 }
 
+export async function modifierCodeAccueil(nouveauCode: string) {
+  const code = nouveauCode.trim();
+  if (!code) throw new Error("Le code ne peut pas être vide.");
+  await query("UPDATE parametres_gestion SET code_accueil = ? WHERE id = 1", [code]);
+  revalidatePath("/gestion/dashboard");
+}
+
 export async function validerConnexionCaisse(posteId: string) {
   const token = nouvelId();
   await query("UPDATE postes_caisse SET connecte = 1, demande_en_attente = 0, session_token = ? WHERE id = ?", [

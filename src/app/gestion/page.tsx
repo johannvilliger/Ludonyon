@@ -11,7 +11,7 @@ export default function GestionPage() {
   return (
     <main className="mx-auto w-full flex max-w-sm flex-1 flex-col justify-center px-6 py-12">
       <h1 className="text-2xl font-semibold tracking-tight">Accès gestion</h1>
-      <p className="mt-2 text-sm text-zinc-600">Entrez votre code d&apos;accès (caisse ou dashboard).</p>
+      <p className="mt-2 text-sm text-zinc-600">Entrez votre code d&apos;accès (accueil, caisse ou dashboard).</p>
 
       <form action={formAction} className="mt-6 space-y-3">
         <input

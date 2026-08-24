@@ -6,6 +6,7 @@ import { PRIX_ARTICLES_TEST } from "@/lib/test-data";
 import {
   changerPhase,
   deconnecterCaisse,
+  modifierCodeAccueil,
   modifierCodeCaisse,
   modifierCodeDashboard,
   refuserConnexionCaisse,
@@ -30,7 +31,7 @@ export const dynamic = "force-dynamic";
 const SEUIL_ALERTE_CAISSE = 2000;
 
 type Edition = { id: string; annee: number; phase: Phase };
-type Parametres = { code_dashboard: string };
+type Parametres = { code_dashboard: string; code_accueil: string };
 type PosteLigne = {
   poste_id: string;
   numero: number;
@@ -64,7 +65,9 @@ export default async function DashboardGestionPage() {
     : await query<{ id: string; annee: number }>(
         "SELECT id, annee FROM editions WHERE active_flag IS NULL ORDER BY annee DESC",
       );
-  const parametres = await queryOne<Parametres>("SELECT code_dashboard FROM parametres_gestion WHERE id = 1");
+  const parametres = await queryOne<Parametres>(
+    "SELECT code_dashboard, code_accueil FROM parametres_gestion WHERE id = 1",
+  );
 
   const postes = await query<PosteLigne>(
     `SELECT
@@ -332,6 +335,9 @@ export default async function DashboardGestionPage() {
                 onSave={modifierCodeCaisse.bind(null, p.poste_id)}
               />
             ))}
+          {parametres && (
+            <CodeEditor label="Accueil" valeurInitiale={parametres.code_accueil} onSave={modifierCodeAccueil} />
+          )}
           {parametres && (
             <CodeEditor label="Dashboard" valeurInitiale={parametres.code_dashboard} onSave={modifierCodeDashboard} />
           )}

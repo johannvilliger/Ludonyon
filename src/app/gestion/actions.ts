@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { nouvelId, query, queryOne } from "@/lib/db";
-import { COOKIE_CAISSE, COOKIE_DASHBOARD, OPTIONS_COOKIE_SESSION } from "@/lib/gestion";
+import { COOKIE_ACCUEIL, COOKIE_CAISSE, COOKIE_DASHBOARD, OPTIONS_COOKIE_SESSION } from "@/lib/gestion";
 
 export type CodeState = { error: string | null };
 
@@ -21,6 +21,14 @@ export async function validerCode(_prevState: CodeState, formData: FormData): Pr
     const jar = await cookies();
     jar.set(COOKIE_DASHBOARD, token, OPTIONS_COOKIE_SESSION);
     redirect("/gestion/dashboard");
+  }
+
+  const accueil = await queryOne<{ id: number }>("SELECT id FROM parametres_gestion WHERE code_accueil = ?", [code]);
+
+  if (accueil) {
+    const jar = await cookies();
+    jar.set(COOKIE_ACCUEIL, code, OPTIONS_COOKIE_SESSION);
+    redirect("/accueil");
   }
 
   const poste = await queryOne<{ id: string; numero: number; connecte: number }>(
