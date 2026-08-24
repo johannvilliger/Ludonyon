@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { INSTRUCTIONS_CLOTURE } from "@/lib/instructions-caisse";
-import { cloturerCaisse } from "./actions";
+import { cloturerCaisse, theoriqueCaisse } from "./actions";
 
 export function ClotureCaisse({
   caisseId,
@@ -14,6 +14,8 @@ export function ClotureCaisse({
   montantTheorique: number;
 }) {
   const [ouvert, setOuvert] = useState(false);
+  const [theorique, setTheorique] = useState(montantTheorique);
+  const [chargement, setChargement] = useState(false);
   const [montant, setMontant] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -21,7 +23,13 @@ export function ClotureCaisse({
     return (
       <button
         type="button"
-        onClick={() => setOuvert(true)}
+        onClick={() => {
+          setOuvert(true);
+          setChargement(true);
+          theoriqueCaisse(caisseId)
+            .then(setTheorique)
+            .finally(() => setChargement(false));
+        }}
         className="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:border-red-400 hover:bg-red-50"
       >
         Clôturer ma caisse
@@ -36,7 +44,8 @@ export function ClotureCaisse({
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-zinc-700">
           <li>{INSTRUCTIONS_CLOTURE.etapes[0]}</li>
           <li>
-            {INSTRUCTIONS_CLOTURE.etapes[1]} Vous devriez avoir <strong>{montantTheorique}.–</strong> en caisse.
+            {INSTRUCTIONS_CLOTURE.etapes[1]} Vous devriez avoir{" "}
+            <strong>{chargement ? "…" : `${theorique}.–`}</strong> en caisse.
           </li>
           <li>{INSTRUCTIONS_CLOTURE.etapes[2]}</li>
         </ol>

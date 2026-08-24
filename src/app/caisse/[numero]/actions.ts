@@ -148,6 +148,16 @@ export async function voirInstructions(posteId: string) {
   ]);
 }
 
+export async function theoriqueCaisse(caisseId: string): Promise<number> {
+  const theorique = await queryOne<{ ventes: number; vidages: number }>(
+    `SELECT
+       COALESCE((SELECT SUM(va.prix_encaisse) FROM vente_articles va JOIN ventes v ON v.id = va.vente_id WHERE v.caisse_id = ?), 0) AS ventes,
+       COALESCE((SELECT SUM(mc.montant) FROM mouvements_caisse mc WHERE mc.caisse_id = ?), 0) AS vidages`,
+    [caisseId, caisseId],
+  );
+  return theorique ? Number(theorique.ventes) - Number(theorique.vidages) : 0;
+}
+
 export async function cloturerCaisse(caisseId: string, posteId: string, montantCompte: number) {
   await query("UPDATE caisses SET cloturee = 1, montant_cloture = ? WHERE id = ?", [montantCompte, caisseId]);
   await query("UPDATE postes_caisse SET connecte = 0, session_token = NULL, demande_en_attente = 0 WHERE id = ?", [
