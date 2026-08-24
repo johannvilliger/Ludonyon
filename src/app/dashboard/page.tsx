@@ -1,23 +1,21 @@
-import { createServiceClient } from "@/lib/supabase/server";
+import { query, queryOne } from "@/lib/db";
 import { VidageForm } from "./vidage-form";
 
+// Toujours refléter les ventes/le cash courants — jamais prérendu au build.
+export const dynamic = "force-dynamic";
+
 type Edition = { id: string; annee: number; taux_vendeur: number };
-type Caisse = { id: string; nom: string; fond_initial: number };
-type VenteArticleRow = {
-  prix_encaisse: number;
-  ventes: { caisse_id: string };
-  articles: { prix: number; participations: { est_benevole: boolean } };
+type CaisseAgregee = {
+  id: string;
+  nom: string;
+  fond_initial: number;
+  total_ventes: number;
+  total_vidages: number;
 };
-type MouvementRow = { caisse_id: string; montant: number };
+type Totaux = { total_encaisse: number; total_du_vendeurs: number };
 
 export default async function DashboardPage() {
-  const supabase = createServiceClient();
-
-  const { data: edition } = await supabase
-    .from("editions")
-    .select("id, annee, taux_vendeur")
-    .eq("statut", "ouverte")
-    .single<Edition>();
+  const edition = await queryOne<Edition>("SELECT id, annee, taux_vendeur FROM editions WHERE statut = 'ouverte' LIMIT 1");
 
   if (!edition) {
     return (
@@ -28,47 +26,39 @@ export default async function DashboardPage() {
     );
   }
 
-  const { data: caisses } = await supabase
-    .from("caisses")
-    .select("id, nom, fond_initial")
-    .eq("edition_id", edition.id)
-    .order("nom")
-    .returns<Caisse[]>();
+  const caisses = await query<CaisseAgregee>(
+    `SELECT
+       c.id,
+       c.nom,
+       c.fond_initial,
+       COALESCE(SUM(va.prix_encaisse), 0) AS total_ventes,
+       COALESCE((SELECT SUM(mc.montant) FROM mouvements_caisse mc WHERE mc.caisse_id = c.id), 0) AS total_vidages
+     FROM caisses c
+     LEFT JOIN ventes v ON v.caisse_id = c.id
+     LEFT JOIN vente_articles va ON va.vente_id = v.id
+     WHERE c.edition_id = ?
+     GROUP BY c.id, c.nom, c.fond_initial
+     ORDER BY c.nom`,
+    [edition.id],
+  );
 
-  const { data: ventesArticles } = await supabase
-    .from("vente_articles")
-    .select("prix_encaisse, ventes!inner(caisse_id, edition_id), articles!inner(prix, participations!inner(est_benevole))")
-    .eq("ventes.edition_id", edition.id)
-    .returns<VenteArticleRow[]>();
+  const totaux = await queryOne<Totaux>(
+    `SELECT
+       COALESCE(SUM(va.prix_encaisse), 0) AS total_encaisse,
+       COALESCE(SUM(
+         CASE WHEN p.est_benevole = 1 THEN a.prix ELSE ROUND(a.prix * (1 - e.taux_vendeur)) END
+       ), 0) AS total_du_vendeurs
+     FROM vente_articles va
+     JOIN ventes v ON v.id = va.vente_id
+     JOIN articles a ON a.id = va.article_id
+     JOIN participations p ON p.id = a.participation_id
+     JOIN editions e ON e.id = v.edition_id
+     WHERE v.edition_id = ?`,
+    [edition.id],
+  );
 
-  const caisseIds = (caisses ?? []).map((c) => c.id);
-  const { data: mouvements } =
-    caisseIds.length > 0
-      ? await supabase
-          .from("mouvements_caisse")
-          .select("caisse_id, montant")
-          .in("caisse_id", caisseIds)
-          .returns<MouvementRow[]>()
-      : { data: [] as MouvementRow[] };
-
-  let totalEncaisse = 0;
-  let totalDuVendeurs = 0;
-  const ventesParCaisse: Record<string, number> = {};
-
-  for (const row of ventesArticles ?? []) {
-    totalEncaisse += row.prix_encaisse;
-    const partVendeur = row.articles.participations.est_benevole
-      ? row.articles.prix
-      : Math.round(row.articles.prix * (1 - edition.taux_vendeur));
-    totalDuVendeurs += partVendeur;
-    ventesParCaisse[row.ventes.caisse_id] = (ventesParCaisse[row.ventes.caisse_id] ?? 0) + row.prix_encaisse;
-  }
-
-  const vidagesParCaisse: Record<string, number> = {};
-  for (const m of mouvements ?? []) {
-    vidagesParCaisse[m.caisse_id] = (vidagesParCaisse[m.caisse_id] ?? 0) + m.montant;
-  }
-
+  const totalEncaisse = Number(totaux?.total_encaisse ?? 0);
+  const totalDuVendeurs = Number(totaux?.total_du_vendeurs ?? 0);
   const benefice = totalEncaisse - totalDuVendeurs;
 
   return (
@@ -91,13 +81,11 @@ export default async function DashboardPage() {
       </div>
 
       <h2 className="mt-8 text-lg font-medium">Caisses</h2>
-      {(!caisses || caisses.length === 0) && (
-        <p className="mt-3 text-sm text-zinc-500">Aucune caisse ouverte pour l&apos;instant.</p>
-      )}
+      {caisses.length === 0 && <p className="mt-3 text-sm text-zinc-500">Aucune caisse ouverte pour l&apos;instant.</p>}
       <ul className="mt-3 space-y-3">
-        {(caisses ?? []).map((c) => {
-          const ventes = ventesParCaisse[c.id] ?? 0;
-          const vidages = vidagesParCaisse[c.id] ?? 0;
+        {caisses.map((c) => {
+          const ventes = Number(c.total_ventes);
+          const vidages = Number(c.total_vidages);
           const cashEnCaisse = c.fond_initial + ventes - vidages;
           return (
             <li key={c.id} className="rounded-md border border-zinc-200 p-4">

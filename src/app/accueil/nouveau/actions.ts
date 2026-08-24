@@ -1,16 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createServiceClient } from "@/lib/supabase/server";
+import { assignerNumeroVendeur, nouveauCode, nouvelId, queryOne, withTransaction } from "@/lib/db";
 
 export type FormState = { error: string | null };
 
 type ArticleInput = { nom: string; prix: number };
 
-export async function creerListeAccueil(
-  _prevState: FormState,
-  formData: FormData,
-): Promise<FormState> {
+export async function creerListeAccueil(_prevState: FormState, formData: FormData): Promise<FormState> {
   const nom = String(formData.get("nom") ?? "").trim();
   const telephone = String(formData.get("telephone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
@@ -34,50 +31,42 @@ export async function creerListeAccueil(
   if (articles.length === 0) return { error: "Ajoute au moins un article." };
   if (articles.length > 30) return { error: "30 articles maximum par liste." };
 
-  const supabase = createServiceClient();
-
-  const { data: edition, error: editionError } = await supabase
-    .from("editions")
-    .select("id")
-    .eq("statut", "ouverte")
-    .single();
-
-  if (editionError || !edition) {
+  const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE statut = 'ouverte' LIMIT 1");
+  if (!edition) {
     return { error: "Aucune édition n'est ouverte pour le moment." };
   }
 
-  const { data: vendeur, error: vendeurError } = await supabase
-    .from("vendeurs")
-    .insert({ nom, telephone: telephone || null, email: email || null })
-    .select("id")
-    .single();
+  let codeConfirmation = "";
 
-  if (vendeurError || !vendeur) {
-    return { error: "Impossible d'enregistrer le vendeur, réessaie." };
+  try {
+    await withTransaction(async (conn) => {
+      const vendeurId = nouvelId();
+      await conn.query("INSERT INTO vendeurs (id, nom, telephone, email) VALUES (?, ?, ?, ?)", [
+        vendeurId,
+        nom,
+        telephone || null,
+        email || null,
+      ]);
+
+      const numeroVendeur = await assignerNumeroVendeur(conn, edition.id);
+      const participationId = nouvelId();
+      codeConfirmation = nouveauCode();
+
+      await conn.query(
+        "INSERT INTO participations (id, edition_id, vendeur_id, numero_vendeur, code_confirmation, est_benevole) VALUES (?, ?, ?, ?, ?, ?)",
+        [participationId, edition.id, vendeurId, numeroVendeur, codeConfirmation, estBenevole],
+      );
+
+      for (const [i, a] of articles.entries()) {
+        await conn.query(
+          "INSERT INTO articles (id, participation_id, numero_article, nom, prix) VALUES (?, ?, ?, ?, ?)",
+          [nouvelId(), participationId, i + 1, a.nom, a.prix],
+        );
+      }
+    });
+  } catch {
+    return { error: "Impossible d'enregistrer la liste, réessaie." };
   }
 
-  const { data: participation, error: participationError } = await supabase
-    .from("participations")
-    .insert({ edition_id: edition.id, vendeur_id: vendeur.id, est_benevole: estBenevole })
-    .select("id, code_confirmation")
-    .single();
-
-  if (participationError || !participation) {
-    return { error: "Impossible de créer la participation, réessaie." };
-  }
-
-  const { error: articlesError } = await supabase.from("articles").insert(
-    articles.map((a, i) => ({
-      participation_id: participation.id,
-      numero_article: i + 1,
-      nom: a.nom,
-      prix: a.prix,
-    })),
-  );
-
-  if (articlesError) {
-    return { error: "Impossible d'enregistrer les articles, réessaie." };
-  }
-
-  redirect(`/accueil/vendeur/${participation.code_confirmation}`);
+  redirect(`/accueil/vendeur/${codeConfirmation}`);
 }

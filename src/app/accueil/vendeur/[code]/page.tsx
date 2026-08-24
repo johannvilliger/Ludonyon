@@ -1,17 +1,17 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { createServiceClient } from "@/lib/supabase/server";
+import { query, queryOne } from "@/lib/db";
 import { definirBenevole, marquerControlee } from "./actions";
 
 type Article = { numero_article: number; nom: string; prix: number; statut: string };
-type Vendeur = { nom: string; telephone: string | null; email: string | null };
 type Participation = {
   numero_vendeur: number;
   code_confirmation: string;
   statut: string;
-  est_benevole: boolean;
-  vendeurs: Vendeur;
-  articles: Article[];
+  est_benevole: number;
+  nom_vendeur: string;
+  telephone: string | null;
+  email: string | null;
 };
 
 const STATUT_LABELS: Record<string, string> = {
@@ -26,21 +26,27 @@ export default async function VendeurAccueilPage({
   params: Promise<{ code: string }>;
 }) {
   const { code } = await params;
-  const supabase = createServiceClient();
 
-  const { data: participation } = await supabase
-    .from("participations")
-    .select(
-      "numero_vendeur, code_confirmation, statut, est_benevole, vendeurs(nom, telephone, email), articles(numero_article, nom, prix, statut)",
-    )
-    .eq("code_confirmation", code)
-    .single<Participation>();
+  const participation = await queryOne<Participation>(
+    `SELECT p.numero_vendeur, p.code_confirmation, p.statut, p.est_benevole,
+            v.nom AS nom_vendeur, v.telephone, v.email
+     FROM participations p
+     JOIN vendeurs v ON v.id = p.vendeur_id
+     WHERE p.code_confirmation = ?`,
+    [code],
+  );
 
   if (!participation) notFound();
 
-  const articles = [...participation.articles].sort(
-    (a, b) => a.numero_article - b.numero_article,
+  const articles = await query<Article>(
+    `SELECT a.numero_article, a.nom, a.prix, a.statut
+     FROM articles a
+     JOIN participations p ON p.id = a.participation_id
+     WHERE p.code_confirmation = ?
+     ORDER BY a.numero_article`,
+    [code],
   );
+
   const total = articles.reduce((sum, a) => sum + a.prix, 0);
 
   return (
@@ -52,10 +58,10 @@ export default async function VendeurAccueilPage({
       <div className="mt-2 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">
-            {participation.vendeurs.nom} — n° {participation.numero_vendeur}
+            {participation.nom_vendeur} — n° {participation.numero_vendeur}
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            {participation.vendeurs.telephone || "—"} · {participation.vendeurs.email || "—"}
+            {participation.telephone || "—"} · {participation.email || "—"}
           </p>
         </div>
         <span className="shrink-0 rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700">

@@ -1,37 +1,30 @@
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
-import { createServiceClient } from "@/lib/supabase/server";
+import { query, queryOne } from "@/lib/db";
 
+type Participation = { id: string; numero_vendeur: number; code_confirmation: string };
 type Article = { numero_article: number; nom: string; prix: number };
 
-export default async function ConfirmationPage({
-  params,
-}: {
-  params: Promise<{ code: string }>;
-}) {
+export default async function ConfirmationPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const supabase = createServiceClient();
 
-  const { data: participation } = await supabase
-    .from("participations")
-    .select("numero_vendeur, code_confirmation, articles(numero_article, nom, prix)")
-    .eq("code_confirmation", code)
-    .single<{
-      numero_vendeur: number;
-      code_confirmation: string;
-      articles: Article[];
-    }>();
+  const participation = await queryOne<Participation>(
+    "SELECT id, numero_vendeur, code_confirmation FROM participations WHERE code_confirmation = ?",
+    [code],
+  );
 
   if (!participation) notFound();
+
+  const articles = await query<Article>(
+    "SELECT numero_article, nom, prix FROM articles WHERE participation_id = ? ORDER BY numero_article",
+    [participation.id],
+  );
 
   const qrDataUrl = await QRCode.toDataURL(participation.code_confirmation, {
     margin: 1,
     width: 220,
   });
 
-  const articles = [...participation.articles].sort(
-    (a, b) => a.numero_article - b.numero_article,
-  );
   const total = articles.reduce((sum, a) => sum + a.prix, 0);
 
   return (

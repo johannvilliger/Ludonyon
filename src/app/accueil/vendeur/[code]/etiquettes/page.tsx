@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import QRCode from "qrcode";
-import { createServiceClient } from "@/lib/supabase/server";
+import { query, queryOne } from "@/lib/db";
 import { PrintButton } from "./print-button";
 
+type Participation = { id: string; numero_vendeur: number };
 type Article = { numero_article: number; nom: string; prix: number };
-type Participation = { numero_vendeur: number; articles: Article[] };
 
 export default async function EtiquettesPage({
   params,
@@ -13,18 +13,17 @@ export default async function EtiquettesPage({
   params: Promise<{ code: string }>;
 }) {
   const { code } = await params;
-  const supabase = createServiceClient();
 
-  const { data: participation } = await supabase
-    .from("participations")
-    .select("numero_vendeur, articles(numero_article, nom, prix)")
-    .eq("code_confirmation", code)
-    .single<Participation>();
+  const participation = await queryOne<Participation>(
+    "SELECT id, numero_vendeur FROM participations WHERE code_confirmation = ?",
+    [code],
+  );
 
   if (!participation) notFound();
 
-  const articles = [...participation.articles].sort(
-    (a, b) => a.numero_article - b.numero_article,
+  const articles = await query<Article>(
+    "SELECT numero_article, nom, prix FROM articles WHERE participation_id = ? ORDER BY numero_article",
+    [participation.id],
   );
 
   const labels = await Promise.all(

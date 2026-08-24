@@ -1,27 +1,20 @@
 import Link from "next/link";
-import { createServiceClient } from "@/lib/supabase/server";
+import { query, queryOne } from "@/lib/db";
 import { NouvelleCaisseForm } from "./nouvelle-caisse-form";
+
+// Toujours refléter l'état courant des caisses — jamais prérendu au build.
+export const dynamic = "force-dynamic";
 
 type Caisse = { id: string; nom: string; fond_initial: number };
 
 export default async function CaissePage() {
-  const supabase = createServiceClient();
-
-  const { data: edition } = await supabase
-    .from("editions")
-    .select("id")
-    .eq("statut", "ouverte")
-    .single();
+  const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE statut = 'ouverte' LIMIT 1");
 
   let caisses: Caisse[] = [];
   if (edition) {
-    const { data } = await supabase
-      .from("caisses")
-      .select("id, nom, fond_initial")
-      .eq("edition_id", edition.id)
-      .order("nom")
-      .returns<Caisse[]>();
-    caisses = data ?? [];
+    caisses = await query<Caisse>("SELECT id, nom, fond_initial FROM caisses WHERE edition_id = ? ORDER BY nom", [
+      edition.id,
+    ]);
   }
 
   return (

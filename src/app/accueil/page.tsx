@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createServiceClient } from "@/lib/supabase/server";
+import { query, queryOne } from "@/lib/db";
 
 type ResultatRecherche = {
   numero_vendeur: number;
   code_confirmation: string;
   statut: string;
-  est_benevole: boolean;
-  vendeurs: { nom: string };
+  est_benevole: number;
+  nom_vendeur: string;
 };
 
 const STATUT_LABELS: Record<string, string> = {
@@ -28,46 +28,28 @@ export default async function AccueilPage({
   let editionOuverte = true;
 
   if (terme) {
-    const supabase = createServiceClient();
-
-    const { data: edition } = await supabase
-      .from("editions")
-      .select("id")
-      .eq("statut", "ouverte")
-      .single();
+    const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE statut = 'ouverte' LIMIT 1");
 
     if (!edition) {
       editionOuverte = false;
     } else {
-      const { data: parCode } = await supabase
-        .from("participations")
-        .select("code_confirmation")
-        .eq("edition_id", edition.id)
-        .eq("code_confirmation", terme)
-        .maybeSingle();
+      const parCode = await queryOne<{ code_confirmation: string }>(
+        "SELECT code_confirmation FROM participations WHERE edition_id = ? AND code_confirmation = ?",
+        [edition.id, terme],
+      );
 
       if (parCode) {
         redirect(`/accueil/vendeur/${parCode.code_confirmation}`);
       }
 
-      const { data: vendeursMatch } = await supabase
-        .from("vendeurs")
-        .select("id")
-        .ilike("nom", `%${terme}%`);
-
-      const vendeurIds = (vendeursMatch ?? []).map((v) => v.id);
-
-      if (vendeurIds.length > 0) {
-        const { data } = await supabase
-          .from("participations")
-          .select("numero_vendeur, code_confirmation, statut, est_benevole, vendeurs(nom)")
-          .eq("edition_id", edition.id)
-          .in("vendeur_id", vendeurIds)
-          .order("numero_vendeur")
-          .returns<ResultatRecherche[]>();
-
-        resultats = data ?? [];
-      }
+      resultats = await query<ResultatRecherche>(
+        `SELECT p.numero_vendeur, p.code_confirmation, p.statut, p.est_benevole, v.nom AS nom_vendeur
+         FROM participations p
+         JOIN vendeurs v ON v.id = p.vendeur_id
+         WHERE p.edition_id = ? AND v.nom LIKE CONCAT('%', ?, '%')
+         ORDER BY p.numero_vendeur`,
+        [edition.id, terme],
+      );
     }
   }
 
@@ -135,12 +117,12 @@ export default async function AccueilPage({
               >
                 <span>
                   <span className="font-mono text-sm text-zinc-500">#{r.numero_vendeur}</span>{" "}
-                  <span className="font-medium">{r.vendeurs.nom}</span>
-                  {r.est_benevole && (
+                  <span className="font-medium">{r.nom_vendeur}</span>
+                  {r.est_benevole ? (
                     <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
                       bénévole
                     </span>
-                  )}
+                  ) : null}
                 </span>
                 <span className="text-sm text-zinc-500">{STATUT_LABELS[r.statut] ?? r.statut}</span>
               </Link>

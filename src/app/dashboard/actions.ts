@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createServiceClient } from "@/lib/supabase/server";
+import { nouvelId, query } from "@/lib/db";
 
 export type VidageState = { error: string | null };
 
@@ -14,12 +14,16 @@ export async function enregistrerVidage(_prevState: VidageState, formData: FormD
   if (!Number.isFinite(montant) || montant <= 0) return { error: "Montant invalide." };
   if (!effectuePar) return { error: "Indique qui effectue le vidage." };
 
-  const supabase = createServiceClient();
-  const { error } = await supabase
-    .from("mouvements_caisse")
-    .insert({ caisse_id: caisseId, montant, effectue_par: effectuePar });
-
-  if (error) return { error: "Impossible d'enregistrer le vidage." };
+  try {
+    await query("INSERT INTO mouvements_caisse (id, caisse_id, montant, effectue_par) VALUES (?, ?, ?, ?)", [
+      nouvelId(),
+      caisseId,
+      montant,
+      effectuePar,
+    ]);
+  } catch {
+    return { error: "Impossible d'enregistrer le vidage." };
+  }
 
   revalidatePath("/dashboard");
   return { error: null };

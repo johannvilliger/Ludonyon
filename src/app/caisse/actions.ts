@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createServiceClient } from "@/lib/supabase/server";
+import { nouvelId, query, queryOne } from "@/lib/db";
 
 export type FormState = { error: string | null };
 
@@ -9,27 +9,17 @@ export async function creerCaisse(_prevState: FormState, formData: FormData): Pr
   const nom = String(formData.get("nom") ?? "").trim();
   if (!nom) return { error: "Donne un nom à cette caisse (ex. « Caisse 1 »)." };
 
-  const supabase = createServiceClient();
-
-  const { data: edition, error: editionError } = await supabase
-    .from("editions")
-    .select("id")
-    .eq("statut", "ouverte")
-    .single();
-
-  if (editionError || !edition) {
+  const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE statut = 'ouverte' LIMIT 1");
+  if (!edition) {
     return { error: "Aucune édition n'est ouverte pour le moment." };
   }
 
-  const { data: caisse, error: caisseError } = await supabase
-    .from("caisses")
-    .insert({ edition_id: edition.id, nom })
-    .select("id")
-    .single();
-
-  if (caisseError || !caisse) {
+  const caisseId = nouvelId();
+  try {
+    await query("INSERT INTO caisses (id, edition_id, nom) VALUES (?, ?, ?)", [caisseId, edition.id, nom]);
+  } catch {
     return { error: "Impossible de créer la caisse, réessaie." };
   }
 
-  redirect(`/caisse/${caisse.id}`);
+  redirect(`/caisse/${caisseId}`);
 }
