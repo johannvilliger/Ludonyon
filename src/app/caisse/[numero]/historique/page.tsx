@@ -2,8 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { queryOne } from "@/lib/db";
 import { posteCaisseAutorise } from "@/lib/gestion";
-import { historiqueVentesCaisse } from "@/lib/historique";
-import { HistoriqueVentes } from "@/components/HistoriqueVentes";
+import { historiqueCaisse } from "@/lib/historique";
+import { HistoriqueCaisse } from "@/components/HistoriqueCaisse";
 
 export default async function HistoriqueCaissePage({ params }: { params: Promise<{ numero: string }> }) {
   const { numero } = await params;
@@ -21,7 +21,7 @@ export default async function HistoriqueCaissePage({ params }: { params: Promise
     [autorisation.posteId],
   );
 
-  const lignes = caisse ? await historiqueVentesCaisse(caisse.id) : [];
+  const lignes = caisse ? await historiqueCaisse(caisse.id) : [];
 
   return (
     <main className="mx-auto w-full max-w-xl px-6 py-12">
@@ -30,7 +30,7 @@ export default async function HistoriqueCaissePage({ params }: { params: Promise
       </Link>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">Historique</h1>
       {!caisse && <p className="mt-3 text-sm text-zinc-500">Aucune édition active pour le moment.</p>}
-      {caisse && <HistoriqueVentes lignes={lignes} />}
+      {caisse && <HistoriqueCaisse lignes={lignes} />}
     </main>
   );
 }

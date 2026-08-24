@@ -2,8 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
-import { historiqueVentesCaisse } from "@/lib/historique";
-import { HistoriqueVentes } from "@/components/HistoriqueVentes";
+import { historiqueCaisse } from "@/lib/historique";
+import { HistoriqueCaisse } from "@/components/HistoriqueCaisse";
 
 export default async function HistoriqueDashboardPage({ params }: { params: Promise<{ numero: string }> }) {
   if (!(await dashboardEstConnecte())) redirect("/gestion");
@@ -21,7 +21,7 @@ export default async function HistoriqueDashboardPage({ params }: { params: Prom
     [numeroInt],
   );
 
-  const lignes = caisse ? await historiqueVentesCaisse(caisse.id) : [];
+  const lignes = caisse ? await historiqueCaisse(caisse.id) : [];
 
   return (
     <main className="mx-auto w-full max-w-xl px-6 py-12">
@@ -30,7 +30,7 @@ export default async function HistoriqueDashboardPage({ params }: { params: Prom
       </Link>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">Historique — Caisse {numeroInt}</h1>
       {!caisse && <p className="mt-3 text-sm text-zinc-500">Pas encore de caisse pour cette édition.</p>}
-      {caisse && <HistoriqueVentes lignes={lignes} />}
+      {caisse && <HistoriqueCaisse lignes={lignes} />}
     </main>
   );
 }
