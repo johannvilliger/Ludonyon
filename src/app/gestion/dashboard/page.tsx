@@ -17,6 +17,7 @@ import { CodeEditor } from "./code-editor";
 import { EditionForm } from "./edition-form";
 import { PhaseButton } from "./phase-button";
 import { ResetTestDataButton } from "./reset-test-data-button";
+import { TerminerEditionButton } from "./terminer-edition-button";
 import { VidageForm } from "./vidage-form";
 
 export const dynamic = "force-dynamic";
@@ -139,6 +140,11 @@ export default async function DashboardGestionPage() {
                 />
               ))}
             </div>
+            {edition.phase === "post_vente" && (
+              <div className="mt-4 border-t border-zinc-200 pt-4">
+                <TerminerEditionButton />
+              </div>
+            )}
           </div>
         )}
       </section>

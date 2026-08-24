@@ -46,6 +46,16 @@ export async function changerPhase(nouvellePhase: Phase) {
   revalidatePath("/gestion/dashboard");
 }
 
+// Volontairement à part des 4 phases réversibles ci-dessus : une fois
+// "terminee", l'édition n'est plus active_flag = 1 (voir migration 0004) et
+// devient invisible au dashboard/à l'accueil — impossible de revenir en
+// arrière depuis cette interface. Ne s'utilise qu'une fois le travail de
+// post-vente terminé.
+export async function terminerEdition() {
+  await query("UPDATE editions SET phase = 'terminee' WHERE active_flag = 1", []);
+  revalidatePath("/gestion/dashboard");
+}
+
 export async function modifierCodeCaisse(posteId: string, nouveauCode: string) {
   const code = nouveauCode.trim();
   if (!code) throw new Error("Le code ne peut pas être vide.");
