@@ -125,6 +125,15 @@ export async function deconnecterCaisse(posteId: string) {
   revalidatePath("/gestion/dashboard");
 }
 
+// Réouvre une caisse clôturée par erreur (ou pour rejouer un scénario de
+// test) sans toucher aux ventes déjà encaissées ni aux autres caisses — la
+// caissière devra se reconnecter normalement avec son code une fois
+// rouverte.
+export async function rouvrirCaisse(caisseId: string) {
+  await query("UPDATE caisses SET cloturee = 0, montant_cloture = NULL WHERE id = ?", [caisseId]);
+  revalidatePath("/gestion/dashboard");
+}
+
 export type VidageState = { error: string | null };
 
 export async function enregistrerVidage(_prevState: VidageState, formData: FormData): Promise<VidageState> {

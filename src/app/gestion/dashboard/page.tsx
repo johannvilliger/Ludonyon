@@ -18,6 +18,7 @@ import { CodeEditor } from "./code-editor";
 import { EditionForm } from "./edition-form";
 import { EditionPanel } from "./edition-panel";
 import { PhaseButton } from "./phase-button";
+import { ReouvrirCaisseButton } from "./reouvrir-caisse-button";
 import { ResetTestDataButton } from "./reset-test-data-button";
 import { TerminerEditionButton } from "./terminer-edition-button";
 import { VidageForm } from "./vidage-form";
@@ -281,6 +282,11 @@ export default async function DashboardGestionPage() {
                           Écart : {ecart > 0 ? "+" : ""}
                           {ecart}.–
                         </p>
+                      )}
+                      {p.caisse_id && (
+                        <div className="mt-2">
+                          <ReouvrirCaisseButton caisseId={p.caisse_id} numero={p.numero} />
+                        </div>
                       )}
                     </div>
                   );
