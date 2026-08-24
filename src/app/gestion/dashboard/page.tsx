@@ -20,6 +20,7 @@ import { EditionPanel } from "./edition-panel";
 import { PhaseButton } from "./phase-button";
 import { ReouvrirCaisseButton } from "./reouvrir-caisse-button";
 import { ResetTestDataButton } from "./reset-test-data-button";
+import { SauvegardeButton } from "./sauvegarde-button";
 import { TerminerEditionButton } from "./terminer-edition-button";
 import { VidageForm } from "./vidage-form";
 
@@ -318,6 +319,18 @@ export default async function DashboardGestionPage() {
               Les codes des caisses n&apos;apparaissent qu&apos;une fois une édition active.
             </p>
           )}
+        </div>
+      </section>
+
+      {/* Sauvegarde : instantané complet à garder de côté en cas de pépin */}
+      <section className="mt-8">
+        <h2 className="text-lg font-medium">Sauvegarde</h2>
+        <p className="mt-1 text-sm text-zinc-600">
+          Télécharge un instantané complet de la base (toutes les données, pas seulement l&apos;édition
+          en cours), à faire régulièrement pendant la vente pour avoir un secours en cas de problème.
+        </p>
+        <div className="mt-3">
+          <SauvegardeButton />
         </div>
       </section>
 

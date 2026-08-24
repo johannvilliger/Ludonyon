@@ -3,8 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nouveauCode as genererCode, nouvelId, query, queryOne, withTransaction } from "@/lib/db";
+import { dashboardEstConnecte } from "@/lib/gestion";
+import { genererSauvegardeSql } from "@/lib/sauvegarde";
 import { NB_VENDEURS_TEST, PRIX_ARTICLES_TEST } from "@/lib/test-data";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
+
+export async function telechargerSauvegarde(): Promise<string> {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+  return genererSauvegardeSql();
+}
 
 export type FormState = { error: string | null };
 
