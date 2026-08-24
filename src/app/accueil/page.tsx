@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { query, queryOne } from "@/lib/db";
+import { ScanVendeurButton } from "./scan-vendeur-button";
 
 type ResultatRecherche = {
   numero_vendeur: number;
@@ -84,6 +85,10 @@ export default async function AccueilPage({
           Rechercher
         </button>
       </form>
+
+      <div className="mt-3">
+        <ScanVendeurButton />
+      </div>
 
       {terme && !editionOuverte && (
         <p className="mt-6 text-sm text-red-600">Aucune édition active actuellement.</p>
