@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
+import { PRIX_ARTICLES_TEST } from "@/lib/test-data";
 import {
   changerPhase,
   deconnecterCaisse,
@@ -15,6 +16,7 @@ import { AutoRefresh } from "./auto-refresh";
 import { CodeEditor } from "./code-editor";
 import { EditionForm } from "./edition-form";
 import { PhaseButton } from "./phase-button";
+import { ResetTestDataButton } from "./reset-test-data-button";
 import { VidageForm } from "./vidage-form";
 
 export const dynamic = "force-dynamic";
@@ -317,6 +319,48 @@ export default async function DashboardGestionPage() {
           )}
         </div>
       </section>
+
+      {/* Zone de test : à retirer avant le vrai troc */}
+      {edition && (
+        <section className="mt-8 rounded-md border border-red-200 bg-red-50/40 p-4">
+          <h2 className="text-lg font-medium text-red-800">Zone de test</h2>
+          <p className="mt-1 text-xs text-red-700">
+            À utiliser uniquement pendant les essais — efface toutes les données de l&apos;édition active.
+          </p>
+          <div className="mt-3">
+            <ResetTestDataButton />
+          </div>
+          <p className="mt-4 text-sm font-medium text-zinc-700">
+            Codes de scan générés (vendeur-article-prix) :
+          </p>
+          <div className="mt-2 overflow-x-auto">
+            <table className="text-xs">
+              <thead>
+                <tr>
+                  <th className="pr-3 text-left font-medium text-zinc-500">Vendeur</th>
+                  {PRIX_ARTICLES_TEST.map((_, i) => (
+                    <th key={i} className="px-2 text-left font-medium text-zinc-500">
+                      Art. {String(i + 1).padStart(2, "0")}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 10 }, (_, vi) => vi + 1).map((numeroVendeur) => (
+                  <tr key={numeroVendeur} className="border-t border-red-100">
+                    <td className="pr-3 py-1 font-medium">#{numeroVendeur}</td>
+                    {PRIX_ARTICLES_TEST.map((prix, ai) => (
+                      <td key={ai} className="px-2 py-1 font-mono">
+                        {numeroVendeur}-{String(ai + 1).padStart(2, "0")}-{prix}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </main>
   );
 }

@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { nouvelId, query, queryOne, withTransaction } from "@/lib/db";
+import { nouveauCode as genererCode, nouvelId, query, queryOne, withTransaction } from "@/lib/db";
+import { NB_VENDEURS_TEST, PRIX_ARTICLES_TEST } from "@/lib/test-data";
 
 export type FormState = { error: string | null };
 
@@ -104,4 +105,50 @@ export async function enregistrerVidage(_prevState: VidageState, formData: FormD
 
   revalidatePath("/gestion/dashboard");
   return { error: null };
+}
+
+export async function reinitialiserDonneesTest() {
+  const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1");
+  if (!edition) throw new Error("Aucune édition active.");
+
+  await withTransaction(async (conn) => {
+    // Ventes (et vente_articles en cascade), vidages, puis vendeurs (et
+    // participations + articles en cascade) de l'édition en cours.
+    await conn.query("DELETE FROM ventes WHERE edition_id = ?", [edition.id]);
+    await conn.query(
+      "DELETE mc FROM mouvements_caisse mc JOIN caisses c ON c.id = mc.caisse_id WHERE c.edition_id = ?",
+      [edition.id],
+    );
+    await conn.query(
+      "DELETE v FROM vendeurs v JOIN participations p ON p.vendeur_id = v.id WHERE p.edition_id = ?",
+      [edition.id],
+    );
+    await conn.query("UPDATE caisses SET fond_initial = 250, cloturee = 0, instructions_vues = 0 WHERE edition_id = ?", [
+      edition.id,
+    ]);
+
+    for (let numeroVendeur = 1; numeroVendeur <= NB_VENDEURS_TEST; numeroVendeur++) {
+      const vendeurId = nouvelId();
+      await conn.query("INSERT INTO vendeurs (id, nom) VALUES (?, ?)", [
+        vendeurId,
+        `Test Vendeur ${String(numeroVendeur).padStart(2, "0")}`,
+      ]);
+
+      const participationId = nouvelId();
+      await conn.query(
+        "INSERT INTO participations (id, edition_id, vendeur_id, numero_vendeur, code_confirmation) VALUES (?, ?, ?, ?, ?)",
+        [participationId, edition.id, vendeurId, numeroVendeur, genererCode()],
+      );
+
+      for (let i = 0; i < PRIX_ARTICLES_TEST.length; i++) {
+        await conn.query(
+          "INSERT INTO articles (id, participation_id, numero_article, nom, prix) VALUES (?, ?, ?, ?, ?)",
+          [nouvelId(), participationId, i + 1, `Article test ${i + 1}`, PRIX_ARTICLES_TEST[i]],
+        );
+      }
+    }
+  });
+
+  revalidatePath("/gestion/dashboard");
+  revalidatePath("/gestion/dashboard/vendeurs");
 }
