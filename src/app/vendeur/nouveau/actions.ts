@@ -36,9 +36,9 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
     if (mot) return { error: messageMotInterdit(mot) };
   }
 
-  const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE statut = 'ouverte' LIMIT 1");
+  const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE phase = 'depot' LIMIT 1");
   if (!edition) {
-    return { error: "Aucune édition n'est ouverte aux dépôts pour le moment." };
+    return { error: "Le dépôt en ligne n'est pas ouvert pour le moment — passe par l'accueil sur place." };
   }
 
   let codeConfirmation = "";

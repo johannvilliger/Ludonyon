@@ -1,0 +1,265 @@
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { query, queryOne } from "@/lib/db";
+import { dashboardEstConnecte } from "@/lib/gestion";
+import {
+  changerPhase,
+  deconnecterCaisse,
+  modifierCodeCaisse,
+  modifierCodeDashboard,
+  refuserConnexionCaisse,
+  validerConnexionCaisse,
+  type Phase,
+} from "./actions";
+import { CodeEditor } from "./code-editor";
+import { EditionForm } from "./edition-form";
+import { VidageForm } from "./vidage-form";
+
+type Edition = { id: string; annee: number; phase: Phase };
+type Parametres = { code_dashboard: string };
+type PosteLigne = {
+  poste_id: string;
+  numero: number;
+  code_acces: string;
+  connecte: number;
+  demande_en_attente: number;
+  caisse_id: string | null;
+  fond_initial: number | null;
+  total_ventes: number;
+  total_vidages: number;
+};
+type Totaux = { total_encaisse: number; total_du_vendeurs: number };
+
+const LABELS_PHASE: Record<Phase, string> = {
+  depot: "Dépôt en ligne",
+  reception: "Réception",
+  caisse: "Caisse",
+  post_vente: "Post-vente",
+};
+const ORDRE_PHASES: Phase[] = ["depot", "reception", "caisse", "post_vente"];
+
+export default async function DashboardGestionPage() {
+  if (!(await dashboardEstConnecte())) redirect("/gestion");
+
+  const edition = await queryOne<Edition>("SELECT id, annee, phase FROM editions WHERE active_flag = 1");
+  const parametres = await queryOne<Parametres>("SELECT code_dashboard FROM parametres_gestion WHERE id = 1");
+
+  const postes = await query<PosteLigne>(
+    `SELECT
+       pc.id AS poste_id,
+       pc.numero,
+       pc.code_acces,
+       pc.connecte,
+       pc.demande_en_attente,
+       c.id AS caisse_id,
+       c.fond_initial,
+       COALESCE(SUM(va.prix_encaisse), 0) AS total_ventes,
+       COALESCE((SELECT SUM(mc.montant) FROM mouvements_caisse mc WHERE mc.caisse_id = c.id), 0) AS total_vidages
+     FROM postes_caisse pc
+     LEFT JOIN caisses c ON c.poste_caisse_id = pc.id AND c.edition_id = ?
+     LEFT JOIN ventes v ON v.caisse_id = c.id
+     LEFT JOIN vente_articles va ON va.vente_id = v.id
+     GROUP BY pc.id, pc.numero, pc.code_acces, pc.connecte, pc.demande_en_attente, c.id, c.fond_initial
+     ORDER BY pc.numero`,
+    [edition?.id ?? null],
+  );
+
+  const totaux = edition
+    ? await queryOne<Totaux>(
+        `SELECT
+           COALESCE(SUM(va.prix_encaisse), 0) AS total_encaisse,
+           COALESCE(SUM(
+             CASE WHEN p.est_benevole = 1 THEN a.prix ELSE ROUND(a.prix * (1 - e.taux_vendeur)) END
+           ), 0) AS total_du_vendeurs
+         FROM vente_articles va
+         JOIN ventes v ON v.id = va.vente_id
+         JOIN articles a ON a.id = va.article_id
+         JOIN participations p ON p.id = a.participation_id
+         JOIN editions e ON e.id = v.edition_id
+         WHERE v.edition_id = ?`,
+        [edition.id],
+      )
+    : null;
+
+  const totalEncaisse = Number(totaux?.total_encaisse ?? 0);
+  const totalDuVendeurs = Number(totaux?.total_du_vendeurs ?? 0);
+  const benefice = totalEncaisse - totalDuVendeurs;
+
+  const demandes = postes.filter((p) => p.demande_en_attente);
+  const connectees = postes.filter((p) => p.connecte);
+
+  return (
+    <main className="mx-auto max-w-3xl px-6 py-12">
+      <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+
+      {/* Édition */}
+      <section className="mt-8">
+        <h2 className="text-lg font-medium">Édition</h2>
+        {!edition && (
+          <div className="mt-3">
+            <p className="text-sm text-zinc-500">Aucune édition active.</p>
+            <div className="mt-3">
+              <EditionForm />
+            </div>
+          </div>
+        )}
+        {edition && (
+          <div className="mt-3 rounded-md border border-zinc-200 p-4">
+            <p className="text-sm text-zinc-600">
+              Édition <strong>{edition.annee}</strong> — phase actuelle :{" "}
+              <strong>{LABELS_PHASE[edition.phase]}</strong>
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {ORDRE_PHASES.map((phase) => (
+                <form key={phase} action={changerPhase.bind(null, phase)}>
+                  <button
+                    type="submit"
+                    disabled={phase === edition.phase}
+                    className={
+                      phase === edition.phase
+                        ? "rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white"
+                        : "rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:border-zinc-400"
+                    }
+                  >
+                    {LABELS_PHASE[phase]}
+                  </button>
+                </form>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-zinc-400">
+              Tu peux avancer ou revenir en arrière librement — seul le dashboard pilote les phases.
+            </p>
+          </div>
+        )}
+      </section>
+
+      {/* Stats globales */}
+      {edition && (
+        <section className="mt-8">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-md border border-zinc-200 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Encaissé</p>
+              <p className="mt-1 text-2xl font-semibold">{totalEncaisse}.–</p>
+            </div>
+            <div className="rounded-md border border-zinc-200 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Dû aux vendeurs</p>
+              <p className="mt-1 text-2xl font-semibold">{totalDuVendeurs}.–</p>
+            </div>
+            <div className="rounded-md border border-zinc-200 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Bénéfice</p>
+              <p className="mt-1 text-2xl font-semibold text-emerald-700">{benefice}.–</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Demandes de connexion en attente */}
+      {demandes.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Demandes de connexion</h2>
+          <ul className="mt-3 space-y-2">
+            {demandes.map((p) => (
+              <li
+                key={p.poste_id}
+                className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-4 py-3"
+              >
+                <span className="text-sm font-medium">Caisse {p.numero} veut se connecter</span>
+                <div className="flex gap-2">
+                  <form action={validerConnexionCaisse.bind(null, p.poste_id)}>
+                    <button
+                      type="submit"
+                      className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
+                    >
+                      Valider
+                    </button>
+                  </form>
+                  <form action={refuserConnexionCaisse.bind(null, p.poste_id)}>
+                    <button
+                      type="submit"
+                      className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:border-zinc-400"
+                    >
+                      Refuser
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Caisses connectées */}
+      {connectees.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Caisses connectées</h2>
+          <ul className="mt-3 space-y-2">
+            {connectees.map((p) => (
+              <li key={p.poste_id} className="flex items-center justify-between rounded-md border border-zinc-200 px-4 py-3">
+                <span className="text-sm font-medium">Caisse {p.numero}</span>
+                <form action={deconnecterCaisse.bind(null, p.poste_id)}>
+                  <button type="submit" className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:border-red-400 hover:text-red-600">
+                    Déconnecter
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Caisses : ventes, cash, vidage, historique */}
+      <section className="mt-8">
+        <h2 className="text-lg font-medium">Caisses</h2>
+        <ul className="mt-3 space-y-3">
+          {postes.map((p) => {
+            const ventes = Number(p.total_ventes);
+            const vidages = Number(p.total_vidages);
+            const cashEnCaisse = p.fond_initial != null ? p.fond_initial + ventes - vidages : null;
+            return (
+              <li key={p.poste_id} className="rounded-md border border-zinc-200 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Caisse {p.numero}</span>
+                  <Link href={`/gestion/dashboard/historique/${p.numero}`} className="text-sm text-zinc-500 hover:underline">
+                    Historique →
+                  </Link>
+                </div>
+                {p.caisse_id ? (
+                  <>
+                    <p className="mt-1 text-sm text-zinc-600">
+                      Ventes : {ventes}.– · Cash en caisse :{" "}
+                      <span className="font-mono">{cashEnCaisse}.–</span>{" "}
+                      <span className="text-zinc-400">
+                        (fonds {p.fond_initial}.– − vidages {vidages}.–)
+                      </span>
+                    </p>
+                    <VidageForm caisseId={p.caisse_id} />
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm text-zinc-400">Pas encore de caisse pour cette édition.</p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      {/* Codes d'accès */}
+      <section className="mt-8">
+        <h2 className="text-lg font-medium">Codes d&apos;accès</h2>
+        <div className="mt-3 space-y-2 rounded-md border border-zinc-200 p-4">
+          {postes.map((p) => (
+            <CodeEditor
+              key={p.poste_id}
+              label={`Caisse ${p.numero}`}
+              valeurInitiale={p.code_acces}
+              onSave={modifierCodeCaisse.bind(null, p.poste_id)}
+            />
+          ))}
+          {parametres && (
+            <CodeEditor label="Dashboard" valeurInitiale={parametres.code_dashboard} onSave={modifierCodeDashboard} />
+          )}
+        </div>
+      </section>
+    </main>
+  );
+}
