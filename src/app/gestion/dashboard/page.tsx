@@ -120,7 +120,7 @@ export default async function DashboardGestionPage() {
   const postesClotures = postes.filter((p) => p.cloturee);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-12">
+    <main className="mx-auto w-full max-w-[1600px] px-6 py-12">
       <AutoRefresh />
 
       <div className="flex items-center justify-between">
@@ -205,7 +205,7 @@ export default async function DashboardGestionPage() {
       {edition && (
         <section className="mt-8">
           <h2 className="text-lg font-medium">Caisses</h2>
-          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {postesActifs.map((p) => {
               const ventes = Number(p.total_ventes);
               const vidages = Number(p.total_vidages);
@@ -256,7 +256,7 @@ export default async function DashboardGestionPage() {
           {postesClotures.length > 0 && (
             <div className="mt-6">
               <h3 className="text-sm font-medium text-zinc-500">Caisses clôturées</h3>
-              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 {postesClotures.map((p) => {
                   const theorique = Number(p.total_ventes) - Number(p.total_vidages);
                   const compte = p.montant_cloture != null ? Number(p.montant_cloture) : null;
