@@ -24,6 +24,10 @@ model User {
   photoPath              String? // nom de fichier dans le dossier de stockage des photos, hors dépôt git
   calendarToken          String   @unique @default(cuid())
   wantsOpeningReminders  Boolean  @default(false)
+  // Dernière activité (connexion ou simple navigation sur une page,
+  // limité à une écriture toutes les 5 minutes — voir le callback jwt
+  // dans auth.ts). Visible dans Espace organisation > Bénévoles.
+  lastSeenAt             DateTime?
   // Poste du bénévole pour le planning des ouvertures — "ACCUEIL" |
   // "RETOUR" | "SORTIE" | null. Fixé uniquement par un responsable/comité
   // (jamais par le bénévole lui-même), sert à filtrer qui est notifié

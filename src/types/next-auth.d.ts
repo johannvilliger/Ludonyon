@@ -17,5 +17,8 @@ declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
     role?: string;
+    // Horodatage (Date.now()) de la dernière écriture de User.lastSeenAt —
+    // voir le callback jwt dans auth.ts.
+    lastSeenSyncAt?: number;
   }
 }

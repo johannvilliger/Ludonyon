@@ -4,7 +4,7 @@ import { requireOrganisationUser } from "@/lib/session";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/roles";
 import { POSTES, POSTE_LABELS, type Poste } from "@/lib/postes";
 import { CLOTHING_SIZES, CLOTHING_CUTS, CLOTHING_CUT_LABELS, type ClothingCut } from "@/lib/clothing";
-import { formatDateOnly } from "@/lib/format";
+import { formatDateOnly, formatDateTime } from "@/lib/format";
 import { mailConfigured } from "@/lib/mail";
 import Avatar from "@/components/Avatar";
 import PhotoUploadField from "@/components/PhotoUploadField";
@@ -203,6 +203,11 @@ export default async function OrganisationBenevolesPage({
                               : "Rappel demandé — notifications désactivées sur l’appareil"
                             : "Rappels ouverture désactivés"}
                         </span>
+                        <p className="mt-1 text-xs text-stone-400">
+                          {u.lastSeenAt
+                            ? `Dernière connexion : ${formatDateTime(u.lastSeenAt)}`
+                            : "Jamais connecté·e"}
+                        </p>
                       </div>
                     </div>
 

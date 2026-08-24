@@ -42,10 +42,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    // Sert aussi à enregistrer la dernière activité (connexion ou simple
+    // navigation) : ce callback tourne à chaque requête passant par le
+    // proxy d'authentification (voir src/proxy.ts), pas seulement à la
+    // connexion. Le timestamp de dernière écriture reste dans le token
+    // lui-même pour éviter une lecture en base à chaque requête ; la
+    // fenêtre de 5 minutes évite d'écrire en base à chaque navigation.
+    async jwt({ token, user }) {
       if (user) {
         token.role = user.role;
         token.id = user.id;
+      }
+      const userId = token.id as string | undefined;
+      const lastSync = typeof token.lastSeenSyncAt === "number" ? token.lastSeenSyncAt : 0;
+      if (userId && Date.now() - lastSync > 5 * 60 * 1000) {
+        await prisma.user
+          .update({ where: { id: userId }, data: { lastSeenAt: new Date() } })
+          .catch(() => {});
+        token.lastSeenSyncAt = Date.now();
       }
       return token;
     },
