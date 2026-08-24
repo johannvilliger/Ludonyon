@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
 
 type ArticleRow = { nom: string; prix: string };
@@ -11,18 +11,39 @@ function lignesVides(n: number): ArticleRow[] {
   return Array.from({ length: n }, () => ({ nom: "", prix: "" }));
 }
 
+// Prix entier obligatoire (pas de centimes) : la virgule et le point sont
+// tous deux refusés, quel que soit ce que le navigateur laisse taper dans
+// le champ number selon la locale.
+function contientCentimes(prix: string): boolean {
+  return prix.includes(".") || prix.includes(",");
+}
+
+function prixEstInvalide(prix: string): boolean {
+  if (prix.trim() === "") return false;
+  if (contientCentimes(prix)) return true;
+  const n = Number(prix);
+  return !Number.isInteger(n) || n <= 0;
+}
+
 export function ArticleListEditor({
   fieldName = "articles",
   initialArticles,
+  onValiditeChange,
 }: {
   fieldName?: string;
   initialArticles?: { nom: string; prix: number }[];
+  onValiditeChange?: (valide: boolean) => void;
 }) {
   const [articles, setArticles] = useState<ArticleRow[]>(
     initialArticles && initialArticles.length > 0
       ? initialArticles.map((a) => ({ nom: a.nom, prix: String(a.prix) }))
       : lignesVides(MAX_ARTICLES),
   );
+
+  useEffect(() => {
+    const invalide = articles.some((a) => a.nom.trim().length > 0 && (motInterdit(a.nom) || prixEstInvalide(a.prix)));
+    onValiditeChange?.(!invalide);
+  }, [articles, onValiditeChange]);
 
   function updateArticle(index: number, field: keyof ArticleRow, value: string) {
     setArticles((prev) =>
@@ -54,7 +75,8 @@ export function ArticleListEditor({
         {articles.map((article, i) => {
           const nomRempli = article.nom.trim().length > 0;
           const mot = nomRempli ? motInterdit(article.nom) : null;
-          const prixInvalide = nomRempli && article.prix.trim() !== "" && Number(article.prix) <= 0;
+          const prixInvalide = nomRempli && prixEstInvalide(article.prix);
+          const centimes = prixInvalide && contientCentimes(article.prix);
           return (
             <div key={i}>
               <div className="flex items-center gap-2">
@@ -95,7 +117,11 @@ export function ArticleListEditor({
               </div>
               {mot && <p className="ml-8 mt-1 text-sm text-red-600">{messageMotInterdit(mot)}</p>}
               {!mot && prixInvalide && (
-                <p className="ml-8 mt-1 text-sm text-red-600">Indiquez un prix supérieur à 0.–.</p>
+                <p className="ml-8 mt-1 text-sm text-red-600">
+                  {centimes
+                    ? "Pas de centimes : indiquez un prix en francs entiers (ex. 12, pas 12.50)."
+                    : "Indiquez un prix supérieur à 0.–."}
+                </p>
               )}
             </div>
           );

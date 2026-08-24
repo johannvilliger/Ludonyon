@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { ArticleListEditor } from "@/components/ArticleListEditor";
 import { creerListeAccueil, type FormState } from "./actions";
@@ -9,6 +9,7 @@ const initialState: FormState = { error: null };
 
 export default function NouvelleListeAccueilPage() {
   const [state, formAction, pending] = useActionState(creerListeAccueil, initialState);
+  const [articlesValides, setArticlesValides] = useState(true);
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-12">
@@ -51,7 +52,7 @@ export default function NouvelleListeAccueilPage() {
 
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || !articlesValides}
             className="shrink-0 rounded-md bg-zinc-900 px-6 py-3 font-medium text-white hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
           >
             {pending ? "Enregistrement…" : "Créer la liste"}
@@ -65,7 +66,7 @@ export default function NouvelleListeAccueilPage() {
           Vendeur bénévole (pas de retenue de 10% sur ses ventes)
         </label>
 
-        <ArticleListEditor />
+        <ArticleListEditor onValiditeChange={setArticlesValides} />
       </form>
     </main>
   );
