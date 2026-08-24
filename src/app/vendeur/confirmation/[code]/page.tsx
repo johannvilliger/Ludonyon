@@ -31,8 +31,8 @@ export default async function ConfirmationPage({ params }: { params: Promise<{ c
     <main className="mx-auto max-w-xl px-6 py-12">
       <h1 className="text-3xl font-semibold tracking-tight">Liste enregistrée</h1>
       <p className="mt-2 text-zinc-600">
-        Vendeur n° <strong>{participation.numero_vendeur}</strong> — présente ce code au dépôt,
-        le comité imprimera tes étiquettes sur place.
+        Vendeur n° <strong>{participation.numero_vendeur}</strong> — présentez ce code au dépôt,
+        le comité imprimera vos étiquettes sur place.
       </p>
 
       <div className="mt-6 flex flex-col items-center gap-3 rounded-lg border border-zinc-200 p-6">

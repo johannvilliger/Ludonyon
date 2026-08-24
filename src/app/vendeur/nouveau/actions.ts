@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { assignerNumeroVendeur, nouveauCode, nouvelId, queryOne, withTransaction } from "@/lib/db";
+import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
 
 export type FormState = { error: string | null };
 
@@ -29,6 +30,11 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
   if (!nom) return { error: "Le nom est obligatoire." };
   if (articles.length === 0) return { error: "Ajoute au moins un article." };
   if (articles.length > 30) return { error: "30 articles maximum par liste." };
+
+  for (const a of articles) {
+    const mot = motInterdit(a.nom);
+    if (mot) return { error: messageMotInterdit(mot) };
+  }
 
   const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE statut = 'ouverte' LIMIT 1");
   if (!edition) {
