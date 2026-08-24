@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
+import { AjouterArticleForm } from "./ajouter-article-form";
 import { ArticleEditableRow } from "./article-editable-row";
 import { basculerRecu, definirBenevole, marquerControlee, terminerReception } from "./actions";
 
@@ -166,6 +167,8 @@ export default async function VendeurAccueilPage({
           );
         })}
       </ul>
+
+      {participation.numero_vendeur >= 900 && <AjouterArticleForm code={code} />}
     </main>
   );
 }

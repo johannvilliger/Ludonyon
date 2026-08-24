@@ -72,11 +72,18 @@ export async function assignerNumeroVendeur(conn: mysql.PoolConnection, editionI
     throw new Error("Impossible d'obtenir le verrou pour attribuer le numéro de vendeur.");
   }
   try {
+    // Uniquement parmi les numéros < 900 : au-delà, ce sont les bénévoles et
+    // les vendeurs spéciaux 901/902 (numéros fixes, voir migration 0007),
+    // jamais réattribués aux vendeurs clients.
     const [rows] = await conn.query<mysql.RowDataPacket[]>(
-      "SELECT COALESCE(MAX(numero_vendeur), 0) + 1 AS suivant FROM participations WHERE edition_id = ?",
+      "SELECT COALESCE(MAX(numero_vendeur), 0) + 1 AS suivant FROM participations WHERE edition_id = ? AND numero_vendeur < 900",
       [editionId],
     );
-    return rows[0].suivant as number;
+    const suivant = rows[0].suivant as number;
+    if (suivant >= 900) {
+      throw new Error("Plus de numéro de vendeur disponible dans la plage 1-899.");
+    }
+    return suivant;
   } finally {
     await conn.query("SELECT RELEASE_LOCK(?)", [lockName]);
   }

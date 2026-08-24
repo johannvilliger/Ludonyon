@@ -51,6 +51,45 @@ export async function modifierArticle(articleId: string, code: string, nom: stri
   revalidatePath(`/accueil/vendeur/${code}`);
 }
 
+// Pas de plafond de 30 articles ici, contrairement au dépôt normal : c'est
+// réservé aux comptes 9xx (bénévoles + 901/902), qui n'ont pas cette
+// limite.
+export async function ajouterArticle(code: string, nom: string, prix: number) {
+  const participation = await queryOne<{ id: string; numero_vendeur: number }>(
+    "SELECT id, numero_vendeur FROM participations WHERE code_confirmation = ?",
+    [code],
+  );
+  if (!participation) throw new Error("Vendeur introuvable.");
+  if (participation.numero_vendeur < 900) {
+    throw new Error("L'ajout libre d'articles n'est réservé qu'aux comptes 9xx.");
+  }
+
+  const nomTrim = nom.trim();
+  if (!nomTrim) throw new Error("Le nom est obligatoire.");
+
+  const mot = motInterdit(nomTrim);
+  if (mot) throw new Error(messageMotInterdit(mot));
+
+  const prixArrondi = Math.round(prix);
+  if (!Number.isFinite(prixArrondi) || prixArrondi <= 0) {
+    throw new Error("Le prix doit être supérieur à 0.–.");
+  }
+
+  const dernier = await queryOne<{ suivant: number }>(
+    "SELECT COALESCE(MAX(numero_article), 0) + 1 AS suivant FROM articles WHERE participation_id = ?",
+    [participation.id],
+  );
+
+  await query("INSERT INTO articles (id, participation_id, numero_article, nom, prix) VALUES (UUID(), ?, ?, ?, ?)", [
+    participation.id,
+    dernier?.suivant ?? 1,
+    nomTrim,
+    prixArrondi,
+  ]);
+
+  revalidatePath(`/accueil/vendeur/${code}`);
+}
+
 export async function terminerReception(code: string) {
   const nonRecu = await queryOne<{ id: string }>(
     `SELECT a.id FROM articles a JOIN participations p ON p.id = a.participation_id
