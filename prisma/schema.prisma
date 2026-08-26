@@ -188,13 +188,15 @@ model EventTemplate {
 
 // Tâche type d'un modèle d'événement. À la création d'un événement depuis
 // ce modèle, une Task est générée avec dueDate = date de l'événement -
-// daysBeforeEvent jours ; reminderDaysBefore est reporté tel quel sur la
-// tâche générée (voir Task.reminderDaysBefore).
+// daysBeforeEvent jours (une valeur négative donne donc une échéance après
+// l'événement, ex. pour un rapport ou une synthèse) ; reminderDaysBefore
+// est reporté tel quel sur la tâche générée (voir Task.reminderDaysBefore).
 model EventTaskTemplate {
   id                 String        @id @default(cuid())
   eventTemplateId    String
   eventTemplate      EventTemplate @relation(fields: [eventTemplateId], references: [id], onDelete: Cascade)
   title              String
+  description        String?       @db.Text
   daysBeforeEvent    Int
   reminderDaysBefore Int?
   order              Int           @default(0)

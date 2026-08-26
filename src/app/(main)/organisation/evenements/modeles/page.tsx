@@ -5,8 +5,14 @@ import {
   createEventTemplate,
   deleteEventTemplate,
   addTaskTemplate,
+  updateTaskTemplate,
   deleteTaskTemplate,
 } from "@/lib/actions/organisation";
+
+function daysLabel(days: number): string {
+  if (days === 0) return "jour même";
+  return days > 0 ? `${days} j avant` : `${Math.abs(days)} j après`;
+}
 
 export default async function EventTemplatesPage() {
   await requireOrganisationUser();
@@ -154,27 +160,101 @@ export default async function EventTemplatesPage() {
                       {template.taskTemplates.map((tt) => (
                         <li
                           key={tt.id}
-                          className="flex items-center justify-between gap-2 rounded-lg bg-stone-50 px-3 py-1.5 text-sm"
+                          className="rounded-lg bg-stone-50 px-3 py-1.5 text-sm"
                         >
-                          <span className="text-stone-700">
-                            {tt.title}
-                            <span className="ml-2 text-xs text-stone-400">
-                              {tt.daysBeforeEvent === 0
-                                ? "jour même"
-                                : `${tt.daysBeforeEvent} j avant`}
-                              {tt.reminderDaysBefore !== null &&
-                                ` · rappel ${tt.reminderDaysBefore === 0 ? "le jour même de l’échéance" : `${tt.reminderDaysBefore} j avant l’échéance`}`}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-stone-700">
+                              {tt.title}
+                              <span className="ml-2 text-xs text-stone-400">
+                                {daysLabel(tt.daysBeforeEvent)}
+                                {tt.reminderDaysBefore !== null &&
+                                  ` · rappel ${tt.reminderDaysBefore === 0 ? "le jour même de l’échéance" : `${tt.reminderDaysBefore} j avant l’échéance`}`}
+                              </span>
                             </span>
-                          </span>
-                          <form action={deleteTaskTemplate}>
-                            <input type="hidden" name="id" value={tt.id} />
-                            <button
-                              type="submit"
-                              className="shrink-0 text-xs text-red-500 hover:underline"
-                            >
-                              Retirer
-                            </button>
-                          </form>
+                            <div className="flex shrink-0 items-center gap-3">
+                              <details>
+                                <summary className="cursor-pointer list-none text-xs text-brand-blue hover:underline">
+                                  Modifier
+                                </summary>
+                                <form
+                                  action={updateTaskTemplate}
+                                  className="mt-2 w-72 max-w-full space-y-2 rounded-lg border border-stone-200 bg-white p-3"
+                                >
+                                  <input type="hidden" name="id" value={tt.id} />
+                                  <div>
+                                    <label className="mb-1 block text-xs font-medium text-stone-700">
+                                      Titre
+                                    </label>
+                                    <input
+                                      type="text"
+                                      name="title"
+                                      required
+                                      maxLength={200}
+                                      defaultValue={tt.title}
+                                      className="w-full rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="mb-1 block text-xs font-medium text-stone-700">
+                                      Description
+                                    </label>
+                                    <textarea
+                                      name="description"
+                                      rows={2}
+                                      maxLength={2000}
+                                      defaultValue={tt.description ?? ""}
+                                      className="w-full rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="mb-1 block text-xs font-medium text-stone-700">
+                                      Jours avant l&rsquo;événement (négatif = après)
+                                    </label>
+                                    <input
+                                      type="number"
+                                      name="daysBeforeEvent"
+                                      required
+                                      defaultValue={tt.daysBeforeEvent}
+                                      className="w-full rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="mb-1 block text-xs font-medium text-stone-700">
+                                      Rappel (jours avant échéance)
+                                    </label>
+                                    <input
+                                      type="number"
+                                      name="reminderDaysBefore"
+                                      min={0}
+                                      placeholder="Aucun"
+                                      defaultValue={tt.reminderDaysBefore ?? ""}
+                                      className="w-full rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                                    />
+                                  </div>
+                                  <button
+                                    type="submit"
+                                    className="rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100"
+                                  >
+                                    Enregistrer
+                                  </button>
+                                </form>
+                              </details>
+                              <form action={deleteTaskTemplate}>
+                                <input type="hidden" name="id" value={tt.id} />
+                                <button
+                                  type="submit"
+                                  className="text-xs text-red-500 hover:underline"
+                                >
+                                  Retirer
+                                </button>
+                              </form>
+                            </div>
+                          </div>
+                          {tt.description && (
+                            <p className="mt-1 text-xs text-stone-500">
+                              {tt.description}
+                            </p>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -182,51 +262,63 @@ export default async function EventTemplatesPage() {
 
                   <form
                     action={addTaskTemplate}
-                    className="mt-3 grid gap-2 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-end"
+                    className="mt-3 space-y-2 rounded-lg border border-stone-200 p-3"
                   >
                     <input type="hidden" name="eventTemplateId" value={template.id} />
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-stone-700">
-                        Titre de la tâche
-                      </label>
-                      <input
-                        type="text"
-                        name="title"
-                        required
-                        maxLength={200}
-                        className="w-full rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
-                      />
+                    <div className="grid gap-2 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-end">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-stone-700">
+                          Titre de la tâche
+                        </label>
+                        <input
+                          type="text"
+                          name="title"
+                          required
+                          maxLength={200}
+                          className="w-full rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-stone-700">
+                          Jours avant l&rsquo;événement (négatif = après)
+                        </label>
+                        <input
+                          type="number"
+                          name="daysBeforeEvent"
+                          required
+                          className="w-full rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-stone-700">
+                          Rappel (jours avant échéance)
+                        </label>
+                        <input
+                          type="number"
+                          name="reminderDaysBefore"
+                          min={0}
+                          placeholder="Aucun"
+                          className="w-full rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="rounded-lg border-2 border-black bg-brand-yellow px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-brand-yellow-dark"
+                      >
+                        Ajouter
+                      </button>
                     </div>
                     <div>
                       <label className="mb-1 block text-xs font-medium text-stone-700">
-                        Jours avant l&rsquo;événement
+                        Description (optionnel)
                       </label>
-                      <input
-                        type="number"
-                        name="daysBeforeEvent"
-                        required
-                        min={0}
+                      <textarea
+                        name="description"
+                        rows={2}
+                        maxLength={2000}
                         className="w-full rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
                       />
                     </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-stone-700">
-                        Rappel (jours avant échéance)
-                      </label>
-                      <input
-                        type="number"
-                        name="reminderDaysBefore"
-                        min={0}
-                        placeholder="Aucun"
-                        className="w-full rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      className="rounded-lg border-2 border-black bg-brand-yellow px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-brand-yellow-dark"
-                    >
-                      Ajouter
-                    </button>
                   </form>
                 </div>
               </li>

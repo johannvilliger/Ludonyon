@@ -337,10 +337,14 @@ export async function deleteEventTemplate(formData: FormData) {
   revalidatePath("/organisation/evenements/modeles");
 }
 
+// daysBeforeEvent n'a pas de borne minimale : une valeur négative signifie
+// une échéance après l'événement (ex. rapport, synthèse à rédiger après le
+// troc annuel).
 const taskTemplateSchema = z.object({
   eventTemplateId: z.string().min(1),
   title: z.string().trim().min(1, "Le titre est requis").max(200),
-  daysBeforeEvent: z.coerce.number().int().min(0, "Doit être 0 ou plus"),
+  description: z.string().trim().max(2000).optional(),
+  daysBeforeEvent: z.coerce.number().int(),
   reminderDaysBefore: z.union([z.coerce.number().int().min(0), z.literal("")]).optional(),
 });
 
@@ -351,6 +355,7 @@ export async function addTaskTemplate(formData: FormData) {
   const parsed = taskTemplateSchema.safeParse({
     eventTemplateId: formData.get("eventTemplateId"),
     title: formData.get("title"),
+    description: formData.get("description") || undefined,
     daysBeforeEvent: formData.get("daysBeforeEvent"),
     reminderDaysBefore: reminderRaw === null || reminderRaw === "" ? undefined : reminderRaw,
   });
@@ -366,10 +371,44 @@ export async function addTaskTemplate(formData: FormData) {
     data: {
       eventTemplateId: parsed.data.eventTemplateId,
       title: parsed.data.title,
+      description: parsed.data.description ?? null,
       daysBeforeEvent: parsed.data.daysBeforeEvent,
       reminderDaysBefore:
         typeof parsed.data.reminderDaysBefore === "number" ? parsed.data.reminderDaysBefore : null,
       order: count,
+    },
+  });
+
+  revalidatePath("/organisation/evenements/modeles");
+}
+
+const taskTemplateUpdateSchema = taskTemplateSchema
+  .omit({ eventTemplateId: true })
+  .extend({ id: z.string().min(1) });
+
+export async function updateTaskTemplate(formData: FormData) {
+  await requireOrganisationUser();
+
+  const reminderRaw = formData.get("reminderDaysBefore");
+  const parsed = taskTemplateUpdateSchema.safeParse({
+    id: formData.get("id"),
+    title: formData.get("title"),
+    description: formData.get("description") || undefined,
+    daysBeforeEvent: formData.get("daysBeforeEvent"),
+    reminderDaysBefore: reminderRaw === null || reminderRaw === "" ? undefined : reminderRaw,
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
+  }
+
+  await prisma.eventTaskTemplate.update({
+    where: { id: parsed.data.id },
+    data: {
+      title: parsed.data.title,
+      description: parsed.data.description ?? null,
+      daysBeforeEvent: parsed.data.daysBeforeEvent,
+      reminderDaysBefore:
+        typeof parsed.data.reminderDaysBefore === "number" ? parsed.data.reminderDaysBefore : null,
     },
   });
 
