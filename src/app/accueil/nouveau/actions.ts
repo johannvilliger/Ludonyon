@@ -5,6 +5,7 @@ import { assignerNumeroVendeur, nouveauCode, nouvelId, queryOne, withTransaction
 import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
 import { envoyerEmailConfirmationListe } from "@/lib/email";
 import { accueilEstConnecte } from "@/lib/gestion";
+import { formaterTelephone, telephoneValide } from "@/lib/telephone";
 import { urlAbsolue } from "@/lib/url";
 
 export type FormState = { error: string | null };
@@ -15,7 +16,7 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
   if (!(await accueilEstConnecte())) return { error: "Non autorisé." };
 
   const nom = String(formData.get("nom") ?? "").trim();
-  const telephone = String(formData.get("telephone") ?? "").trim();
+  const telephone = formaterTelephone(String(formData.get("telephone") ?? ""));
   const email = String(formData.get("email") ?? "").trim();
   const estBenevole = formData.get("est_benevole") === "on";
 
@@ -35,6 +36,9 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
 
   if (!nom) return { error: "Le nom est obligatoire." };
   if (!telephone) return { error: "Le téléphone est obligatoire." };
+  if (!telephoneValide(telephone)) {
+    return { error: "Merci d'indiquer un numéro de portable valide (suisse 07x ou français +33 6/7)." };
+  }
   if (articles.length === 0) return { error: "Ajoutez au moins un article." };
   if (articles.length > 30) return { error: "30 articles maximum par liste." };
 
