@@ -4,6 +4,7 @@ import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
 import { PRIX_ARTICLES_TEST } from "@/lib/test-data";
 import {
+  basculerVerrouillageSite,
   changerPhase,
   deconnecterCaisse,
   modifierCodeAccueil,
@@ -24,6 +25,7 @@ import { ResetTestDataButton } from "./reset-test-data-button";
 import { SauvegardeButton } from "./sauvegarde-button";
 import { SupprimerEditionButton } from "./supprimer-edition-button";
 import { TerminerEditionButton } from "./terminer-edition-button";
+import { VerrouillageSiteButton } from "./verrouillage-site-button";
 import { VidageForm } from "./vidage-form";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +33,7 @@ export const dynamic = "force-dynamic";
 const SEUIL_ALERTE_CAISSE = 2000;
 
 type Edition = { id: string; annee: number; phase: Phase };
-type Parametres = { code_dashboard: string; code_accueil: string };
+type Parametres = { code_dashboard: string; code_accueil: string; deverrouille_manuellement: number };
 type PosteLigne = {
   poste_id: string;
   numero: number;
@@ -66,7 +68,7 @@ export default async function DashboardGestionPage() {
         "SELECT id, annee FROM editions WHERE active_flag IS NULL ORDER BY annee DESC",
       );
   const parametres = await queryOne<Parametres>(
-    "SELECT code_dashboard, code_accueil FROM parametres_gestion WHERE id = 1",
+    "SELECT code_dashboard, code_accueil, deverrouille_manuellement FROM parametres_gestion WHERE id = 1",
   );
 
   const postes = await query<PosteLigne>(
@@ -319,6 +321,23 @@ export default async function DashboardGestionPage() {
               </div>
             </div>
           )}
+        </section>
+      )}
+
+      {/* Verrouillage du site public : locked par défaut tant qu'aucune
+          édition n'est active, sauf déverrouillage manuel (phase de
+          test/démo). Une fois une édition active, le site est déverrouillé
+          automatiquement et ce bouton devient sans effet. */}
+      {parametres && (
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Accès au site public</h2>
+          <div className="mt-3 rounded-md border border-zinc-200 p-4">
+            <VerrouillageSiteButton
+              deverrouilleManuellement={Boolean(parametres.deverrouille_manuellement)}
+              editionActive={Boolean(edition)}
+              onToggle={basculerVerrouillageSite}
+            />
+          </div>
         </section>
       )}
 

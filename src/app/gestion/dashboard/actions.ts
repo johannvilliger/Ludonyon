@@ -149,6 +149,12 @@ export async function lancerClotureVente() {
   redirect("/gestion/dashboard/cloture-vente");
 }
 
+export async function basculerVerrouillageSite(deverrouille: boolean) {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+  await query("UPDATE parametres_gestion SET deverrouille_manuellement = ? WHERE id = 1", [deverrouille]);
+  revalidatePath("/gestion/dashboard");
+}
+
 export async function modifierCodeCaisse(posteId: string, nouveauCode: string) {
   const code = nouveauCode.trim();
   if (!code) throw new Error("Le code ne peut pas être vide.");

@@ -42,6 +42,21 @@ export async function accueilEstConnecte(): Promise<boolean> {
   return !!row;
 }
 
+// Verrouillage global du site public (tout sauf /gestion, voir proxy.ts) :
+// pensé pour la phase de test/démo avant l'ouverture officielle. Déverrouillé
+// si soit une édition est active (le vrai troc — règle automatique, pas
+// besoin d'y penser), soit le bouton manuel du dashboard a été activé (pour
+// tester/démontrer sans édition active, ou avant que celle-ci soit créée).
+export async function siteTrocOuvert(): Promise<boolean> {
+  const parametres = await queryOne<{ deverrouille_manuellement: number }>(
+    "SELECT deverrouille_manuellement FROM parametres_gestion WHERE id = 1",
+  );
+  if (parametres?.deverrouille_manuellement) return true;
+
+  const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1");
+  return Boolean(edition);
+}
+
 export async function posteCaisseAutorise(numero: number): Promise<{ posteId: string } | null> {
   const jar = await cookies();
   const token = jar.get(COOKIE_CAISSE)?.value;
