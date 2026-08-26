@@ -119,9 +119,16 @@ export default async function OrganisationNotificationsPage() {
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-medium text-stone-900">{entry.title}</p>
-                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">
-                  {CATEGORY_LABELS[entry.category] ?? entry.category}
-                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {entry.targetGroupName && (
+                    <span className="rounded-full bg-brand-blue-soft px-2 py-0.5 text-xs text-brand-blue-dark">
+                      Groupe : {entry.targetGroupName}
+                    </span>
+                  )}
+                  <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">
+                    {CATEGORY_LABELS[entry.category] ?? entry.category}
+                  </span>
+                </div>
               </div>
               <p className="mt-1 whitespace-pre-wrap text-stone-600">
                 {entry.body}

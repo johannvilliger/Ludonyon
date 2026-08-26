@@ -112,6 +112,11 @@ model PushNotificationLog {
   // des virgules) : un compte renommé ou supprimé par la suite ne modifie
   // pas l'historique déjà consigné.
   recipientNames String?  @db.Text
+  // Nom du groupe d'activité ciblé au moment de l'envoi, si la notification
+  // a été envoyée à un groupe plutôt qu'à "Tous les bénévoles" ou
+  // "Responsables et comité" — figé comme recipientNames, un groupe
+  // renommé/supprimé ensuite ne modifie pas l'historique déjà consigné.
+  targetGroupName String?  @db.VarChar(100)
   createdAt      DateTime @default(now())
 
   @@index([createdAt])

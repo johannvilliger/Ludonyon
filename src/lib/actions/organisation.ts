@@ -1153,22 +1153,33 @@ export async function sendManualNotification(formData: FormData) {
     ? parsed.data.target.slice("group:".length)
     : null;
 
-  const users = groupId
-    ? (
-        await prisma.groupMembership.findMany({
-          where: { groupId, user: { active: true } },
+  let users: { id: string; name: string }[];
+  let groupName: string | null = null;
+
+  if (groupId) {
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      select: {
+        name: true,
+        members: {
+          where: { user: { active: true } },
           select: { user: { select: { id: true, name: true } } },
-        })
-      ).map((m) => m.user)
-    : await prisma.user.findMany({
-        where: {
-          active: true,
-          ...(isOrganisationOnly
-            ? { role: { in: ["RESPONSABLE", "COMITE"] } }
-            : {}),
         },
-        select: { id: true, name: true },
-      });
+      },
+    });
+    groupName = group?.name ?? null;
+    users = group?.members.map((m) => m.user) ?? [];
+  } else {
+    users = await prisma.user.findMany({
+      where: {
+        active: true,
+        ...(isOrganisationOnly
+          ? { role: { in: ["RESPONSABLE", "COMITE"] } }
+          : {}),
+      },
+      select: { id: true, name: true },
+    });
+  }
 
   // La notification est aussi relayée dans les annonces, avec la même
   // audience : un·e bénévole ne doit jamais voir une annonce destinée
@@ -1200,6 +1211,7 @@ export async function sendManualNotification(formData: FormData) {
       body: parsed.data.body,
       recipients: users.length,
       recipientNames: users.map((u) => u.name).join(", "),
+      targetGroupName: groupName,
     },
   });
 
