@@ -10,6 +10,7 @@ import {
   modifierCodeAccueil,
   modifierCodeCaisse,
   modifierCodeDashboard,
+  modifierDateOuverture,
   refuserConnexionCaisse,
   validerConnexionCaisse,
   type Phase,
@@ -17,6 +18,7 @@ import {
 import { AutoRefresh } from "./auto-refresh";
 import { ClotureVenteButton } from "./cloture-vente-button";
 import { CodeEditor } from "./code-editor";
+import { DateOuvertureEditor } from "./date-ouverture-editor";
 import { EditionForm } from "./edition-form";
 import { EditionPanel } from "./edition-panel";
 import { PhaseButton } from "./phase-button";
@@ -33,7 +35,12 @@ export const dynamic = "force-dynamic";
 const SEUIL_ALERTE_CAISSE = 2000;
 
 type Edition = { id: string; annee: number; phase: Phase };
-type Parametres = { code_dashboard: string; code_accueil: string; deverrouille_manuellement: number };
+type Parametres = {
+  code_dashboard: string;
+  code_accueil: string;
+  deverrouille_manuellement: number;
+  date_ouverture_troc: string | null;
+};
 type PosteLigne = {
   poste_id: string;
   numero: number;
@@ -68,7 +75,7 @@ export default async function DashboardGestionPage() {
         "SELECT id, annee FROM editions WHERE active_flag IS NULL ORDER BY annee DESC",
       );
   const parametres = await queryOne<Parametres>(
-    "SELECT code_dashboard, code_accueil, deverrouille_manuellement FROM parametres_gestion WHERE id = 1",
+    "SELECT code_dashboard, code_accueil, deverrouille_manuellement, date_ouverture_troc FROM parametres_gestion WHERE id = 1",
   );
 
   const postes = await query<PosteLigne>(
@@ -337,6 +344,16 @@ export default async function DashboardGestionPage() {
               editionActive={Boolean(edition)}
               onToggle={basculerVerrouillageSite}
             />
+            <div className="mt-4 border-t border-zinc-200 pt-4">
+              <DateOuvertureEditor
+                valeurInitiale={parametres.date_ouverture_troc}
+                onSave={modifierDateOuverture}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                Affiche un compte à rebours sur l&apos;écran de verrouillage. Laissez vide pour ne rien
+                afficher.
+              </p>
+            </div>
           </div>
         </section>
       )}

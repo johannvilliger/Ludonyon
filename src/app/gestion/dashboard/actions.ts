@@ -155,6 +155,19 @@ export async function basculerVerrouillageSite(deverrouille: boolean) {
   revalidatePath("/gestion/dashboard");
 }
 
+// valeurDatetimeLocal vient d'un <input type="datetime-local">, ex.
+// "2026-09-15T10:30" — vide = pas de compteur affiché sur l'écran de
+// verrouillage.
+export async function modifierDateOuverture(valeurDatetimeLocal: string) {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+  const valeur = valeurDatetimeLocal.trim();
+  // "2026-09-15T10:30" (format natif de l'input) -> "2026-09-15 10:30:00".
+  const datetimeMysql = valeur ? `${valeur.replace("T", " ")}:00`.slice(0, 19) : null;
+  await query("UPDATE parametres_gestion SET date_ouverture_troc = ? WHERE id = 1", [datetimeMysql]);
+  revalidatePath("/gestion/dashboard");
+  revalidatePath("/verrouille");
+}
+
 export async function modifierCodeCaisse(posteId: string, nouveauCode: string) {
   const code = nouveauCode.trim();
   if (!code) throw new Error("Le code ne peut pas être vide.");
