@@ -143,7 +143,7 @@ export default async function ProfilPage() {
       {myGroups.length > 0 && (
         <>
           <h2 className="mt-8 text-lg font-medium text-stone-900">
-            Notifier mon groupe
+            Notifier mon groupe ({myGroups.map((m) => m.group.name).join(", ")})
           </h2>
           <p className="mt-1 text-sm text-stone-500">
             Envoie une notification et une annonce visibles uniquement par
