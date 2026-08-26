@@ -2,31 +2,37 @@
 
 import { useSyncExternalStore } from "react";
 
-// Force un nouveau rendu toutes les 15s via un abonnement plutôt qu'un
+// Force un nouveau rendu chaque seconde via un abonnement plutôt qu'un
 // setState direct dans useEffect (règle react-hooks/set-state-in-effect).
-// Le snapshot renvoie une valeur CONSTANTE (true côté client, false côté
-// serveur) : useSyncExternalStore exige que getSnapshot ne change qu'entre
-// deux notifications de l'abonnement, sous peine de boucle infinie — c'est
-// l'appel à rafraichir() qui déclenche le nouveau rendu, pas une variation
-// du snapshot. L'heure elle-même est lue fraîche avec `new Date()` dans le
-// corps du composant à chaque rendu.
+// Le snapshot doit changer exactement à chaque notification, ni plus ni
+// moins : une valeur qui change à chaque appel (ex. Date.now()) provoque une
+// boucle de rendu infinie ("Maximum update depth exceeded"), et une valeur
+// CONSTANTE ne redéclenche aucun rendu après le premier (React compare le
+// snapshot avant de forcer un rendu suite à l'abonnement). D'où ce compteur
+// qui n'avance que dans le setInterval. L'heure elle-même est lue fraîche
+// avec `new Date()` dans le corps du composant à chaque rendu.
+let tick = 0;
 function sAbonner(rafraichir: () => void) {
-  const id = setInterval(rafraichir, 15_000);
+  const id = setInterval(() => {
+    tick++;
+    rafraichir();
+  }, 1_000);
   return () => clearInterval(id);
 }
-function estPret() {
-  return true;
+function snapshotTick() {
+  return tick;
 }
-function pasEncorePret() {
-  return false;
+function snapshotServeur() {
+  return -1;
 }
 
-// Décompose un intervalle en mois/jours/heures/minutes de façon calendaire
-// (un "mois" a une durée variable, donc pas de simple division par une
-// moyenne en millisecondes) : on avance mois par mois depuis maintenant
-// jusqu'à juste avant la cible, puis on détaille le reste en jours/h/min.
+// Décompose un intervalle en mois/jours/heures/minutes/secondes de façon
+// calendaire (un "mois" a une durée variable, donc pas de simple division
+// par une moyenne en millisecondes) : on avance mois par mois depuis
+// maintenant jusqu'à juste avant la cible, puis on détaille le reste en
+// jours/h/min/s.
 function decomposer(cible: Date, maintenant: Date) {
-  if (cible <= maintenant) return { mois: 0, jours: 0, heures: 0, minutes: 0 };
+  if (cible <= maintenant) return { mois: 0, jours: 0, heures: 0, minutes: 0, secondes: 0 };
 
   let mois = (cible.getFullYear() - maintenant.getFullYear()) * 12 + (cible.getMonth() - maintenant.getMonth());
   let curseur = new Date(maintenant);
@@ -43,8 +49,10 @@ function decomposer(cible: Date, maintenant: Date) {
   const heures = Math.floor(resteMs / (1000 * 60 * 60));
   resteMs -= heures * 1000 * 60 * 60;
   const minutes = Math.floor(resteMs / (1000 * 60));
+  resteMs -= minutes * 1000 * 60;
+  const secondes = Math.floor(resteMs / 1000);
 
-  return { mois, jours, heures, minutes };
+  return { mois, jours, heures, minutes, secondes };
 }
 
 function Digit({ value }: { value: number }) {
@@ -95,14 +103,14 @@ function Separateur() {
 
 export function CountdownVerrouillage({ dateCibleIso }: { dateCibleIso: string }) {
   const cible = new Date(dateCibleIso);
-  const pret = useSyncExternalStore(sAbonner, estPret, pasEncorePret);
+  const tickActuel = useSyncExternalStore(sAbonner, snapshotTick, snapshotServeur);
 
-  if (!pret || Number.isNaN(cible.getTime())) return null;
+  if (tickActuel === -1 || Number.isNaN(cible.getTime())) return null;
 
-  const { mois, jours, heures, minutes } = decomposer(cible, new Date());
+  const { mois, jours, heures, minutes, secondes } = decomposer(cible, new Date());
 
   return (
-    <div className="flex items-end justify-center gap-3 sm:gap-5">
+    <div className="flex items-end justify-center gap-2 sm:gap-4">
       <Unite label="mois" valeur={mois} />
       <Separateur />
       <Unite label="jours" valeur={jours} />
@@ -110,6 +118,8 @@ export function CountdownVerrouillage({ dateCibleIso }: { dateCibleIso: string }
       <Unite label="heures" valeur={heures} />
       <Separateur />
       <Unite label="minutes" valeur={minutes} />
+      <Separateur />
+      <Unite label="secondes" valeur={secondes} />
     </div>
   );
 }
