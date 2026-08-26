@@ -11,6 +11,8 @@ type Compteurs = {
   vendeurs_benevoles: number;
   articles_non_benevoles: number;
   articles_benevoles: number;
+  objets_vendus_externes: number;
+  objets_vendus_benevoles: number;
   acheteurs: number;
   ventes_901: number;
   ventes_902: number;
@@ -66,6 +68,8 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
        COUNT(DISTINCT CASE WHEN p.est_benevole = 1 THEN p.id END) AS vendeurs_benevoles,
        COUNT(CASE WHEN p.est_benevole = 0 AND p.numero_vendeur NOT IN (901, 902) THEN a.id END) AS articles_non_benevoles,
        COUNT(CASE WHEN p.est_benevole = 1 THEN a.id END) AS articles_benevoles,
+       COUNT(CASE WHEN p.est_benevole = 0 AND p.numero_vendeur NOT IN (901, 902) AND a.statut = 'vendu' THEN a.id END) AS objets_vendus_externes,
+       COUNT(CASE WHEN p.est_benevole = 1 AND p.numero_vendeur NOT IN (901, 902) AND a.statut = 'vendu' THEN a.id END) AS objets_vendus_benevoles,
        (SELECT COUNT(*) FROM ventes v WHERE v.edition_id = ?) AS acheteurs,
        (SELECT COUNT(*) FROM vente_articles va
           JOIN articles a2 ON a2.id = va.article_id
@@ -165,6 +169,8 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
         <Stat label="Acheteurs" valeur={compteurs?.acheteurs ?? 0} />
         <Stat label="Articles non-bénévoles" valeur={compteurs?.articles_non_benevoles ?? 0} />
         <Stat label="Articles bénévoles" valeur={compteurs?.articles_benevoles ?? 0} />
+        <Stat label="Objets vendus (vendeurs externes)" valeur={compteurs?.objets_vendus_externes ?? 0} />
+        <Stat label="Objets vendus (bénévoles)" valeur={compteurs?.objets_vendus_benevoles ?? 0} />
         <Stat label="Ventes payées 901" valeur={compteurs?.ventes_901 ?? 0} />
         <Stat label="Ventes payées 902" valeur={compteurs?.ventes_902 ?? 0} />
         <Stat label="Bénéfice théorique" valeur={`${beneficeTheorique}.–`} />
