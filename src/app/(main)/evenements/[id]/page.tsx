@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { formatEventDate } from "@/lib/format";
+import { formatEventDate, formatDateOnly } from "@/lib/format";
 import MySignupControls from "../MySignupControls";
 
 export default async function EvenementDetailPage({
@@ -28,6 +28,14 @@ export default async function EvenementDetailPage({
   if (!event || !event.active || event.audience !== "ALL") {
     notFound();
   }
+
+  const tasks = await prisma.task.findMany({
+    where: { eventId: id },
+    include: { assignees: { include: { user: { select: { name: true } } } } },
+    orderBy: { dueDate: "asc" },
+  });
+  const now = new Date();
+  const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 
   const isUpcoming = (event.endsAt ?? event.startsAt) >= new Date();
   const mySignup = event.signups.find((s) => s.userId === user.id);
@@ -84,6 +92,45 @@ export default async function EvenementDetailPage({
           <p className="mt-1 text-sm text-stone-500">
             {event.signups.map((s) => s.user.name).join(", ")}
           </p>
+        </div>
+      )}
+
+      {tasks.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-sm font-medium text-stone-700">Tâches</h2>
+          <ul className="mt-2 space-y-2">
+            {tasks.map((task) => {
+              const isOverdue = !task.done && task.dueDate.getTime() < todayUTC.getTime();
+              return (
+                <li
+                  key={task.id}
+                  className={`rounded-xl border p-3 text-sm ${
+                    isOverdue ? "border-red-200 bg-red-50" : "border-stone-200 bg-white"
+                  }`}
+                >
+                  <p
+                    className={
+                      task.done
+                        ? "font-medium text-stone-400 line-through"
+                        : isOverdue
+                          ? "font-medium text-red-700"
+                          : "font-medium text-stone-900"
+                    }
+                  >
+                    {task.title}
+                  </p>
+                  <p className={`mt-0.5 text-xs ${isOverdue ? "text-red-600" : "text-stone-500"}`}>
+                    Échéance : {formatDateOnly(task.dueDate)}
+                    {isOverdue && " · en retard"}
+                    {" · "}
+                    {task.assignees.length > 0
+                      ? task.assignees.map((a) => a.user.name).join(", ")
+                      : "Aucun·e assigné·e"}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
     </div>

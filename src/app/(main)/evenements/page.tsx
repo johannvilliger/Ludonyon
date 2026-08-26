@@ -83,18 +83,12 @@ export default async function EvenementsPage({
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    {showPast ? (
-                      <Link
-                        href={`/evenements/${event.id}`}
-                        className="font-medium text-stone-900 hover:underline"
-                      >
-                        {event.title}
-                      </Link>
-                    ) : (
-                      <p className="font-medium text-stone-900">
-                        {event.title}
-                      </p>
-                    )}
+                    <Link
+                      href={`/evenements/${event.id}`}
+                      className="font-medium text-stone-900 hover:underline"
+                    >
+                      {event.title}
+                    </Link>
                     <p className="mt-1 text-sm text-stone-600">
                       {formatEventDate(event.startsAt, event.endsAt)}
                       {event.location ? ` · ${event.location}` : ""}
