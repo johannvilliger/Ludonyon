@@ -1,5 +1,5 @@
+import { CompteARebours } from "@/components/CompteARebours";
 import { queryOne } from "@/lib/db";
-import { CountdownVerrouillage } from "./countdown";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export default async function SiteVerrouillePage() {
 
       {parametres?.date_ouverture_troc && (
         <div className="mt-10">
-          <CountdownVerrouillage dateCibleIso={parametres.date_ouverture_troc.replace(" ", "T")} />
+          <CompteARebours dateCibleIso={parametres.date_ouverture_troc.replace(" ", "T")} />
         </div>
       )}
     </main>

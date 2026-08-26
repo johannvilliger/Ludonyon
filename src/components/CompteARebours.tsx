@@ -101,7 +101,10 @@ function Separateur() {
   return <span className="pb-4 text-xl font-semibold text-zinc-300 sm:pb-5">:</span>;
 }
 
-export function CountdownVerrouillage({ dateCibleIso }: { dateCibleIso: string }) {
+// Réutilisé sur l'écran de verrouillage (site pas encore ouvert) et sur la
+// page de dépôt de liste (rappel de la date du troc) — voir dateCibleIso,
+// piloté par le champ "Date d'ouverture" du dashboard.
+export function CompteARebours({ dateCibleIso }: { dateCibleIso: string }) {
   const cible = new Date(dateCibleIso);
   const tickActuel = useSyncExternalStore(sAbonner, snapshotTick, snapshotServeur);
 
