@@ -60,7 +60,7 @@ export async function envoyerEmailConfirmationListe(params: {
         <p style="font-family: monospace; font-size: 1.1em;">${params.codeConfirmation}</p>
         <p><img src="cid:qr-confirmation" alt="QR de confirmation" width="180" height="180" /></p>
         <p><a href="${params.lienConfirmation}">Voir ma liste et mon code</a></p>
-        <p><a href="${params.lienModifier}">Modifier ma liste</a> (possible jusqu'à l'ouverture du dépôt).</p>
+        <p><a href="${params.lienModifier}">Modifier ma liste</a> (possible jusqu'à la veille de la date de dépôt des articles).</p>
         <hr style="margin: 24px 0; border: none; border-top: 1px solid #ddd;" />
         <p style="font-size: 0.9em; color: #444;">
           Afin de couvrir les frais de fonctionnement du troc, ${pourcentAchat}% sont ajoutés au prix de
