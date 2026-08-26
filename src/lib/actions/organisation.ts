@@ -974,6 +974,52 @@ export async function deleteTask(formData: FormData) {
   revalidatePath("/profil");
 }
 
+const taskUpdateSchema = taskSchema
+  .omit({ eventId: true, assigneeIds: true })
+  .extend({ id: z.string().min(1) });
+
+// Modifie titre/échéance/rappel d'une tâche existante — notamment pour
+// ajuster la date d'une tâche générée depuis un modèle d'événement, quand
+// la date calculée automatiquement (voir createEventFromTemplate) ne
+// convient pas exactement une fois l'événement créé.
+export async function updateTask(formData: FormData) {
+  await requireOrganisationUser();
+  const eventId = String(formData.get("eventId"));
+
+  const reminderRaw = formData.get("reminderDaysBefore");
+  const parsed = taskUpdateSchema.safeParse({
+    id: formData.get("id"),
+    title: formData.get("title"),
+    dueDate: formData.get("dueDate"),
+    reminderDaysBefore: reminderRaw === null || reminderRaw === "" ? undefined : reminderRaw,
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
+  }
+
+  const dueDate = new Date(parsed.data.dueDate);
+  if (Number.isNaN(dueDate.getTime())) {
+    throw new Error("Date limite invalide");
+  }
+
+  await prisma.task.update({
+    where: { id: parsed.data.id },
+    data: {
+      title: parsed.data.title,
+      dueDate,
+      reminderDaysBefore:
+        typeof parsed.data.reminderDaysBefore === "number" ? parsed.data.reminderDaysBefore : null,
+      // La date et/ou le rappel changent : on relance l'éligibilité au
+      // rappel plutôt que de garder figé un envoi (ou une absence d'envoi)
+      // qui correspondait à l'ancienne échéance.
+      reminderSentAt: null,
+    },
+  });
+
+  revalidatePath(`/organisation/evenements/${eventId}`);
+  revalidatePath("/profil");
+}
+
 // Remplace la liste des assigné·e·s d'une tâche existante — nécessaire
 // notamment pour répartir les tâches générées depuis un modèle d'événement
 // (créées sans assigné·e à la création, voir createEventFromTemplate).

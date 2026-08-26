@@ -20,6 +20,7 @@ import {
   addManualTime,
   toggleEventPaid,
   createTask,
+  updateTask,
   deleteTask,
   updateTaskAssignees,
   toggleTaskDone,
@@ -42,6 +43,13 @@ function toDatetimeLocalValue(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
     date.getHours()
   )}:${pad(date.getMinutes())}`;
+}
+
+// Format attendu par <input type="date"> pour une date normalisée à
+// minuit UTC (voir Task.dueDate) : toISOString est sûr ici car il n'y a
+// pas de composante horaire à décaler.
+function toDateInputValue(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }
 
 export default async function OrganisationEvenementDetailPage({
@@ -542,6 +550,62 @@ export default async function OrganisationEvenementDetailPage({
                             </option>
                           ))}
                         </select>
+                        <button
+                          type="submit"
+                          className="rounded-lg border border-stone-300 px-2 py-1.5 text-xs text-stone-600 hover:bg-stone-100"
+                        >
+                          Enregistrer
+                        </button>
+                      </form>
+                    </details>
+                    <details className="mt-1">
+                      <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
+                        Modifier l&rsquo;échéance
+                      </summary>
+                      <form
+                        action={updateTask}
+                        className="mt-2 flex flex-wrap items-end gap-2"
+                      >
+                        <input type="hidden" name="id" value={task.id} />
+                        <input type="hidden" name="eventId" value={event.id} />
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-stone-700">
+                            Titre
+                          </label>
+                          <input
+                            type="text"
+                            name="title"
+                            required
+                            maxLength={200}
+                            defaultValue={task.title}
+                            className="rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-stone-700">
+                            Date limite
+                          </label>
+                          <input
+                            type="date"
+                            name="dueDate"
+                            required
+                            defaultValue={toDateInputValue(task.dueDate)}
+                            className="rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-stone-700">
+                            Rappel (j avant)
+                          </label>
+                          <input
+                            type="number"
+                            name="reminderDaysBefore"
+                            min={0}
+                            placeholder="Aucun"
+                            defaultValue={task.reminderDaysBefore ?? ""}
+                            className="w-24 rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                          />
+                        </div>
                         <button
                           type="submit"
                           className="rounded-lg border border-stone-300 px-2 py-1.5 text-xs text-stone-600 hover:bg-stone-100"
