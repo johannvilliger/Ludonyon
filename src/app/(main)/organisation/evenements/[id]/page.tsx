@@ -243,53 +243,57 @@ export default async function OrganisationEvenementDetailPage({
         )}
       </div>
 
-      <section>
-        <h3 className="text-sm font-medium text-stone-700">Ordre du jour</h3>
-        <form action={updateEventAgenda} className="mt-2">
-          <input type="hidden" name="eventId" value={event.id} />
-          <textarea
-            key={event.agenda ?? ""}
-            name="agenda"
-            rows={4}
-            maxLength={5000}
-            defaultValue={event.agenda ?? ""}
-            placeholder={"1. Point A\n2. Point B\n..."}
-            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
-          />
-          <SaveButton className="mt-2 rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 disabled:opacity-60">
-            Enregistrer l&rsquo;ordre du jour
-          </SaveButton>
-        </form>
-      </section>
-
-      <section>
-        <h3 className="text-sm font-medium text-stone-700">
-          Enregistrement audio
-        </h3>
-        {event.recordingPath ? (
-          <div className="mt-2 space-y-2">
-            <audio
-              controls
-              preload="none"
-              src={`/api/organisation/evenements/${event.id}/recording`}
-              className="w-full"
-            />
-            <form action={deleteEventRecording}>
+      {event.audience === "COMITE" && (
+        <>
+          <section>
+            <h3 className="text-sm font-medium text-stone-700">Ordre du jour</h3>
+            <form action={updateEventAgenda} className="mt-2">
               <input type="hidden" name="eventId" value={event.id} />
-              <button
-                type="submit"
-                className="rounded-lg border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
-              >
-                Supprimer l&rsquo;enregistrement
-              </button>
+              <textarea
+                key={event.agenda ?? ""}
+                name="agenda"
+                rows={4}
+                maxLength={5000}
+                defaultValue={event.agenda ?? ""}
+                placeholder={"1. Point A\n2. Point B\n..."}
+                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+              />
+              <SaveButton className="mt-2 rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 disabled:opacity-60">
+                Enregistrer l&rsquo;ordre du jour
+              </SaveButton>
             </form>
-          </div>
-        ) : (
-          <div className="mt-2">
-            <EventRecorder action={uploadEventRecording} eventId={event.id} />
-          </div>
-        )}
-      </section>
+          </section>
+
+          <section>
+            <h3 className="text-sm font-medium text-stone-700">
+              Enregistrement audio
+            </h3>
+            {event.recordingPath ? (
+              <div className="mt-2 space-y-2">
+                <audio
+                  controls
+                  preload="none"
+                  src={`/api/organisation/evenements/${event.id}/recording`}
+                  className="w-full"
+                />
+                <form action={deleteEventRecording}>
+                  <input type="hidden" name="eventId" value={event.id} />
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                  >
+                    Supprimer l&rsquo;enregistrement
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div className="mt-2">
+                <EventRecorder action={uploadEventRecording} eventId={event.id} />
+              </div>
+            )}
+          </section>
+        </>
+      )}
 
       <section>
         <div className="flex flex-wrap items-center justify-between gap-3">

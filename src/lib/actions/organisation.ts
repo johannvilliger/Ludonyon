@@ -59,7 +59,6 @@ export async function deleteAnnouncement(formData: FormData) {
 const eventSchema = z.object({
   title: z.string().trim().min(1, "Le titre est requis").max(200),
   description: z.string().trim().max(5000).optional(),
-  agenda: z.string().trim().max(5000).optional(),
   location: z.string().trim().max(200).optional(),
   startsAt: z.string().min(1, "La date de début est requise"),
   endsAt: z.string().optional(),
@@ -73,7 +72,6 @@ export async function createEvent(formData: FormData) {
   const parsed = eventSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description") || undefined,
-    agenda: formData.get("agenda") || undefined,
     location: formData.get("location") || undefined,
     startsAt: formData.get("startsAt"),
     endsAt: formData.get("endsAt") || undefined,
@@ -102,7 +100,6 @@ export async function createEvent(formData: FormData) {
     data: {
       title: parsed.data.title,
       description: parsed.data.description ?? null,
-      agenda: parsed.data.agenda ?? null,
       location: parsed.data.location ?? null,
       startsAt,
       endsAt,
@@ -117,10 +114,9 @@ export async function createEvent(formData: FormData) {
   revalidatePath("/");
 }
 
-// L'ordre du jour a son propre formulaire (updateEventAgenda) : on l'exclut
-// ici pour ne pas l'écraser à null si ce champ n'est pas présent dans le
-// formulaire d'édition générale.
-const eventUpdateSchema = eventSchema.omit({ committeeOnly: true, agenda: true });
+// L'ordre du jour (comité uniquement) a son propre formulaire
+// (updateEventAgenda) : il n'existe pas dans eventSchema.
+const eventUpdateSchema = eventSchema.omit({ committeeOnly: true });
 
 // Modifie le contenu d'un événement existant (titre, description, lieu,
 // horaires, rémunéré), y compris un événement déjà terminé — utile pour
@@ -241,6 +237,11 @@ export async function updateEventAgenda(formData: FormData) {
   if (!canAccessEventAudience(event.audience, user.role)) {
     throw new Error("Accès refusé");
   }
+  // Ordre du jour réservé aux séances comité, même via une requête forgée —
+  // pas seulement un masquage côté page de gestion.
+  if (event.audience !== "COMITE") {
+    throw new Error("L'ordre du jour n'est disponible que pour les séances comité");
+  }
 
   await prisma.event.update({
     where: { id: eventId },
@@ -262,6 +263,11 @@ export async function uploadEventRecording(formData: FormData) {
   if (!canAccessEventAudience(event.audience, user.role)) {
     throw new Error("Accès refusé");
   }
+  // Enregistrement audio réservé aux séances comité, même via une requête
+  // forgée — pas seulement un masquage côté page de gestion.
+  if (event.audience !== "COMITE") {
+    throw new Error("L'enregistrement audio n'est disponible que pour les séances comité");
+  }
 
   const filename = await saveRecording(eventId, file);
   await deleteRecording(event.recordingPath);
@@ -280,6 +286,9 @@ export async function deleteEventRecording(formData: FormData) {
   const event = await prisma.event.findUniqueOrThrow({ where: { id: eventId } });
   if (!canAccessEventAudience(event.audience, user.role)) {
     throw new Error("Accès refusé");
+  }
+  if (event.audience !== "COMITE") {
+    throw new Error("L'enregistrement audio n'est disponible que pour les séances comité");
   }
 
   await deleteRecording(event.recordingPath);

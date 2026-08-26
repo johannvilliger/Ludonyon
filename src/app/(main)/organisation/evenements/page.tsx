@@ -105,18 +105,6 @@ export default async function OrganisationEvenementsPage({
               className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
             />
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-stone-700">
-              Ordre du jour (optionnel)
-            </label>
-            <textarea
-              name="agenda"
-              rows={3}
-              maxLength={5000}
-              placeholder={"1. Point A\n2. Point B\n..."}
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
-            />
-          </div>
           <label className="flex items-center gap-2 text-sm text-stone-700">
             <input
               type="checkbox"
