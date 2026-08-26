@@ -21,6 +21,8 @@ export default function NouvelleListePage() {
   const [conditionsAcceptees, setConditionsAcceptees] = useState(false);
   const telephoneRempli = telephone.trim().length > 0;
   const telephoneInvalide = telephoneRempli && !telephoneValide(telephone);
+  const nomRempli = nom.trim().length > 0;
+  const nomInvalide = nomRempli && nom.trim().length < 3;
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-12">
@@ -61,8 +63,15 @@ export default function NouvelleListePage() {
               value={nom}
               onChange={(e) => setNom(e.target.value)}
               required
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2"
+              className={
+                nomInvalide
+                  ? "mt-1 w-full rounded-md border border-red-400 px-3 py-2"
+                  : "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2"
+              }
             />
+            {nomInvalide && (
+              <span className="mt-1 block text-xs text-red-600">Au moins 3 caractères.</span>
+            )}
           </label>
           <label className="block">
             <span className="text-sm font-medium text-zinc-700">Téléphone portable</span>
@@ -112,7 +121,7 @@ export default function NouvelleListePage() {
         <div className="flex justify-end">
           <button
             type="submit"
-            disabled={pending || !articlesValides || telephoneInvalide || !conditionsAcceptees}
+            disabled={pending || !articlesValides || telephoneInvalide || nomInvalide || !conditionsAcceptees}
             className="shrink-0 rounded-md bg-zinc-900 px-6 py-3 font-medium text-white hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
           >
             {pending ? "Envoi…" : "Soumettre ma liste"}

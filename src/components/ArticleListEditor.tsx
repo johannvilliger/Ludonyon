@@ -25,6 +25,13 @@ function prixEstInvalide(prix: string): boolean {
   return !Number.isInteger(n) || n <= 0;
 }
 
+const LONGUEUR_MIN_NOM = 3;
+
+function nomTropCourt(nom: string): boolean {
+  const longueur = nom.trim().length;
+  return longueur > 0 && longueur < LONGUEUR_MIN_NOM;
+}
+
 export function ArticleListEditor({
   fieldName = "articles",
   initialArticles,
@@ -44,7 +51,9 @@ export function ArticleListEditor({
   });
 
   useEffect(() => {
-    const invalide = articles.some((a) => a.nom.trim().length > 0 && (motInterdit(a.nom) || prixEstInvalide(a.prix)));
+    const invalide = articles.some(
+      (a) => a.nom.trim().length > 0 && (motInterdit(a.nom) || prixEstInvalide(a.prix) || nomTropCourt(a.nom)),
+    );
     onValiditeChange?.(!invalide);
   }, [articles, onValiditeChange]);
 
@@ -65,6 +74,15 @@ export function ArticleListEditor({
     articlesRemplis.map((a) => ({ nom: a.nom, prix: Number(a.prix) || 0 })),
   );
 
+  // Deux articles au même nom (même vendeur) sont indistinguables une fois
+  // étiquetés — juste un avertissement, pas bloquant : ça peut être
+  // volontaire (deux exemplaires identiques d'un même objet).
+  const comptageNoms = new Map<string, number>();
+  for (const a of articlesRemplis) {
+    const nom = a.nom.trim().toLowerCase();
+    comptageNoms.set(nom, (comptageNoms.get(nom) ?? 0) + 1);
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -80,6 +98,9 @@ export function ArticleListEditor({
           const mot = nomRempli ? motInterdit(article.nom) : null;
           const prixInvalide = nomRempli && prixEstInvalide(article.prix);
           const centimes = prixInvalide && contientCentimes(article.prix);
+          const courtInvalide = nomRempli && nomTropCourt(article.nom);
+          const nomDuplique =
+            nomRempli && (comptageNoms.get(article.nom.trim().toLowerCase()) ?? 0) > 1;
           return (
             <div key={i}>
               <div className="flex items-center gap-2">
@@ -91,9 +112,11 @@ export function ArticleListEditor({
                   onChange={(e) => updateArticle(i, "nom", e.target.value)}
                   placeholder="Nom de l'objet"
                   className={
-                    mot
+                    mot || courtInvalide
                       ? "flex-1 rounded-md border border-red-400 px-3 py-2"
-                      : "flex-1 rounded-md border border-zinc-300 px-3 py-2"
+                      : nomDuplique
+                        ? "flex-1 rounded-md border border-amber-400 px-3 py-2"
+                        : "flex-1 rounded-md border border-zinc-300 px-3 py-2"
                   }
                 />
                 <input
@@ -124,6 +147,17 @@ export function ArticleListEditor({
                   {centimes
                     ? "Pas de centimes : indiquez un prix en francs entiers (ex. 12, pas 12.50)."
                     : "Indiquez un prix supérieur à 0.–."}
+                </p>
+              )}
+              {!mot && !prixInvalide && courtInvalide && (
+                <p className="ml-8 mt-1 text-sm text-red-600">
+                  Le nom doit contenir au moins {LONGUEUR_MIN_NOM} caractères.
+                </p>
+              )}
+              {!mot && !prixInvalide && !courtInvalide && nomDuplique && (
+                <p className="ml-8 mt-1 text-sm text-amber-700">
+                  Vous avez déjà un article « {article.nom.trim()} » dans la liste — si c&apos;est un
+                  objet différent, ajoutez un détail pour le distinguer (ex. couleur, taille, édition).
                 </p>
               )}
             </div>

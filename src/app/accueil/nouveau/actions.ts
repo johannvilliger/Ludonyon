@@ -37,6 +37,7 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
   const conditionsAcceptees = formData.get("conditions") === "on";
 
   if (!nom) return { error: "Le nom est obligatoire." };
+  if (nom.length < 3) return { error: "Le nom doit contenir au moins 3 caractères." };
   if (!telephone) return { error: "Le téléphone est obligatoire." };
   if (!telephoneValide(telephone)) {
     return { error: "Merci d'indiquer un numéro de portable valide (suisse 07x ou français +33 6/7)." };
@@ -46,6 +47,7 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
   if (articles.length > 30) return { error: "30 articles maximum par liste." };
 
   for (const a of articles) {
+    if (a.nom.length < 3) return { error: `Le nom « ${a.nom} » doit contenir au moins 3 caractères.` };
     const mot = motInterdit(a.nom);
     if (mot) return { error: messageMotInterdit(mot) };
     if (a.prix <= 0) return { error: `Indiquez un prix supérieur à 0.– pour « ${a.nom} ».` };

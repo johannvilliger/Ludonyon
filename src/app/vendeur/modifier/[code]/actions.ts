@@ -31,6 +31,7 @@ export async function modifierListeVendeur(
   if (articles.length > 30) return { error: "30 articles maximum par liste." };
 
   for (const a of articles) {
+    if (a.nom.length < 3) return { error: `Le nom « ${a.nom} » doit contenir au moins 3 caractères.` };
     const mot = motInterdit(a.nom);
     if (mot) return { error: messageMotInterdit(mot) };
     if (a.prix <= 0) return { error: `Indiquez un prix supérieur à 0.– pour « ${a.nom} ».` };
