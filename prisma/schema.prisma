@@ -102,7 +102,9 @@ model VolunteerAvailability {
 // Historique des notifications push envoyées, toutes catégories
 // confondues, consultable dans Espace organisation > Notifications.
 // category : "MANUAL" | "EVENT_REMINDER" | "OPENING_REMINDER" |
-// "REPLACEMENT_REQUEST" | "REPLACEMENT_PROBLEM" | "TASK_REMINDER".
+// "REPLACEMENT_REQUEST" | "REPLACEMENT_PROBLEM" | "TASK_REMINDER" |
+// "GROUP_PEER" (envoyée par un·e bénévole à son propre groupe, voir
+// sendGroupNotification).
 model PushNotificationLog {
   id             String   @id @default(cuid())
   category       String
@@ -118,6 +120,10 @@ model PushNotificationLog {
   // "Responsables et comité" — figé comme recipientNames, un groupe
   // renommé/supprimé ensuite ne modifie pas l'historique déjà consigné.
   targetGroupName String?  @db.VarChar(100)
+  // Nom de la personne à l'origine de l'envoi, pour les catégories où ce
+  // n'est pas forcément un·e responsable/comité (ex. GROUP_PEER) — figé
+  // comme les autres noms de cette table.
+  authorName      String?  @db.VarChar(200)
   createdAt      DateTime @default(now())
 
   @@index([createdAt])

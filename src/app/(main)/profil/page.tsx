@@ -5,7 +5,7 @@ import { ROLE_LABELS, type Role } from "@/lib/roles";
 import { formatEventDate, formatDateOnly } from "@/lib/format";
 import Avatar from "@/components/Avatar";
 import { toggleOpeningReminders, updateMyAvailability } from "@/lib/actions/profile";
-import { toggleTaskDone } from "@/lib/actions/organisation";
+import { toggleTaskDone, sendGroupNotification } from "@/lib/actions/organisation";
 import ChangePasswordForm from "./ChangePasswordForm";
 import PhotoForm from "./PhotoForm";
 import VacationsForm from "./VacationsForm";
@@ -36,6 +36,11 @@ export default async function ProfilPage() {
   const myAvailability = await prisma.volunteerAvailability.findMany({
     where: { userId: authUser.id },
     select: { slotKey: true },
+  });
+  const myGroups = await prisma.groupMembership.findMany({
+    where: { userId: authUser.id },
+    include: { group: { select: { id: true, name: true } } },
+    orderBy: { group: { name: "asc" } },
   });
 
   const requestHeaders = await headers();
@@ -134,6 +139,71 @@ export default async function ProfilPage() {
         Notifications
       </h2>
       <PushNotificationsToggle />
+
+      {myGroups.length > 0 && (
+        <>
+          <h2 className="mt-8 text-lg font-medium text-stone-900">
+            Notifier mon groupe
+          </h2>
+          <p className="mt-1 text-sm text-stone-500">
+            Envoie une notification et une annonce visibles uniquement par
+            les membres du groupe choisi.
+          </p>
+          <form
+            action={sendGroupNotification}
+            className="mt-3 space-y-3 rounded-xl border border-stone-200 bg-white p-4"
+          >
+            {myGroups.length > 1 && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-stone-700">
+                  Groupe
+                </label>
+                <select
+                  name="groupId"
+                  required
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                >
+                  {myGroups.map((m) => (
+                    <option key={m.group.id} value={m.group.id}>
+                      {m.group.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {myGroups.length === 1 && (
+              <input type="hidden" name="groupId" value={myGroups[0].group.id} />
+            )}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-stone-700">
+                Titre
+              </label>
+              <input
+                type="text"
+                name="title"
+                required
+                maxLength={100}
+                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-stone-700">
+                Message
+              </label>
+              <textarea
+                name="body"
+                required
+                rows={3}
+                maxLength={500}
+                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+              />
+            </div>
+            <SaveButton className="rounded-lg border-2 border-black bg-brand-yellow px-4 py-2 text-sm font-semibold text-black hover:bg-brand-yellow-dark disabled:opacity-60">
+              Envoyer
+            </SaveButton>
+          </form>
+        </>
+      )}
 
       <h2 className="mt-8 text-lg font-medium text-stone-900">
         Rappels pour les ouvertures

@@ -1216,6 +1216,80 @@ export async function sendManualNotification(formData: FormData) {
   revalidatePath("/organisation/notifications");
 }
 
+const groupNotificationSchema = z.object({
+  groupId: z.string().min(1),
+  title: z.string().trim().min(1, "Le titre est requis").max(100),
+  body: z.string().trim().min(1, "Le message est requis").max(500),
+});
+
+// Permet à n'importe quel·le bénévole de notifier les autres membres d'un
+// groupe auquel il/elle appartient (ex. rappeler une réunion Déco/Brico) —
+// contrairement à sendManualNotification, réservée aux responsables/comité.
+// L'appartenance au groupe est revérifiée ici, pas seulement masquée côté
+// page (voir /profil, qui ne propose que les groupes de l'utilisateur·rice).
+export async function sendGroupNotification(formData: FormData) {
+  const currentUser = await requireUser();
+
+  const parsed = groupNotificationSchema.safeParse({
+    groupId: formData.get("groupId"),
+    title: formData.get("title"),
+    body: formData.get("body"),
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
+  }
+
+  const group = await prisma.group.findUnique({
+    where: { id: parsed.data.groupId },
+    select: {
+      name: true,
+      members: {
+        where: { user: { active: true } },
+        select: { userId: true, user: { select: { id: true, name: true } } },
+      },
+    },
+  });
+  if (!group) {
+    throw new Error("Groupe introuvable");
+  }
+  if (!group.members.some((m) => m.userId === currentUser.id)) {
+    throw new Error("Vous ne faites pas partie de ce groupe");
+  }
+
+  const recipients = group.members.map((m) => m.user);
+
+  await prisma.announcement.create({
+    data: {
+      title: parsed.data.title,
+      body: parsed.data.body,
+      audience: "GROUP",
+      groupId: parsed.data.groupId,
+      authorId: currentUser.id,
+    },
+  });
+
+  await sendPushToUsers(
+    recipients.map((u) => u.id),
+    { title: parsed.data.title, body: parsed.data.body, url: "/annonces" }
+  );
+  await prisma.pushNotificationLog.create({
+    data: {
+      category: "GROUP_PEER",
+      title: parsed.data.title,
+      body: parsed.data.body,
+      recipients: recipients.length,
+      recipientNames: recipients.map((u) => u.name).join(", "),
+      targetGroupName: group.name,
+      authorName: currentUser.name,
+    },
+  });
+
+  revalidatePath("/annonces");
+  revalidatePath("/organisation/annonces");
+  revalidatePath("/organisation/notifications");
+  revalidatePath("/");
+}
+
 // ---------- Paramètres (mode d'emploi) ----------
 
 export async function uploadGuide(formData: FormData) {

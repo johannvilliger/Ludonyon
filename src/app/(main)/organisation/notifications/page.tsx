@@ -12,6 +12,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   REPLACEMENT_REQUEST: "Recherche de remplaçant",
   REPLACEMENT_PROBLEM: "Alerte créneau à risque",
   TASK_REMINDER: "Rappel tâche",
+  GROUP_PEER: "Envoyée par un membre du groupe",
 };
 
 export default async function OrganisationNotificationsPage() {
@@ -31,12 +32,14 @@ export default async function OrganisationNotificationsPage() {
       </h2>
       <p className="mt-1 text-sm text-stone-500">
         Reçue par les personnes ayant activé les notifications sur leur
-        appareil (voir Mon profil). Un envoi à « Tous les bénévoles » ou
-        « Responsables et comité » est aussi publié dans les Annonces ; un
-        envoi à un groupe reste une notification push uniquement.{" "}
+        appareil (voir Mon profil), et publiée dans les Annonces — visible
+        de tout le monde, des responsables/comité uniquement, ou des membres
+        du groupe choisi, selon le public sélectionné.{" "}
         <Link href="/organisation/groupes" className="text-brand-blue hover:underline">
           Gérer les groupes
         </Link>
+        . Les membres d&rsquo;un groupe peuvent aussi notifier leurs
+        collègues du même groupe directement depuis leur profil.
       </p>
 
       {!pushConfigured() && (
@@ -136,6 +139,7 @@ export default async function OrganisationNotificationsPage() {
               <p className="mt-1 text-xs text-stone-400">
                 {formatDateTime(entry.createdAt)} · {entry.recipients} destinataire
                 {entry.recipients > 1 ? "s" : ""}
+                {entry.authorName && ` · envoyée par ${entry.authorName}`}
               </p>
               {entry.recipientNames && (
                 <p className="mt-1 text-xs text-stone-400">
