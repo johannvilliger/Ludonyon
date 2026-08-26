@@ -10,6 +10,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   OPENING_REMINDER: "Rappel ouverture",
   REPLACEMENT_REQUEST: "Recherche de remplaçant",
   REPLACEMENT_PROBLEM: "Alerte créneau à risque",
+  TASK_REMINDER: "Rappel tâche",
 };
 
 export default async function OrganisationNotificationsPage() {

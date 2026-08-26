@@ -21,6 +21,7 @@ import {
   toggleEventPaid,
   createTask,
   deleteTask,
+  updateTaskAssignees,
   toggleTaskDone,
   updateEvent,
   updateEventAgenda,
@@ -495,8 +496,17 @@ export default async function OrganisationEvenementDetailPage({
                       {task.title}
                     </p>
                     <p className="mt-1 text-xs text-stone-500">
-                      Échéance : {formatDateOnly(task.dueDate)} ·{" "}
-                      {task.assignees.map((a) => a.user.name).join(", ")}
+                      Échéance : {formatDateOnly(task.dueDate)}
+                      {task.reminderDaysBefore !== null &&
+                        ` · rappel ${task.reminderDaysBefore === 0 ? "le jour même" : `${task.reminderDaysBefore} j avant`}`}
+                      {" · "}
+                      {task.assignees.length > 0 ? (
+                        task.assignees.map((a) => a.user.name).join(", ")
+                      ) : (
+                        <span className="font-medium text-red-600">
+                          Aucun·e assigné·e
+                        </span>
+                      )}
                     </p>
                     <a
                       href={`/api/taches/${task.id}/ics`}
@@ -504,6 +514,38 @@ export default async function OrganisationEvenementDetailPage({
                     >
                       Ajouter à mon calendrier
                     </a>
+                    <details className="mt-1">
+                      <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
+                        Réassigner
+                      </summary>
+                      <form
+                        action={updateTaskAssignees}
+                        className="mt-2 flex flex-wrap items-end gap-2"
+                      >
+                        <input type="hidden" name="id" value={task.id} />
+                        <input type="hidden" name="eventId" value={event.id} />
+                        <select
+                          name="assigneeIds"
+                          multiple
+                          required
+                          size={Math.min(6, allUsers.length)}
+                          defaultValue={task.assignees.map((a) => a.userId)}
+                          className="rounded-lg border border-stone-300 px-2 py-1.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                        >
+                          {allUsers.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="submit"
+                          className="rounded-lg border border-stone-300 px-2 py-1.5 text-xs text-stone-600 hover:bg-stone-100"
+                        >
+                          Enregistrer
+                        </button>
+                      </form>
+                    </details>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <form action={toggleTaskDone}>
@@ -561,6 +603,18 @@ export default async function OrganisationEvenementDetailPage({
                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
               />
             </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-stone-700">
+              Rappel (jours avant l&rsquo;échéance, optionnel)
+            </label>
+            <input
+              type="number"
+              name="reminderDaysBefore"
+              min={0}
+              placeholder="Aucun rappel"
+              className="w-full max-w-[200px] rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700">

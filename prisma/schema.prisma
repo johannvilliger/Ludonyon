@@ -77,7 +77,7 @@ model VolunteerAvailability {
 // Historique des notifications push envoyées, toutes catégories
 // confondues, consultable dans Espace organisation > Notifications.
 // category : "MANUAL" | "EVENT_REMINDER" | "OPENING_REMINDER" |
-// "REPLACEMENT_REQUEST" | "REPLACEMENT_PROBLEM".
+// "REPLACEMENT_REQUEST" | "REPLACEMENT_PROBLEM" | "TASK_REMINDER".
 model PushNotificationLog {
   id             String   @id @default(cuid())
   category       String
@@ -158,8 +158,46 @@ model Event {
   createdBy   User     @relation(fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
 
+  // Modèle utilisé pour créer cet événement (ex. "Troc annuel"), le cas
+  // échéant — sert uniquement à générer les tâches à la création ; la
+  // suppression du modèle ne supprime pas les événements déjà créés.
+  eventTemplateId String?
+  eventTemplate   EventTemplate? @relation(fields: [eventTemplateId], references: [id], onDelete: SetNull)
+
   signups EventSignup[]
   tasks   Task[]
+}
+
+// Modèle réutilisable pour un événement qui revient chaque année à une
+// date différente (ex. le troc annuel) : titre/description/lieu par
+// défaut, et une liste de tâches type avec leur échéance exprimée en
+// jours avant la date de l'événement plutôt qu'en date fixe.
+model EventTemplate {
+  id          String   @id @default(cuid())
+  name        String // libellé interne du modèle, ex. "Troc annuel"
+  title       String
+  description String?  @db.Text
+  location    String?
+  paid        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  taskTemplates EventTaskTemplate[]
+  events        Event[]
+}
+
+// Tâche type d'un modèle d'événement. À la création d'un événement depuis
+// ce modèle, une Task est générée avec dueDate = date de l'événement -
+// daysBeforeEvent jours ; reminderDaysBefore est reporté tel quel sur la
+// tâche générée (voir Task.reminderDaysBefore).
+model EventTaskTemplate {
+  id                 String        @id @default(cuid())
+  eventTemplateId    String
+  eventTemplate      EventTemplate @relation(fields: [eventTemplateId], references: [id], onDelete: Cascade)
+  title              String
+  daysBeforeEvent    Int
+  reminderDaysBefore Int?
+  order              Int           @default(0)
 }
 
 model EventSignup {
@@ -190,6 +228,11 @@ model Task {
   dueDate   DateTime
   done      Boolean   @default(false)
   createdAt DateTime  @default(now())
+
+  // Rappel push envoyé aux assigné·e·s N jours avant dueDate (null = pas de
+  // rappel). 0 = le jour même de l'échéance. Voir checkAndSendTaskReminders.
+  reminderDaysBefore Int?
+  reminderSentAt     DateTime?
 
   assignees TaskAssignee[]
 

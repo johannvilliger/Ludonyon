@@ -4,6 +4,7 @@ import { requireOrganisationUser } from "@/lib/session";
 import { formatEventDate } from "@/lib/format";
 import {
   createEvent,
+  createEventFromTemplate,
   archiveEvent,
   unarchiveEvent,
   deleteEvent,
@@ -18,6 +19,10 @@ export default async function OrganisationEvenementsPage({
   const isComite = currentUser.role === "COMITE";
   const { filtre } = await searchParams;
   const showArchived = filtre === "archives";
+
+  const templates = await prisma.eventTemplate.findMany({
+    orderBy: { name: "asc" },
+  });
 
   const events = await prisma.event.findMany({
     // Les séances comité (audience "COMITE") restent invisibles pour les
@@ -138,6 +143,82 @@ export default async function OrganisationEvenementsPage({
             Créer l’événement
           </button>
         </form>
+      </section>
+
+      <section>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-medium text-stone-900">
+            Créer depuis un modèle
+          </h2>
+          <Link
+            href="/organisation/evenements/modeles"
+            className="text-sm text-brand-blue hover:underline"
+          >
+            Gérer les modèles
+          </Link>
+        </div>
+        {templates.length === 0 ? (
+          <p className="mt-2 text-sm text-stone-400">
+            Aucun modèle pour l&rsquo;instant (ex. le troc annuel) — créez-en
+            un depuis &laquo;&nbsp;Gérer les modèles&nbsp;&raquo;.
+          </p>
+        ) : (
+          <form
+            action={createEventFromTemplate}
+            className="mt-3 space-y-3 rounded-xl border border-stone-200 bg-white p-4"
+          >
+            <div>
+              <label className="mb-1 block text-sm font-medium text-stone-700">
+                Modèle
+              </label>
+              <select
+                name="eventTemplateId"
+                required
+                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+              >
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-stone-700">
+                  Début
+                </label>
+                <input
+                  type="datetime-local"
+                  name="startsAt"
+                  required
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-stone-700">
+                  Fin (optionnel)
+                </label>
+                <input
+                  type="datetime-local"
+                  name="endsAt"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-stone-400">
+              Les tâches du modèle seront générées automatiquement, avec une
+              échéance calculée par rapport à la date de début choisie
+              ci-dessus.
+            </p>
+            <button
+              type="submit"
+              className="rounded-lg border-2 border-black bg-brand-yellow px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand-yellow-dark"
+            >
+              Créer l’événement depuis ce modèle
+            </button>
+          </form>
+        )}
       </section>
 
       <section>

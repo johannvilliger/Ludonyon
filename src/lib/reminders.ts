@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sendPushToUser, sendPushToUsers, pushConfigured } from "@/lib/push";
-import { formatEventDate } from "@/lib/format";
+import { formatEventDate, formatDateOnly } from "@/lib/format";
 import {
   SITE_LABELS,
   findSlotDef,
@@ -175,6 +175,58 @@ export async function checkAndSendOpeningShiftReminders() {
         body,
         recipients: shift.assignees.length,
         recipientNames: shift.assignees.map((a) => a.user.name).join(", "),
+      },
+    });
+  }
+}
+
+// Rappel individuel (une vérification par jour, voir instrumentation.ts)
+// pour chaque tâche d'événement dont le rappel — exprimé en jours avant
+// l'échéance (Task.reminderDaysBefore), configurable par tâche — est
+// atteint. 0 jour = rappel le jour même de l'échéance.
+export async function checkAndSendTaskReminders() {
+  if (!pushConfigured()) return;
+
+  const now = new Date();
+  const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+
+  const candidates = await prisma.task.findMany({
+    where: {
+      done: false,
+      reminderSentAt: null,
+      reminderDaysBefore: { not: null },
+    },
+    include: {
+      event: { select: { title: true } },
+      assignees: { include: { user: { select: { id: true, name: true } } } },
+    },
+  });
+
+  for (const task of candidates) {
+    if (task.assignees.length === 0 || task.reminderDaysBefore === null) continue;
+
+    const reminderDate = new Date(task.dueDate);
+    reminderDate.setUTCDate(reminderDate.getUTCDate() - task.reminderDaysBefore);
+    if (reminderDate.getTime() > todayUTC.getTime()) continue;
+
+    const title = "Rappel tâche : " + task.title;
+    const body = `À faire d'ici le ${formatDateOnly(task.dueDate)} — ${task.event.title}`;
+
+    await sendPushToUsers(
+      task.assignees.map((a) => a.userId),
+      { title, body, url: "/profil" }
+    );
+    await prisma.task.update({
+      where: { id: task.id },
+      data: { reminderSentAt: now },
+    });
+    await prisma.pushNotificationLog.create({
+      data: {
+        category: "TASK_REMINDER",
+        title,
+        body,
+        recipients: task.assignees.length,
+        recipientNames: task.assignees.map((a) => a.user.name).join(", "),
       },
     });
   }

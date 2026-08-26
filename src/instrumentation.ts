@@ -2,6 +2,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 const REPLACEMENT_ALERT_HOUR = 19;
 const OPENING_REMINDER_HOUR = 19;
+const TASK_REMINDER_HOUR = 8;
 
 // Millisecondes jusqu'à la prochaine occurrence de `hour`:00 heure serveur
 // (TZ=Europe/Zurich en production) — aujourd'hui si l'heure n'est pas
@@ -49,6 +50,7 @@ export async function register() {
     checkAndSendEventReminders,
     checkAndSendReplacementProblemAlerts,
     checkAndSendOpeningShiftReminders,
+    checkAndSendTaskReminders,
   } = await import("@/lib/reminders");
 
   // Rappels d'événements : vérification fréquente, la fenêtre de rappel
@@ -86,4 +88,17 @@ export async function register() {
       });
     }, DAY_MS);
   }, msUntilNextHour(OPENING_REMINDER_HOUR));
+
+  // Rappel individuel de tâche : une vérification par jour, à 8h, pour les
+  // tâches dont le rappel (jours avant échéance) est atteint.
+  setTimeout(() => {
+    checkAndSendTaskReminders().catch((err) => {
+      console.error("Erreur lors de l'envoi des rappels de tâches :", err);
+    });
+    setInterval(() => {
+      checkAndSendTaskReminders().catch((err) => {
+        console.error("Erreur lors de l'envoi des rappels de tâches :", err);
+      });
+    }, DAY_MS);
+  }, msUntilNextHour(TASK_REMINDER_HOUR));
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { requireOrganisationUser, requireUser } from "@/lib/session";
@@ -288,6 +289,185 @@ export async function deleteEventRecording(formData: FormData) {
   });
 
   revalidatePath(`/organisation/evenements/${eventId}`);
+}
+
+// ---------- Modèles d'événements (événements cycliques) ----------
+
+const eventTemplateSchema = z.object({
+  name: z.string().trim().min(1, "Le nom du modèle est requis").max(200),
+  title: z.string().trim().min(1, "Le titre est requis").max(200),
+  description: z.string().trim().max(5000).optional(),
+  location: z.string().trim().max(200).optional(),
+  paid: z.coerce.boolean().optional(),
+});
+
+export async function createEventTemplate(formData: FormData) {
+  await requireOrganisationUser();
+
+  const parsed = eventTemplateSchema.safeParse({
+    name: formData.get("name"),
+    title: formData.get("title"),
+    description: formData.get("description") || undefined,
+    location: formData.get("location") || undefined,
+    paid: formData.get("paid") === "on" ? true : undefined,
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
+  }
+
+  await prisma.eventTemplate.create({
+    data: {
+      name: parsed.data.name,
+      title: parsed.data.title,
+      description: parsed.data.description ?? null,
+      location: parsed.data.location ?? null,
+      paid: parsed.data.paid ?? false,
+    },
+  });
+
+  revalidatePath("/organisation/evenements/modeles");
+}
+
+export async function deleteEventTemplate(formData: FormData) {
+  await requireOrganisationUser();
+  const id = String(formData.get("id"));
+
+  await prisma.eventTemplate.delete({ where: { id } });
+
+  revalidatePath("/organisation/evenements/modeles");
+}
+
+const taskTemplateSchema = z.object({
+  eventTemplateId: z.string().min(1),
+  title: z.string().trim().min(1, "Le titre est requis").max(200),
+  daysBeforeEvent: z.coerce.number().int().min(0, "Doit être 0 ou plus"),
+  reminderDaysBefore: z.union([z.coerce.number().int().min(0), z.literal("")]).optional(),
+});
+
+export async function addTaskTemplate(formData: FormData) {
+  await requireOrganisationUser();
+
+  const reminderRaw = formData.get("reminderDaysBefore");
+  const parsed = taskTemplateSchema.safeParse({
+    eventTemplateId: formData.get("eventTemplateId"),
+    title: formData.get("title"),
+    daysBeforeEvent: formData.get("daysBeforeEvent"),
+    reminderDaysBefore: reminderRaw === null || reminderRaw === "" ? undefined : reminderRaw,
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
+  }
+
+  const count = await prisma.eventTaskTemplate.count({
+    where: { eventTemplateId: parsed.data.eventTemplateId },
+  });
+
+  await prisma.eventTaskTemplate.create({
+    data: {
+      eventTemplateId: parsed.data.eventTemplateId,
+      title: parsed.data.title,
+      daysBeforeEvent: parsed.data.daysBeforeEvent,
+      reminderDaysBefore:
+        typeof parsed.data.reminderDaysBefore === "number" ? parsed.data.reminderDaysBefore : null,
+      order: count,
+    },
+  });
+
+  revalidatePath("/organisation/evenements/modeles");
+}
+
+export async function deleteTaskTemplate(formData: FormData) {
+  await requireOrganisationUser();
+  const id = String(formData.get("id"));
+
+  await prisma.eventTaskTemplate.delete({ where: { id } });
+
+  revalidatePath("/organisation/evenements/modeles");
+}
+
+const createFromTemplateSchema = z.object({
+  eventTemplateId: z.string().min(1),
+  startsAt: z.string().min(1, "La date de début est requise"),
+  endsAt: z.string().optional(),
+});
+
+// Crée un événement à partir d'un modèle (ex. le troc annuel) : reprend
+// titre/description/lieu/rémunéré du modèle, et génère une Task pour
+// chaque tâche type, avec une échéance calculée en reculant de
+// `daysBeforeEvent` jours depuis la date choisie ici — pas depuis une date
+// fixe, puisque l'événement peut tomber à une date différente chaque
+// année. Les tâches générées n'ont pas d'assigné·e à la création (voir
+// updateTaskAssignees pour les répartir ensuite).
+export async function createEventFromTemplate(formData: FormData) {
+  const user = await requireOrganisationUser();
+
+  const parsed = createFromTemplateSchema.safeParse({
+    eventTemplateId: formData.get("eventTemplateId"),
+    startsAt: formData.get("startsAt"),
+    endsAt: formData.get("endsAt") || undefined,
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
+  }
+
+  const startsAt = new Date(parsed.data.startsAt);
+  const endsAt = parsed.data.endsAt ? new Date(parsed.data.endsAt) : null;
+  if (Number.isNaN(startsAt.getTime())) {
+    throw new Error("Date de début invalide");
+  }
+  if (endsAt && Number.isNaN(endsAt.getTime())) {
+    throw new Error("Date de fin invalide");
+  }
+
+  const template = await prisma.eventTemplate.findUnique({
+    where: { id: parsed.data.eventTemplateId },
+    include: { taskTemplates: { orderBy: { order: "asc" } } },
+  });
+  if (!template) {
+    throw new Error("Modèle introuvable");
+  }
+
+  const event = await prisma.event.create({
+    data: {
+      title: template.title,
+      description: template.description,
+      location: template.location,
+      paid: template.paid,
+      startsAt,
+      endsAt,
+      audience: "ALL",
+      createdById: user.id,
+      eventTemplateId: template.id,
+    },
+  });
+
+  if (template.taskTemplates.length > 0) {
+    // dueDate normalisée à minuit UTC du jour calendaire de l'événement,
+    // comme les autres champs "date seule" de l'app (voir createTask et
+    // checkAndSendTaskReminders) — sinon l'heure de l'événement (ex. 23h)
+    // pourrait faire basculer le calcul sur le mauvais jour UTC.
+    const eventDay = new Date(
+      Date.UTC(startsAt.getFullYear(), startsAt.getMonth(), startsAt.getDate())
+    );
+    await prisma.task.createMany({
+      data: template.taskTemplates.map((tt) => {
+        const dueDate = new Date(eventDay);
+        dueDate.setUTCDate(dueDate.getUTCDate() - tt.daysBeforeEvent);
+        return {
+          eventId: event.id,
+          title: tt.title,
+          dueDate,
+          reminderDaysBefore: tt.reminderDaysBefore,
+        };
+      }),
+    });
+  }
+
+  revalidatePath("/evenements");
+  revalidatePath("/organisation/evenements");
+  revalidatePath("/");
+
+  redirect(`/organisation/evenements/${event.id}`);
 }
 
 // ---------- Présences ----------
@@ -695,16 +875,19 @@ const taskSchema = z.object({
   title: z.string().trim().min(1, "Le titre est requis").max(200),
   dueDate: z.string().min(1, "La date limite est requise"),
   assigneeIds: z.array(z.string().min(1)).min(1, "Choisissez au moins une personne"),
+  reminderDaysBefore: z.union([z.coerce.number().int().min(0), z.literal("")]).optional(),
 });
 
 export async function createTask(formData: FormData) {
   await requireOrganisationUser();
 
+  const reminderRaw = formData.get("reminderDaysBefore");
   const parsed = taskSchema.safeParse({
     eventId: formData.get("eventId"),
     title: formData.get("title"),
     dueDate: formData.get("dueDate"),
     assigneeIds: formData.getAll("assigneeIds"),
+    reminderDaysBefore: reminderRaw === null || reminderRaw === "" ? undefined : reminderRaw,
   });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
@@ -720,6 +903,8 @@ export async function createTask(formData: FormData) {
       eventId: parsed.data.eventId,
       title: parsed.data.title,
       dueDate,
+      reminderDaysBefore:
+        typeof parsed.data.reminderDaysBefore === "number" ? parsed.data.reminderDaysBefore : null,
       assignees: {
         create: parsed.data.assigneeIds.map((userId) => ({ userId })),
       },
@@ -736,6 +921,30 @@ export async function deleteTask(formData: FormData) {
   const eventId = String(formData.get("eventId"));
 
   await prisma.task.delete({ where: { id } });
+
+  revalidatePath(`/organisation/evenements/${eventId}`);
+  revalidatePath("/profil");
+}
+
+// Remplace la liste des assigné·e·s d'une tâche existante — nécessaire
+// notamment pour répartir les tâches générées depuis un modèle d'événement
+// (créées sans assigné·e à la création, voir createEventFromTemplate).
+export async function updateTaskAssignees(formData: FormData) {
+  await requireOrganisationUser();
+  const id = String(formData.get("id"));
+  const eventId = String(formData.get("eventId"));
+  const assigneeIds = formData.getAll("assigneeIds").map(String).filter(Boolean);
+
+  if (assigneeIds.length === 0) {
+    throw new Error("Choisissez au moins une personne");
+  }
+
+  await prisma.$transaction([
+    prisma.taskAssignee.deleteMany({ where: { taskId: id } }),
+    prisma.taskAssignee.createMany({
+      data: assigneeIds.map((userId) => ({ taskId: id, userId })),
+    }),
+  ]);
 
   revalidatePath(`/organisation/evenements/${eventId}`);
   revalidatePath("/profil");
