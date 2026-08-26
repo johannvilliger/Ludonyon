@@ -32,6 +32,19 @@ const dateOnlyFormatter = new Intl.DateTimeFormat("fr-CH", {
   year: "numeric",
 });
 
+// Clé "YYYY-MM-DD" (dans TIMEZONE) utilisée pour comparer deux dates par
+// jour calendaire, indépendamment de l'heure.
+const dayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TIMEZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function dayKey(date: Date): string {
+  return dayKeyFormatter.format(date);
+}
+
 export function formatDateOnly(date: Date): string {
   return dateOnlyFormatter.format(date);
 }
@@ -40,7 +53,13 @@ export function formatEventDate(start: Date, end?: Date | null): string {
   const day = dateFormatter.format(start);
   const from = timeFormatter.format(start);
   if (!end) return `${day}, dès ${from}`;
-  return `${day}, ${from} – ${timeFormatter.format(end)}`;
+  if (dayKey(start) === dayKey(end)) {
+    return `${day}, ${from} – ${timeFormatter.format(end)}`;
+  }
+  // Événement sur plusieurs jours : afficher la date de fin, sinon "18:00"
+  // seul laisse penser à tort que l'événement se termine le même jour.
+  const endDay = dateFormatter.format(end);
+  return `${day} ${from} – ${endDay} ${timeFormatter.format(end)}`;
 }
 
 export function formatDateTime(date: Date): string {
