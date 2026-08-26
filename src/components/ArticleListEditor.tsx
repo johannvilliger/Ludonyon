@@ -34,11 +34,14 @@ export function ArticleListEditor({
   initialArticles?: { nom: string; prix: number }[];
   onValiditeChange?: (valide: boolean) => void;
 }) {
-  const [articles, setArticles] = useState<ArticleRow[]>(
-    initialArticles && initialArticles.length > 0
-      ? initialArticles.map((a) => ({ nom: a.nom, prix: String(a.prix) }))
-      : lignesVides(MAX_ARTICLES),
-  );
+  // Complète toujours jusqu'à MAX_ARTICLES lignes vides après les articles
+  // déjà présents : sur le formulaire de modification, initialArticles ne
+  // contient que les articles existants — sans ce complément, impossible
+  // d'ajouter un nouvel article, seulement de modifier ceux déjà là.
+  const [articles, setArticles] = useState<ArticleRow[]>(() => {
+    const remplies = (initialArticles ?? []).map((a) => ({ nom: a.nom, prix: String(a.prix) }));
+    return [...remplies, ...lignesVides(Math.max(0, MAX_ARTICLES - remplies.length))];
+  });
 
   useEffect(() => {
     const invalide = articles.some((a) => a.nom.trim().length > 0 && (motInterdit(a.nom) || prixEstInvalide(a.prix)));

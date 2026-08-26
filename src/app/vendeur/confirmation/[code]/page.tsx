@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import QRCode from "qrcode";
 import { query, queryOne } from "@/lib/db";
 import { PrintButton } from "./print-button";
@@ -47,6 +48,13 @@ export default async function ConfirmationPage({ params }: { params: Promise<{ c
         <p className="font-mono text-sm text-zinc-500">{participation.code_confirmation}</p>
         <PrintButton />
       </div>
+
+      <Link
+        href={`/vendeur/modifier/${participation.code_confirmation}`}
+        className="mt-4 inline-block text-sm text-zinc-600 hover:underline print:hidden"
+      >
+        Modifier ma liste →
+      </Link>
 
       <h2 className="mt-8 text-lg font-medium">
         {articles.length} article{articles.length > 1 ? "s" : ""} · {total} CHF

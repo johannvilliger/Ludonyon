@@ -3,7 +3,9 @@
 import { redirect } from "next/navigation";
 import { assignerNumeroVendeur, nouveauCode, nouvelId, queryOne, withTransaction } from "@/lib/db";
 import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
+import { envoyerEmailConfirmationListe } from "@/lib/email";
 import { accueilEstConnecte } from "@/lib/gestion";
+import { urlAbsolue } from "@/lib/url";
 
 export type FormState = { error: string | null };
 
@@ -48,6 +50,7 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
   }
 
   let codeConfirmation = "";
+  let numeroVendeurAttribue = 0;
 
   try {
     await withTransaction(async (conn) => {
@@ -59,13 +62,13 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
         email || null,
       ]);
 
-      const numeroVendeur = await assignerNumeroVendeur(conn, edition.id);
+      numeroVendeurAttribue = await assignerNumeroVendeur(conn, edition.id);
       const participationId = nouvelId();
       codeConfirmation = nouveauCode();
 
       await conn.query(
         "INSERT INTO participations (id, edition_id, vendeur_id, numero_vendeur, code_confirmation, est_benevole) VALUES (?, ?, ?, ?, ?, ?)",
-        [participationId, edition.id, vendeurId, numeroVendeur, codeConfirmation, estBenevole],
+        [participationId, edition.id, vendeurId, numeroVendeurAttribue, codeConfirmation, estBenevole],
       );
 
       for (const [i, a] of articles.entries()) {
@@ -77,6 +80,17 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
     });
   } catch {
     return { error: "Impossible d'enregistrer la liste, réessayez." };
+  }
+
+  if (email) {
+    await envoyerEmailConfirmationListe({
+      destinataire: email,
+      nomVendeur: nom,
+      numeroVendeur: numeroVendeurAttribue,
+      codeConfirmation,
+      lienConfirmation: await urlAbsolue(`/vendeur/confirmation/${codeConfirmation}`),
+      lienModifier: await urlAbsolue(`/vendeur/modifier/${codeConfirmation}`),
+    });
   }
 
   redirect(`/accueil/vendeur/${codeConfirmation}`);

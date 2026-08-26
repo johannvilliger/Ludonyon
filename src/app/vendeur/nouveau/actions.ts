@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { assignerNumeroVendeur, nouveauCode, nouvelId, queryOne, withTransaction } from "@/lib/db";
 import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
+import { envoyerEmailConfirmationListe } from "@/lib/email";
+import { urlAbsolue } from "@/lib/url";
 
 export type FormState = { error: string | null };
 
@@ -52,6 +54,7 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
   }
 
   let codeConfirmation = "";
+  let numeroVendeurAttribue = 0;
 
   try {
     await withTransaction(async (conn) => {
@@ -63,13 +66,13 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
         email || null,
       ]);
 
-      const numeroVendeur = await assignerNumeroVendeur(conn, edition.id);
+      numeroVendeurAttribue = await assignerNumeroVendeur(conn, edition.id);
       const participationId = nouvelId();
       codeConfirmation = nouveauCode();
 
       await conn.query(
         "INSERT INTO participations (id, edition_id, vendeur_id, numero_vendeur, code_confirmation) VALUES (?, ?, ?, ?, ?)",
-        [participationId, edition.id, vendeurId, numeroVendeur, codeConfirmation],
+        [participationId, edition.id, vendeurId, numeroVendeurAttribue, codeConfirmation],
       );
 
       for (const [i, a] of articles.entries()) {
@@ -81,6 +84,17 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
     });
   } catch {
     return { error: "Impossible d'enregistrer votre liste, réessayez." };
+  }
+
+  if (email) {
+    await envoyerEmailConfirmationListe({
+      destinataire: email,
+      nomVendeur: nom,
+      numeroVendeur: numeroVendeurAttribue,
+      codeConfirmation,
+      lienConfirmation: await urlAbsolue(`/vendeur/confirmation/${codeConfirmation}`),
+      lienModifier: await urlAbsolue(`/vendeur/modifier/${codeConfirmation}`),
+    });
   }
 
   redirect(`/vendeur/confirmation/${codeConfirmation}`);
