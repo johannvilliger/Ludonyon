@@ -9,9 +9,14 @@ export default async function AnnoncesPage() {
   const announcements = await prisma.announcement.findMany({
     where: isOrganisationRole(user.role)
       ? undefined
-      : { audience: "ALL" },
+      : {
+          OR: [
+            { audience: "ALL" },
+            { audience: "GROUP", group: { members: { some: { userId: user.id } } } },
+          ],
+        },
     orderBy: { createdAt: "desc" },
-    include: { author: { select: { name: true } } },
+    include: { author: { select: { name: true } }, group: { select: { name: true } } },
   });
 
   return (
@@ -37,6 +42,11 @@ export default async function AnnoncesPage() {
                 {a.audience === "ORGANISATION" && (
                   <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
                     Responsables/comité
+                  </span>
+                )}
+                {a.audience === "GROUP" && a.group && (
+                  <span className="rounded-full bg-brand-blue-soft px-2 py-0.5 text-xs text-brand-blue-dark">
+                    Groupe : {a.group.name}
                   </span>
                 )}
               </div>

@@ -5,7 +5,7 @@ import { createAnnouncement, deleteAnnouncement } from "@/lib/actions/organisati
 export default async function OrganisationAnnoncesPage() {
   const announcements = await prisma.announcement.findMany({
     orderBy: { createdAt: "desc" },
-    include: { author: { select: { name: true } } },
+    include: { author: { select: { name: true } }, group: { select: { name: true } } },
   });
 
   return (
@@ -68,6 +68,11 @@ export default async function OrganisationAnnoncesPage() {
                     {a.audience === "ORGANISATION" && (
                       <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
                         Responsables/comité
+                      </span>
+                    )}
+                    {a.audience === "GROUP" && (
+                      <span className="rounded-full bg-brand-blue-soft px-2 py-0.5 text-xs text-brand-blue-dark">
+                        Groupe : {a.group?.name ?? "supprimé"}
                       </span>
                     )}
                   </div>

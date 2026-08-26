@@ -1183,22 +1183,20 @@ export async function sendManualNotification(formData: FormData) {
 
   // La notification est aussi relayée dans les annonces, avec la même
   // audience : un·e bénévole ne doit jamais voir une annonce destinée
-  // uniquement aux responsables/comité. Un groupe étant un sous-ensemble
-  // arbitraire (pas une audience gérée par Annonce), on ne relaie pas ces
-  // envois-là — uniquement la notification push.
-  if (!groupId) {
-    await prisma.announcement.create({
-      data: {
-        title: parsed.data.title,
-        body: parsed.data.body,
-        audience: isOrganisationOnly ? "ORGANISATION" : "ALL",
-        authorId: currentUser.id,
-      },
-    });
-    revalidatePath("/annonces");
-    revalidatePath("/organisation/annonces");
-    revalidatePath("/");
-  }
+  // uniquement aux responsables/comité, ni à un groupe dont il/elle n'est
+  // pas membre (voir le filtrage par groupId dans /annonces et l'accueil).
+  await prisma.announcement.create({
+    data: {
+      title: parsed.data.title,
+      body: parsed.data.body,
+      audience: isOrganisationOnly ? "ORGANISATION" : groupId ? "GROUP" : "ALL",
+      groupId,
+      authorId: currentUser.id,
+    },
+  });
+  revalidatePath("/annonces");
+  revalidatePath("/organisation/annonces");
+  revalidatePath("/");
 
   await sendPushToUsers(
     users.map((u) => u.id),

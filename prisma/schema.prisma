@@ -70,7 +70,8 @@ model Group {
   name      String   @unique
   createdAt DateTime @default(now())
 
-  members GroupMembership[]
+  members       GroupMembership[]
+  announcements Announcement[]
 }
 
 model GroupMembership {
@@ -149,9 +150,12 @@ model Vacation {
   @@index([userId])
 }
 
-// audience : chaîne validée côté application ("ALL" | "ORGANISATION").
-// "ORGANISATION" = visible uniquement des responsables/comité (ex. relais
-// d'une notification envoyée à ce public restreint).
+// audience : chaîne validée côté application ("ALL" | "ORGANISATION" |
+// "GROUP"). "ORGANISATION" = visible uniquement des responsables/comité
+// (ex. relais d'une notification envoyée à ce public restreint). "GROUP"
+// = visible uniquement des membres du groupe désigné par groupId (en plus
+// des responsables/comité, qui voient toutes les annonces) — relais d'une
+// notification envoyée à un groupe d'activité (voir sendManualNotification).
 model Announcement {
   id        String   @id @default(cuid())
   title     String
@@ -160,6 +164,12 @@ model Announcement {
   authorId  String
   author    User     @relation(fields: [authorId], references: [id])
   createdAt DateTime @default(now())
+
+  // Groupe ciblé si audience = "GROUP" — remis à null si le groupe est
+  // supprimé (l'annonce reste dans l'historique de gestion mais redevient
+  // invisible pour les bénévoles, faute d'audience identifiable).
+  groupId String?
+  group   Group?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
 }
 
 model Event {

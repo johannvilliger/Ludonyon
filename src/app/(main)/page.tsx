@@ -32,10 +32,17 @@ export default async function HomePage() {
       },
     }),
     prisma.announcement.findMany({
-      where: isOrganisationRole(user.role) ? undefined : { audience: "ALL" },
+      where: isOrganisationRole(user.role)
+        ? undefined
+        : {
+            OR: [
+              { audience: "ALL" },
+              { audience: "GROUP", group: { members: { some: { userId: user.id } } } },
+            ],
+          },
       orderBy: { createdAt: "desc" },
       take: 3,
-      include: { author: { select: { name: true } } },
+      include: { author: { select: { name: true } }, group: { select: { name: true } } },
     }),
   ]);
 
@@ -174,7 +181,14 @@ export default async function HomePage() {
                 key={a.id}
                 className="rounded-2xl border-2 border-dashed border-brand-blue bg-white p-4"
               >
-                <p className="font-medium text-stone-900">{a.title}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-stone-900">{a.title}</p>
+                  {a.audience === "GROUP" && a.group && (
+                    <span className="rounded-full bg-brand-blue-soft px-2 py-0.5 text-xs text-brand-blue-dark">
+                      Groupe : {a.group.name}
+                    </span>
+                  )}
+                </div>
                 <p className="mt-1 text-sm text-stone-600 whitespace-pre-wrap">
                   {a.body}
                 </p>
