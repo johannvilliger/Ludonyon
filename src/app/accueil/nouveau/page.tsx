@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { ArticleListEditor } from "@/components/ArticleListEditor";
+import { CONDITIONS_TROC } from "@/lib/conditions";
 import { formaterTelephone, telephoneValide } from "@/lib/telephone";
 import { creerListeAccueil, type FormState } from "./actions";
 
@@ -16,6 +17,7 @@ export default function NouvelleListeAccueilPage() {
   const [nom, setNom] = useState("");
   const [telephone, setTelephone] = useState("");
   const [email, setEmail] = useState("");
+  const [conditionsAcceptees, setConditionsAcceptees] = useState(false);
   const telephoneRempli = telephone.trim().length > 0;
   const telephoneInvalide = telephoneRempli && !telephoneValide(telephone);
 
@@ -31,54 +33,71 @@ export default function NouvelleListeAccueilPage() {
       </p>
 
       <form action={formAction} className="mt-8 space-y-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-          <div className="grid flex-1 gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-medium text-zinc-700">Nom</span>
-              <input
-                name="nom"
-                value={nom}
-                onChange={(e) => setNom(e.target.value)}
-                required
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2"
-              />
-            </label>
-            <label className="block">
-              <span className="text-sm font-medium text-zinc-700">Téléphone portable</span>
-              <input
-                name="telephone"
-                type="tel"
-                value={telephone}
-                onChange={(e) => setTelephone(formaterTelephone(e.target.value))}
-                placeholder="079 123 45 67"
-                required
-                className={
-                  telephoneInvalide
-                    ? "mt-1 w-full rounded-md border border-red-400 px-3 py-2"
-                    : "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2"
-                }
-              />
-              {telephoneInvalide && (
-                <span className="mt-1 block text-xs text-red-600">
-                  Numéro de portable suisse (07x xxx xx xx) ou français (+33 6/7 xx xx xx xx).
-                </span>
-              )}
-            </label>
-            <label className="block sm:col-span-2">
-              <span className="text-sm font-medium text-zinc-700">Email</span>
-              <input
-                name="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2"
-              />
-            </label>
-          </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-sm font-medium text-zinc-700">Nom</span>
+            <input
+              name="nom"
+              value={nom}
+              onChange={(e) => setNom(e.target.value)}
+              required
+              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-zinc-700">Téléphone portable</span>
+            <input
+              name="telephone"
+              type="tel"
+              value={telephone}
+              onChange={(e) => setTelephone(formaterTelephone(e.target.value))}
+              placeholder="079 123 45 67"
+              required
+              className={
+                telephoneInvalide
+                  ? "mt-1 w-full rounded-md border border-red-400 px-3 py-2"
+                  : "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2"
+              }
+            />
+            {telephoneInvalide && (
+              <span className="mt-1 block text-xs text-red-600">
+                Numéro de portable suisse (07x xxx xx xx) ou français (+33 6/7 xx xx xx xx).
+              </span>
+            )}
+          </label>
+          <label className="block sm:col-span-2">
+            <span className="text-sm font-medium text-zinc-700">Email</span>
+            <input
+              name="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2"
+            />
+          </label>
+        </div>
 
+        <label className="flex items-center gap-2 text-sm font-medium text-zinc-700">
+          <input name="est_benevole" type="checkbox" className="h-4 w-4 rounded border-zinc-300" />
+          Vendeur bénévole (pas de retenue de 10% sur ses ventes)
+        </label>
+
+        <label className="flex items-start gap-2 text-sm text-zinc-700">
+          <input
+            type="checkbox"
+            name="conditions"
+            checked={conditionsAcceptees}
+            onChange={(e) => setConditionsAcceptees(e.target.checked)}
+            required
+            className="mt-1 h-4 w-4 shrink-0 rounded border-zinc-300"
+          />
+          <span>J&apos;accepte les conditions : {CONDITIONS_TROC}</span>
+        </label>
+
+        <div className="flex justify-end">
           <button
             type="submit"
-            disabled={pending || !articlesValides || telephoneInvalide}
+            disabled={pending || !articlesValides || telephoneInvalide || !conditionsAcceptees}
             className="shrink-0 rounded-md bg-zinc-900 px-6 py-3 font-medium text-white hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
           >
             {pending ? "Enregistrement…" : "Créer la liste"}
@@ -86,11 +105,6 @@ export default function NouvelleListeAccueilPage() {
         </div>
 
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-
-        <label className="flex items-center gap-2 text-sm font-medium text-zinc-700">
-          <input name="est_benevole" type="checkbox" className="h-4 w-4 rounded border-zinc-300" />
-          Vendeur bénévole (pas de retenue de 10% sur ses ventes)
-        </label>
 
         <ArticleListEditor onValiditeChange={setArticlesValides} />
       </form>

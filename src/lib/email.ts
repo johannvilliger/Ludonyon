@@ -1,6 +1,7 @@
 import "server-only";
 import nodemailer from "nodemailer";
 import QRCode from "qrcode";
+import { CONDITIONS_TROC } from "./conditions";
 
 let transporteur: nodemailer.Transporter | null = null;
 
@@ -30,6 +31,8 @@ export async function envoyerEmailConfirmationListe(params: {
   codeConfirmation: string;
   lienConfirmation: string;
   lienModifier: string;
+  tauxAchat: number;
+  tauxVendeur: number;
 }): Promise<void> {
   const transport = getTransporteur();
   if (!transport) {
@@ -38,6 +41,8 @@ export async function envoyerEmailConfirmationListe(params: {
   }
 
   const qrBuffer = await QRCode.toBuffer(params.codeConfirmation, { margin: 1, width: 220 });
+  const pourcentAchat = Math.round(params.tauxAchat * 100);
+  const pourcentVendeur = Math.round(params.tauxVendeur * 100);
 
   try {
     await transport.sendMail({
@@ -56,6 +61,12 @@ export async function envoyerEmailConfirmationListe(params: {
         <p><img src="cid:qr-confirmation" alt="QR de confirmation" width="180" height="180" /></p>
         <p><a href="${params.lienConfirmation}">Voir ma liste et mon code</a></p>
         <p><a href="${params.lienModifier}">Modifier ma liste</a> (possible jusqu'à l'ouverture du dépôt).</p>
+        <hr style="margin: 24px 0; border: none; border-top: 1px solid #ddd;" />
+        <p style="font-size: 0.9em; color: #444;">
+          Afin de couvrir les frais de fonctionnement du troc, ${pourcentAchat}% sont ajoutés au prix de
+          vente, pour l'acheteur. ${pourcentVendeur}% sont soustraits au prix de vente pour le vendeur.
+        </p>
+        <p style="font-size: 0.9em; color: #444;">${CONDITIONS_TROC}</p>
       `,
       attachments: [
         {

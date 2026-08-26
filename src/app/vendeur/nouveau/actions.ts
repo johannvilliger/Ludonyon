@@ -38,11 +38,14 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
     }))
     .filter((a) => a.nom.length > 0 && Number.isFinite(a.prix));
 
+  const conditionsAcceptees = formData.get("conditions") === "on";
+
   if (!nom) return { error: "Le nom est obligatoire." };
   if (!telephone) return { error: "Le téléphone est obligatoire." };
   if (!telephoneValide(telephone)) {
     return { error: "Merci d'indiquer un numéro de portable valide (suisse 07x ou français +33 6/7)." };
   }
+  if (!conditionsAcceptees) return { error: "Vous devez accepter les conditions pour continuer." };
   if (articles.length === 0) return { error: "Ajoutez au moins un article." };
   if (articles.length > 30) return { error: "30 articles maximum par liste." };
 
@@ -52,7 +55,9 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
     if (a.prix <= 0) return { error: `Indiquez un prix supérieur à 0.– pour « ${a.nom} ».` };
   }
 
-  const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE phase = 'depot' LIMIT 1");
+  const edition = await queryOne<{ id: string; taux_achat: number; taux_vendeur: number }>(
+    "SELECT id, taux_achat, taux_vendeur FROM editions WHERE phase = 'depot' LIMIT 1",
+  );
   if (!edition) {
     return { error: "Le dépôt en ligne n'est pas ouvert pour le moment — passez par l'accueil sur place." };
   }
@@ -98,6 +103,8 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
       codeConfirmation,
       lienConfirmation: await urlAbsolue(`/vendeur/confirmation/${codeConfirmation}`),
       lienModifier: await urlAbsolue(`/vendeur/modifier/${codeConfirmation}`),
+      tauxAchat: Number(edition.taux_achat),
+      tauxVendeur: Number(edition.taux_vendeur),
     });
   }
 
