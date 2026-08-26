@@ -104,6 +104,11 @@ export default async function OrganisationEvenementDetailPage({
     orderBy: { dueDate: "asc" },
   });
 
+  // dueDate est normalisée à minuit UTC (voir createTask/createEventFromTemplate) :
+  // on compare au jour calendaire courant, pas à l'heure actuelle.
+  const now = new Date();
+  const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+
   const totalEventMinutes = event.signups.reduce(
     (sum, signup) =>
       sum +
@@ -489,11 +494,17 @@ export default async function OrganisationEvenementDetailPage({
 
         {tasks.length > 0 && (
           <ul className="mt-3 space-y-2">
-            {tasks.map((task) => (
+            {tasks.map((task) => {
+              const isOverdue = !task.done && task.dueDate.getTime() < todayUTC.getTime();
+              return (
               <li
                 key={task.id}
-                className={`rounded-xl border bg-white p-4 ${
-                  task.done ? "border-stone-100" : "border-stone-200"
+                className={`rounded-xl border p-4 ${
+                  isOverdue
+                    ? "border-red-200 bg-red-50"
+                    : task.done
+                      ? "border-stone-100 bg-white"
+                      : "border-stone-200 bg-white"
                 }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -502,13 +513,18 @@ export default async function OrganisationEvenementDetailPage({
                       className={`font-medium ${
                         task.done
                           ? "text-stone-400 line-through"
-                          : "text-stone-900"
+                          : isOverdue
+                            ? "text-red-700"
+                            : "text-stone-900"
                       }`}
                     >
                       {task.title}
                     </p>
-                    <p className="mt-1 text-xs text-stone-500">
+                    <p
+                      className={`mt-1 text-xs ${isOverdue ? "text-red-600" : "text-stone-500"}`}
+                    >
                       Échéance : {formatDateOnly(task.dueDate)}
+                      {isOverdue && " · en retard"}
                       {task.reminderDaysBefore !== null &&
                         ` · rappel ${task.reminderDaysBefore === 0 ? "le jour même" : `${task.reminderDaysBefore} j avant`}`}
                       {" · "}
@@ -638,7 +654,8 @@ export default async function OrganisationEvenementDetailPage({
                   </div>
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
 
