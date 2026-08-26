@@ -41,7 +41,10 @@ export async function envoyerEmailConfirmationListe(params: {
 
   try {
     await transport.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      from: {
+        name: "Troc - Ludothèque Nyon Région",
+        address: process.env.SMTP_FROM || process.env.SMTP_USER || "",
+      },
       to: params.destinataire,
       subject: `Troc de la ludothèque — vendeur n° ${params.numeroVendeur}`,
       html: `
