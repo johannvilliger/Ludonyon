@@ -176,7 +176,15 @@ export default async function DashboardGestionPage() {
                   {editionsTerminees.map((e) => (
                     <li key={e.id} className="flex items-center justify-between px-4 py-3 text-sm">
                       <span>{e.annee}</span>
-                      <SupprimerEditionButton editionId={e.id} annee={e.annee} />
+                      <div className="flex items-center gap-3">
+                        <Link
+                          href={`/gestion/dashboard/bilans/${e.id}`}
+                          className="text-zinc-500 hover:underline"
+                        >
+                          Bilan →
+                        </Link>
+                        <SupprimerEditionButton editionId={e.id} annee={e.annee} />
+                      </div>
                     </li>
                   ))}
                 </ul>
