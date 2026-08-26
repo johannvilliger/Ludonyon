@@ -11,6 +11,8 @@ type VendeurLigne = {
   participation_id: string;
   numero_vendeur: number;
   nom_vendeur: string;
+  telephone: string | null;
+  email: string | null;
   est_benevole: number;
 };
 type ArticleLigne = {
@@ -45,7 +47,7 @@ export default async function VendeursDashboardPage() {
 
   const vendeurs = edition
     ? await query<VendeurLigne>(
-        `SELECT p.id AS participation_id, p.numero_vendeur, v.nom AS nom_vendeur, p.est_benevole
+        `SELECT p.id AS participation_id, p.numero_vendeur, v.nom AS nom_vendeur, v.telephone, v.email, p.est_benevole
          FROM participations p
          JOIN vendeurs v ON v.id = p.vendeur_id
          WHERE p.edition_id = ?
@@ -103,6 +105,10 @@ export default async function VendeursDashboardPage() {
                 <span>
                   Vendeur #{v.numero_vendeur} — {v.nom_vendeur}
                   {Boolean(v.est_benevole) && <span className="ml-2 text-xs text-amber-700">(bénévole)</span>}
+                  <span className="block text-xs font-normal text-zinc-500">
+                    {v.telephone || "—"}
+                    {v.email && ` · ${v.email}`}
+                  </span>
                 </span>
                 <span className="flex items-center gap-3">
                   <span className="text-zinc-500">
