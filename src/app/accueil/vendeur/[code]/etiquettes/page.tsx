@@ -47,7 +47,7 @@ export default async function EtiquettesPage({
   );
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 py-10">
+    <main className="mx-auto w-full max-w-4xl px-6 py-10 print:m-0 print:max-w-none print:p-0">
       <div className="mb-6 flex items-center justify-between print:hidden">
         <div>
           <Link href={`/accueil/vendeur/${code}`} className="text-sm text-zinc-500 hover:underline">
@@ -67,6 +67,7 @@ export default async function EtiquettesPage({
           </div>
           <div className="label__contact-nom">{participation.nom_vendeur}</div>
           <div className="label__contact-tel">{participation.telephone || "—"}</div>
+          <img src="/meeple.png" alt="" className="label__logo" />
         </div>
         {labels.map((l) => (
           <div key={l.numero_article} className="label">
@@ -76,6 +77,7 @@ export default async function EtiquettesPage({
             </div>
             <div className="label__price">{l.prix}.–</div>
             <div className="label__row label__row--bottom">
+              <img src="/meeple.png" alt="" className="label__logo--inline" />
               {/* le SVG est produit par la librairie `qrcode` côté serveur à partir
                   d'une chaîne qu'on construit nous-mêmes, pas de contenu utilisateur brut */}
               <div className="qr-wrap" dangerouslySetInnerHTML={{ __html: l.svg }} />

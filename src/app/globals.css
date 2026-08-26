@@ -25,31 +25,41 @@ body {
  * l'appli — ce sont de vrais autocollants imprimés, pas un élément d'UI.
  *
  * Planche retenue : Herma 4357 (48,5 x 25,4 mm, 40 étiquettes/feuille A4,
- * grille 4 colonnes x 10 lignes). Marges calculées par géométrie (à
- * confirmer physiquement dès réception d'une vraie planche, avant de caler
- * l'impression dessus) :
+ * grille 4 colonnes x 10 lignes, aucune gouttière — les étiquettes se
+ * touchent). Marges calculées par géométrie, à reconfirmer physiquement
+ * avec une vraie planche en main avant une impression définitive :
  *   - marge haut : 21,5 mm
  *   - marge gauche : 8 mm
- *   - aucun espacement horizontal ni vertical entre étiquettes (elles se
- *     touchent — pas de gouttière)
- * La mise en page actuelle (.label-sheet en flex-wrap, étiquettes 40x25mm)
- * n'est pas encore calée sur cette grille — à faire une fois la planche
- * vérifiée en vrai.
+ *
+ * `@page etiquettes` + `page: etiquettes` sur .label-sheet annule les
+ * marges d'impression du navigateur UNIQUEMENT sur ces pages (nom de page
+ * CSS scopé) — les autres pages imprimées (reçu vendeur, liste vendeur)
+ * gardent leurs marges normales. Dans la boîte de dialogue d'impression,
+ * choisir quand même "Marges : Aucune" si le navigateur ne respecte pas
+ * @page (support inégal selon les navigateurs).
  */
+@page etiquettes {
+  size: A4;
+  margin: 0;
+}
+
 .label-sheet {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5mm;
+  page: etiquettes;
+  display: grid;
+  grid-template-columns: repeat(4, 48.5mm);
+  grid-auto-rows: 25.4mm;
+  margin: 21.5mm 0 0 8mm;
 }
 
 .label {
-  width: 40mm;
-  height: 25mm;
+  position: relative;
+  box-sizing: border-box;
+  width: 48.5mm;
+  height: 25.4mm;
   padding: 2.2mm;
   background: #ffffff;
   color: #101010;
   border: 1px solid #c9c9c9;
-  border-radius: 1mm;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -62,7 +72,28 @@ body {
 }
 
 .label__row--bottom {
-  justify-content: flex-end;
+  justify-content: space-between;
+}
+
+/* Petit logo dans l'espace resté vide en bas à droite de l'étiquette
+   coordonnées/clôture (pas utilisé sur l'étiquette article : cet espace y
+   est déjà pris par le QR code, voir label__row--bottom). */
+.label__logo {
+  position: absolute;
+  right: 1.5mm;
+  bottom: 1.5mm;
+  width: 5mm;
+  height: 5mm;
+  object-fit: contain;
+}
+
+/* Même logo, mais posé dans le flux (pas en position absolue) : utilisé sur
+   l'étiquette article, à côté du QR code dans label__row--bottom plutôt que
+   dans un coin, puisque le coin y est déjà pris par le QR. */
+.label__logo--inline {
+  width: 5mm;
+  height: 5mm;
+  object-fit: contain;
 }
 
 .label__vendor {
@@ -128,9 +159,14 @@ body {
 }
 
 @media print {
+  /* Le repère de bordure n'est utile qu'à l'écran pour visualiser les
+     limites d'étiquette : sur la vraie planche, chaque étiquette a déjà un
+     bord physique (découpe adhésive) — une bordure imprimée en plus
+     risquerait de déborder d'un pixel sur la voisine vu l'absence de
+     gouttière. */
   .label {
     box-shadow: none;
-    border: 1px dashed #999;
+    border: none;
   }
 }
 

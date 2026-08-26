@@ -43,7 +43,7 @@ export default async function ClotureVentePage() {
   );
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 py-10">
+    <main className="mx-auto w-full max-w-4xl px-6 py-10 print:m-0 print:max-w-none print:p-0">
       <div className="mb-6 flex items-center justify-between print:hidden">
         <div>
           <Link href="/gestion/dashboard" className="text-sm text-zinc-500 hover:underline">
@@ -67,6 +67,7 @@ export default async function ClotureVentePage() {
               {v.nb_ventes} vendu{v.nb_ventes > 1 ? "s" : ""} · {v.nb_invendus} invendu{v.nb_invendus > 1 ? "s" : ""}
             </div>
             <div className="label__cloture-du">Dû : {v.montant_du}.–</div>
+            <img src="/meeple.png" alt="" className="label__logo" />
           </div>
         ))}
       </div>
