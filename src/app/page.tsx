@@ -28,7 +28,7 @@ export default async function Home() {
 
       <Link
         href="/vendeur/nouveau"
-        className="mt-8 inline-flex w-fit items-center rounded-md bg-zinc-900 px-5 py-3 font-medium text-white hover:bg-zinc-800"
+        className="mx-auto mt-8 flex w-fit items-center rounded-md bg-zinc-900 px-5 py-3 font-medium text-white hover:bg-zinc-800"
       >
         Déposer ma liste
       </Link>
