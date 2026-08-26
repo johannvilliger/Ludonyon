@@ -56,8 +56,32 @@ model User {
   pushSubscriptions PushSubscription[]
   openingShifts     OpeningShiftAssignee[]
   availabilities    VolunteerAvailability[]
+  groupMemberships  GroupMembership[]
 
   @@index([role])
+}
+
+// Groupe d'activité librement défini par les responsables/comité (ex.
+// "Déco/Brico", "Informatique") — indépendant du rôle — utilisé comme
+// destinataire ciblé pour l'envoi d'une notification manuelle (voir
+// Espace organisation > Notifications et Groupes).
+model Group {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  members GroupMembership[]
+}
+
+model GroupMembership {
+  id      String @id @default(cuid())
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
 }
 
 // Créneaux du planning (voir src/lib/planning.ts) pour lesquels le

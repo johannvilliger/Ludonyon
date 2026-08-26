@@ -1020,12 +1020,74 @@ export async function toggleTaskDone(formData: FormData) {
   revalidatePath("/profil");
 }
 
+// ---------- Groupes ----------
+
+const groupSchema = z.object({
+  name: z.string().trim().min(1, "Le nom est requis").max(100),
+});
+
+export async function createGroup(formData: FormData) {
+  await requireOrganisationUser();
+
+  const parsed = groupSchema.safeParse({ name: formData.get("name") });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
+  }
+
+  const existing = await prisma.group.findUnique({ where: { name: parsed.data.name } });
+  if (existing) {
+    throw new Error("Un groupe porte déjà ce nom");
+  }
+
+  await prisma.group.create({ data: { name: parsed.data.name } });
+
+  revalidatePath("/organisation/groupes");
+  revalidatePath("/organisation/notifications");
+}
+
+export async function deleteGroup(formData: FormData) {
+  await requireOrganisationUser();
+  const id = String(formData.get("id"));
+
+  await prisma.group.delete({ where: { id } });
+
+  revalidatePath("/organisation/groupes");
+  revalidatePath("/organisation/notifications");
+}
+
+export async function addGroupMember(formData: FormData) {
+  await requireOrganisationUser();
+  const groupId = String(formData.get("groupId"));
+  const userId = String(formData.get("userId"));
+  if (!groupId || !userId) {
+    throw new Error("Champs invalides");
+  }
+
+  await prisma.groupMembership.upsert({
+    where: { groupId_userId: { groupId, userId } },
+    update: {},
+    create: { groupId, userId },
+  });
+
+  revalidatePath("/organisation/groupes");
+}
+
+export async function removeGroupMember(formData: FormData) {
+  await requireOrganisationUser();
+  const id = String(formData.get("id"));
+
+  await prisma.groupMembership.delete({ where: { id } });
+
+  revalidatePath("/organisation/groupes");
+}
+
 // ---------- Notifications ----------
 
+// target : "all" | "organisation" | "group:<id>".
 const notificationSchema = z.object({
   title: z.string().trim().min(1, "Le titre est requis").max(100),
   body: z.string().trim().min(1, "Le message est requis").max(500),
-  target: z.enum(["all", "organisation"]),
+  target: z.string().min(1),
 });
 
 export async function sendManualNotification(formData: FormData) {
@@ -1041,28 +1103,45 @@ export async function sendManualNotification(formData: FormData) {
   }
 
   const isOrganisationOnly = parsed.data.target === "organisation";
+  const groupId = parsed.data.target.startsWith("group:")
+    ? parsed.data.target.slice("group:".length)
+    : null;
 
-  const users = await prisma.user.findMany({
-    where: {
-      active: true,
-      ...(isOrganisationOnly
-        ? { role: { in: ["RESPONSABLE", "COMITE"] } }
-        : {}),
-    },
-    select: { id: true, name: true },
-  });
+  const users = groupId
+    ? (
+        await prisma.groupMembership.findMany({
+          where: { groupId, user: { active: true } },
+          select: { user: { select: { id: true, name: true } } },
+        })
+      ).map((m) => m.user)
+    : await prisma.user.findMany({
+        where: {
+          active: true,
+          ...(isOrganisationOnly
+            ? { role: { in: ["RESPONSABLE", "COMITE"] } }
+            : {}),
+        },
+        select: { id: true, name: true },
+      });
 
   // La notification est aussi relayée dans les annonces, avec la même
   // audience : un·e bénévole ne doit jamais voir une annonce destinée
-  // uniquement aux responsables/comité.
-  await prisma.announcement.create({
-    data: {
-      title: parsed.data.title,
-      body: parsed.data.body,
-      audience: isOrganisationOnly ? "ORGANISATION" : "ALL",
-      authorId: currentUser.id,
-    },
-  });
+  // uniquement aux responsables/comité. Un groupe étant un sous-ensemble
+  // arbitraire (pas une audience gérée par Annonce), on ne relaie pas ces
+  // envois-là — uniquement la notification push.
+  if (!groupId) {
+    await prisma.announcement.create({
+      data: {
+        title: parsed.data.title,
+        body: parsed.data.body,
+        audience: isOrganisationOnly ? "ORGANISATION" : "ALL",
+        authorId: currentUser.id,
+      },
+    });
+    revalidatePath("/annonces");
+    revalidatePath("/organisation/annonces");
+    revalidatePath("/");
+  }
 
   await sendPushToUsers(
     users.map((u) => u.id),
@@ -1078,10 +1157,7 @@ export async function sendManualNotification(formData: FormData) {
     },
   });
 
-  revalidatePath("/annonces");
-  revalidatePath("/organisation/annonces");
   revalidatePath("/organisation/notifications");
-  revalidatePath("/");
 }
 
 // ---------- Paramètres (mode d'emploi) ----------

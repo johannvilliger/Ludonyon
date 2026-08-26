@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireOrganisationUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { pushConfigured } from "@/lib/push";
@@ -21,6 +22,8 @@ export default async function OrganisationNotificationsPage() {
     take: 50,
   });
 
+  const groups = await prisma.group.findMany({ orderBy: { name: "asc" } });
+
   return (
     <div>
       <h2 className="text-lg font-medium text-stone-900">
@@ -28,8 +31,12 @@ export default async function OrganisationNotificationsPage() {
       </h2>
       <p className="mt-1 text-sm text-stone-500">
         Reçue par les personnes ayant activé les notifications sur leur
-        appareil (voir Mon profil), et publiée dans les Annonces — visible
-        uniquement par le public choisi ci-dessous.
+        appareil (voir Mon profil). Un envoi à « Tous les bénévoles » ou
+        « Responsables et comité » est aussi publié dans les Annonces ; un
+        envoi à un groupe reste une notification push uniquement.{" "}
+        <Link href="/organisation/groupes" className="text-brand-blue hover:underline">
+          Gérer les groupes
+        </Link>
       </p>
 
       {!pushConfigured() && (
@@ -79,6 +86,15 @@ export default async function OrganisationNotificationsPage() {
             <option value="organisation">
               Responsables et comité uniquement
             </option>
+            {groups.length > 0 && (
+              <optgroup label="Groupes">
+                {groups.map((g) => (
+                  <option key={g.id} value={`group:${g.id}`}>
+                    {g.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
         <button
