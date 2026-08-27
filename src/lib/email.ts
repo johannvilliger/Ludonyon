@@ -102,7 +102,7 @@ export async function envoyerEmailConfirmationListe(params: {
         address: process.env.SMTP_FROM || process.env.SMTP_USER || "",
       },
       to: params.destinataire,
-      subject: `Troc de la ludothèque — vendeur n° ${params.numeroVendeur}`,
+      subject: `Confirmation — vendeur n° ${params.numeroVendeur}`,
       html: `
         <p>Bonjour ${echapperHtml(params.nomVendeur)},</p>
         <p>Votre liste a bien été enregistrée pour le troc de la ludothèque.</p>
