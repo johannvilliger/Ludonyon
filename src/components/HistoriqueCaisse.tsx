@@ -1,3 +1,4 @@
+import { formaterMontant } from "@/lib/argent";
 import type { LigneHistorique } from "@/lib/historique";
 
 function formatHeure(dateStr: string): string {
@@ -19,8 +20,8 @@ export function HistoriqueCaisse({ lignes }: { lignes: LigneHistorique[] }) {
   return (
     <div className="mt-3">
       <p className="text-sm text-zinc-500">
-        {ventes.length} vente{ventes.length > 1 ? "s" : ""} · {totalVentes}.–
-        {totalVidages > 0 && <> · {totalVidages}.– vidé</>}
+        {ventes.length} vente{ventes.length > 1 ? "s" : ""} · {formaterMontant(totalVentes)}
+        {totalVidages > 0 && <> · {formaterMontant(totalVidages)} vidé</>}
       </p>
       <ul className="mt-2 divide-y divide-zinc-200 rounded-md border border-zinc-200">
         {lignes.map((l) =>
@@ -34,7 +35,7 @@ export function HistoriqueCaisse({ lignes }: { lignes: LigneHistorique[] }) {
                   </span>
                 ) : null}
               </span>
-              <span className="font-mono">{l.total}.–</span>
+              <span className="font-mono">{formaterMontant(l.total)}</span>
             </li>
           ) : (
             <li key={`vidage-${l.id}`} className="flex items-center justify-between bg-red-50 px-4 py-3 text-sm">
@@ -42,7 +43,7 @@ export function HistoriqueCaisse({ lignes }: { lignes: LigneHistorique[] }) {
                 {formatHeure(l.createdAt)} — Vidage
                 {l.effectuePar && <span className="ml-2 text-xs text-zinc-500">par {l.effectuePar}</span>}
               </span>
-              <span className="font-mono text-red-700">−{l.montant}.–</span>
+              <span className="font-mono text-red-700">−{formaterMontant(l.montant)}</span>
             </li>
           ),
         )}

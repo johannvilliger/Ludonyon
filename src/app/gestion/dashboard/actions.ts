@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { arrondiCentimes } from "@/lib/argent";
 import { nouveauCode as genererCode, nouvelId, query, queryOne, withTransaction } from "@/lib/db";
 import { CATEGORIES_ARTICLES } from "@/lib/categories";
 import { dashboardEstConnecte } from "@/lib/gestion";
@@ -223,7 +224,7 @@ export type VidageState = { error: string | null };
 
 export async function enregistrerVidage(_prevState: VidageState, formData: FormData): Promise<VidageState> {
   const caisseId = String(formData.get("caisse_id") ?? "");
-  const montant = Math.round(Number(formData.get("montant")));
+  const montant = arrondiCentimes(Number(formData.get("montant")));
   const effectuePar = String(formData.get("effectue_par") ?? "").trim();
 
   if (!caisseId) return { error: "Caisse manquante." };

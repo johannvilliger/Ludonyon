@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useSyncExternalStore } from "react";
+import { arrondiCentimes, formaterMontant } from "@/lib/argent";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 import { CameraScanner } from "./camera-scanner";
 import {
@@ -26,7 +27,7 @@ function snapshotServeur() {
 
 function prixAffiche(article: ArticleTrouve, acheteurBenevole: boolean, tauxAchat: number) {
   if (acheteurBenevole && estVendeurSpecial(article.numeroVendeur)) return 0;
-  return acheteurBenevole ? article.prix : Math.round(article.prix * (1 + tauxAchat));
+  return acheteurBenevole ? article.prix : arrondiCentimes(article.prix * (1 + tauxAchat));
 }
 
 export function CaisseScanner({
@@ -104,16 +105,16 @@ export function CaisseScanner({
       return;
     }
 
-    setConfirmation(`Encaissé : ${resultat.total}.–`);
+    setConfirmation(`Encaissé : ${formaterMontant(resultat.total)}`);
     setPanier([]);
     setAcheteurBenevole(false);
     setMontantRecu("");
     inputRef.current?.focus();
   }
 
-  const total = panier.reduce((sum, a) => sum + prixAffiche(a, acheteurBenevole, tauxAchat), 0);
+  const total = arrondiCentimes(panier.reduce((sum, a) => sum + prixAffiche(a, acheteurBenevole, tauxAchat), 0));
   const montantRecuNombre = Number(montantRecu) || 0;
-  const rendu = montantRecuNombre - total;
+  const rendu = arrondiCentimes(montantRecuNombre - total);
 
   return (
     <div>
@@ -174,7 +175,7 @@ export function CaisseScanner({
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <span className="font-mono text-sm">{prixAffiche(a, acheteurBenevole, tauxAchat)}.–</span>
+              <span className="font-mono text-sm">{formaterMontant(prixAffiche(a, acheteurBenevole, tauxAchat))}</span>
               <button
                 type="button"
                 onClick={() => retirer(a.articleId)}
@@ -189,7 +190,7 @@ export function CaisseScanner({
       </ul>
 
       <div className="mt-6 flex items-center justify-between">
-        <span className="text-lg font-medium">Total : {total}.–</span>
+        <span className="text-lg font-medium">Total : {formaterMontant(total)}</span>
       </div>
 
       {panier.length > 0 && (
@@ -201,7 +202,7 @@ export function CaisseScanner({
             id="montant-recu"
             type="number"
             min={0}
-            step={1}
+            step="any"
             value={montantRecu}
             onChange={(e) => setMontantRecu(e.target.value)}
             placeholder="CHF"
@@ -209,7 +210,7 @@ export function CaisseScanner({
           />
           {montantRecu.trim() !== "" && (
             <span className={rendu < 0 ? "text-sm font-medium text-red-600" : "text-sm font-medium text-emerald-700"}>
-              {rendu < 0 ? `Il manque ${Math.abs(rendu)}.–` : `Rendu à donner : ${rendu}.–`}
+              {rendu < 0 ? `Il manque ${formaterMontant(Math.abs(rendu))}` : `Rendu à donner : ${formaterMontant(rendu)}`}
             </span>
           )}
         </div>

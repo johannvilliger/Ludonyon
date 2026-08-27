@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { arrondiCentimes } from "@/lib/argent";
 import { queryOne } from "@/lib/db";
 import { posteCaisseAutorise } from "@/lib/gestion";
 import { CaisseScanner } from "./caisse-scanner";
@@ -34,7 +35,7 @@ export default async function CaisseDetailPage({ params }: { params: Promise<{ n
         [caisse.id, caisse.id],
       )
     : null;
-  const montantTheorique = theorique ? Number(theorique.ventes) - Number(theorique.vidages) : 0;
+  const montantTheorique = theorique ? arrondiCentimes(Number(theorique.ventes) - Number(theorique.vidages)) : 0;
 
   return (
     <main className="mx-auto w-full max-w-xl px-6 py-12">

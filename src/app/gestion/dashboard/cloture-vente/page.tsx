@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { formaterMontant } from "@/lib/argent";
 import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
 import { PrintButton } from "./print-button";
@@ -30,7 +31,7 @@ export default async function ClotureVentePage() {
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN 1 ELSE 0 END), 0) AS nb_ventes,
        COALESCE(SUM(CASE WHEN a.statut = 'invendu' THEN 1 ELSE 0 END), 0) AS nb_invendus,
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN
-         CASE WHEN p.est_benevole = 1 THEN a.prix ELSE ROUND(a.prix * (1 - ?)) END
+         CASE WHEN p.est_benevole = 1 THEN a.prix ELSE ROUND(a.prix * (1 - ?), 2) END
        ELSE 0 END), 0) AS montant_du
      FROM participations p
      JOIN vendeurs v ON v.id = p.vendeur_id
@@ -66,7 +67,7 @@ export default async function ClotureVentePage() {
             <div className="label__cloture-detail">
               {v.nb_ventes} vendu{v.nb_ventes > 1 ? "s" : ""} · {v.nb_invendus} invendu{v.nb_invendus > 1 ? "s" : ""}
             </div>
-            <div className="label__cloture-du">Dû : {v.montant_du}.–</div>
+            <div className="label__cloture-du">Dû : {formaterMontant(Number(v.montant_du))}</div>
             <img src="/meeple.png" alt="" className="label__logo" />
           </div>
         ))}

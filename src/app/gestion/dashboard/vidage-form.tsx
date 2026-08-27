@@ -14,8 +14,8 @@ export function VidageForm({ caisseId, nbArticlesVendus }: { caisseId: string; n
       <input
         name="montant"
         type="number"
-        min={1}
-        step={1}
+        min={0.01}
+        step="any"
         placeholder="Montant"
         required
         className="w-24 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"

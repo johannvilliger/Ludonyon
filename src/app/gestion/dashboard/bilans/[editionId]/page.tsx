@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { arrondiCentimes, formaterMontant } from "@/lib/argent";
 import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
 
@@ -104,7 +105,7 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
          CASE
            WHEN p.numero_vendeur IN (901, 902) THEN 0
            WHEN p.est_benevole = 1 THEN a.prix
-           ELSE ROUND(a.prix * (1 - e.taux_vendeur))
+           ELSE ROUND(a.prix * (1 - e.taux_vendeur), 2)
          END
        ), 0) AS total_du_vendeurs
      FROM vente_articles va
@@ -160,12 +161,11 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
 
   const totalEncaisse = Number(totaux?.total_encaisse ?? 0);
   const totalDuVendeurs = Number(totaux?.total_du_vendeurs ?? 0);
-  const beneficeTheorique = totalEncaisse - totalDuVendeurs;
-  const ecartTotal = caisses.reduce(
-    (sum, c) => sum + (c.compte != null ? Number(c.compte) - Number(c.theorique) : 0),
-    0,
+  const beneficeTheorique = arrondiCentimes(totalEncaisse - totalDuVendeurs);
+  const ecartTotal = arrondiCentimes(
+    caisses.reduce((sum, c) => sum + (c.compte != null ? Number(c.compte) - Number(c.theorique) : 0), 0),
   );
-  const beneficeReel = beneficeTheorique + ecartTotal;
+  const beneficeReel = arrondiCentimes(beneficeTheorique + ecartTotal);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
@@ -188,14 +188,14 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
         <Stat label="Objets vendus 902" valeur={compteurs?.objets_vendus_902 ?? 0} />
         <Stat label="Objets donnés 901+902" valeur={compteurs?.objets_donnes_901_902 ?? 0} />
 
-        <Stat label="Bénéfice théorique" valeur={`${beneficeTheorique}.–`} />
-        <Stat label="Bénéfice réel" valeur={`${beneficeReel}.–`} />
+        <Stat label="Bénéfice théorique" valeur={formaterMontant(beneficeTheorique)} />
+        <Stat label="Bénéfice réel" valeur={formaterMontant(beneficeReel)} />
         <Stat label="Acheteurs" valeur={compteurs?.acheteurs ?? 0} />
       </div>
 
       {ecartTotal !== 0 && (
         <p className="mt-3 text-sm text-zinc-500">
-          Bénéfice réel = bénéfice théorique {ecartTotal > 0 ? "+" : "−"} {Math.abs(ecartTotal)}.– d&apos;écarts de
+          Bénéfice réel = bénéfice théorique {ecartTotal > 0 ? "+" : "−"} {formaterMontant(Math.abs(ecartTotal))} d&apos;écarts de
           clôture caisse cumulés.
         </p>
       )}
@@ -207,19 +207,19 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
           <h2 className="text-lg font-medium">Caisses</h2>
           <ul className="mt-3 divide-y divide-zinc-200 rounded-md border border-zinc-200">
             {caisses.map((c) => {
-              const theorique = Number(c.theorique);
+              const theorique = arrondiCentimes(Number(c.theorique));
               const compte = c.compte != null ? Number(c.compte) : null;
-              const ecart = compte != null ? compte - theorique : null;
+              const ecart = compte != null ? arrondiCentimes(compte - theorique) : null;
               return (
                 <li key={c.numero} className="flex items-center justify-between px-4 py-3 text-sm">
                   <span className="font-medium">Caisse {c.numero}</span>
                   <span className="text-zinc-500">
-                    {c.cloturee ? "Clôturée" : "Non clôturée"} · Théorique {theorique}.– · Compté{" "}
-                    {compte ?? "—"}.–
+                    {c.cloturee ? "Clôturée" : "Non clôturée"} · Théorique {formaterMontant(theorique)} · Compté{" "}
+                    {compte != null ? formaterMontant(compte) : "—"}
                     {ecart != null && ecart !== 0 && (
                       <span className="ml-1 font-medium text-red-600">
                         (écart {ecart > 0 ? "+" : ""}
-                        {ecart}.–)
+                        {formaterMontant(ecart)})
                       </span>
                     )}
                   </span>

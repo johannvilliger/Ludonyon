@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { formaterMontant } from "@/lib/argent";
 import { INSTRUCTIONS_CLOTURE } from "@/lib/instructions-caisse";
 import { cloturerCaisse, theoriqueCaisse } from "./actions";
 
@@ -45,7 +46,7 @@ export function ClotureCaisse({
           <li>{INSTRUCTIONS_CLOTURE.etapes[0]}</li>
           <li>
             {INSTRUCTIONS_CLOTURE.etapes[1]} Vous devriez avoir{" "}
-            <strong>{chargement ? "…" : `${theorique}.–`}</strong> en caisse.
+            <strong>{chargement ? "…" : formaterMontant(theorique)}</strong> en caisse.
           </li>
           <li>{INSTRUCTIONS_CLOTURE.etapes[2]}</li>
         </ol>
@@ -57,7 +58,7 @@ export function ClotureCaisse({
           id="montant-cloture"
           type="number"
           min={0}
-          step={1}
+          step="any"
           value={montant}
           onChange={(e) => setMontant(e.target.value)}
           placeholder="CHF"

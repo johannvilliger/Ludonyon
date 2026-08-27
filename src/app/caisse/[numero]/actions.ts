@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { arrondiCentimes } from "@/lib/argent";
 import { nouvelId, query, queryOne, withTransaction } from "@/lib/db";
 import { COOKIE_CAISSE } from "@/lib/gestion";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
@@ -169,7 +170,7 @@ export async function encaisserPanier(
     return {
       id: nouvelId(),
       article_id: a.id,
-      prix_encaisse: gratuit ? 0 : acheteurBenevole ? a.prix : Math.round(a.prix * (1 + Number(edition.taux_achat))),
+      prix_encaisse: gratuit ? 0 : acheteurBenevole ? a.prix : arrondiCentimes(a.prix * (1 + Number(edition.taux_achat))),
     };
   });
 
@@ -209,7 +210,7 @@ export async function encaisserPanier(
     return { ok: false, error: "Impossible d'encaisser, réessayez." };
   }
 
-  const total = lignes.reduce((sum, l) => sum + l.prix_encaisse, 0);
+  const total = arrondiCentimes(lignes.reduce((sum, l) => sum + l.prix_encaisse, 0));
   return { ok: true, total };
 }
 
@@ -230,12 +231,15 @@ export async function theoriqueCaisse(caisseId: string): Promise<number> {
        COALESCE((SELECT SUM(mc.montant) FROM mouvements_caisse mc WHERE mc.caisse_id = ?), 0) AS vidages`,
     [caisseId, caisseId],
   );
-  return theorique ? Number(theorique.ventes) - Number(theorique.vidages) : 0;
+  return theorique ? arrondiCentimes(Number(theorique.ventes) - Number(theorique.vidages)) : 0;
 }
 
 export async function cloturerCaisse(caisseId: string, posteId: string, montantCompte: number) {
   await query("DELETE FROM articles_reserves WHERE caisse_id = ?", [caisseId]);
-  await query("UPDATE caisses SET cloturee = 1, montant_cloture = ? WHERE id = ?", [montantCompte, caisseId]);
+  await query("UPDATE caisses SET cloturee = 1, montant_cloture = ? WHERE id = ?", [
+    arrondiCentimes(montantCompte),
+    caisseId,
+  ]);
   await query("UPDATE postes_caisse SET connecte = 0, session_token = NULL, demande_en_attente = 0 WHERE id = ?", [
     posteId,
   ]);

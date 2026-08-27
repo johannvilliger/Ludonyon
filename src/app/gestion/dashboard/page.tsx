@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
+import { arrondiCentimes, formaterMontant } from "@/lib/argent";
 import { dashboardEstConnecte } from "@/lib/gestion";
 import { PRIX_ARTICLES_TEST } from "@/lib/test-data";
 import {
@@ -117,7 +118,7 @@ export default async function DashboardGestionPage() {
              CASE
                WHEN p.numero_vendeur IN (901, 902) THEN 0
                WHEN p.est_benevole = 1 THEN a.prix
-               ELSE ROUND(a.prix * (1 - e.taux_vendeur))
+               ELSE ROUND(a.prix * (1 - e.taux_vendeur), 2)
              END
            ), 0) AS total_du_vendeurs
          FROM vente_articles va
@@ -132,7 +133,7 @@ export default async function DashboardGestionPage() {
 
   const totalEncaisse = Number(totaux?.total_encaisse ?? 0);
   const totalDuVendeurs = Number(totaux?.total_du_vendeurs ?? 0);
-  const benefice = totalEncaisse - totalDuVendeurs;
+  const benefice = arrondiCentimes(totalEncaisse - totalDuVendeurs);
 
   const demandes = postes.filter((p) => p.demande_en_attente);
   const connectees = postes.filter((p) => p.connecte);
@@ -230,15 +231,15 @@ export default async function DashboardGestionPage() {
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-md border border-zinc-200 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Encaissé</p>
-              <p className="mt-1 text-2xl font-semibold">{totalEncaisse}.–</p>
+              <p className="mt-1 text-2xl font-semibold">{formaterMontant(totalEncaisse)}</p>
             </div>
             <div className="rounded-md border border-zinc-200 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Dû aux vendeurs</p>
-              <p className="mt-1 text-2xl font-semibold">{totalDuVendeurs}.–</p>
+              <p className="mt-1 text-2xl font-semibold">{formaterMontant(totalDuVendeurs)}</p>
             </div>
             <div className="rounded-md border border-zinc-200 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Bénéfice</p>
-              <p className="mt-1 text-2xl font-semibold text-emerald-700">{benefice}.–</p>
+              <p className="mt-1 text-2xl font-semibold text-emerald-700">{formaterMontant(benefice)}</p>
             </div>
           </div>
         </section>
@@ -252,7 +253,8 @@ export default async function DashboardGestionPage() {
             {postesActifs.map((p) => {
               const ventes = Number(p.total_ventes);
               const vidages = Number(p.total_vidages);
-              const cashEnCaisse = p.fond_initial != null ? p.fond_initial + ventes - vidages : null;
+              const fondInitial = p.fond_initial != null ? Number(p.fond_initial) : null;
+              const cashEnCaisse = fondInitial != null ? arrondiCentimes(fondInitial + ventes - vidages) : null;
               const enAlerte = cashEnCaisse != null && cashEnCaisse > SEUIL_ALERTE_CAISSE;
               const ouverte = Boolean(p.connecte);
 
@@ -279,10 +281,11 @@ export default async function DashboardGestionPage() {
                   {p.caisse_id ? (
                     <>
                       <p className={`mt-2 text-sm ${enAlerte ? "text-white" : "text-zinc-600"}`}>
-                        Ventes : {ventes}.– · Cash en caisse : <span className="font-mono">{cashEnCaisse}.–</span>
+                        Ventes : {formaterMontant(ventes)} · Cash en caisse :{" "}
+                        <span className="font-mono">{cashEnCaisse != null ? formaterMontant(cashEnCaisse) : "—"}</span>
                       </p>
                       <p className={`text-xs ${enAlerte ? "text-white/80" : "text-zinc-400"}`}>
-                        (fonds {p.fond_initial}.– − vidages {vidages}.–)
+                        (fonds {fondInitial != null ? formaterMontant(fondInitial) : "—"} − vidages {formaterMontant(vidages)})
                       </p>
                       <div className="mt-2">
                         <VidageForm caisseId={p.caisse_id} nbArticlesVendus={Number(p.nb_articles_vendus)} />
@@ -301,9 +304,9 @@ export default async function DashboardGestionPage() {
               <h3 className="text-sm font-medium text-zinc-500">Caisses clôturées</h3>
               <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 {postesClotures.map((p) => {
-                  const theorique = Number(p.total_ventes) - Number(p.total_vidages);
+                  const theorique = arrondiCentimes(Number(p.total_ventes) - Number(p.total_vidages));
                   const compte = p.montant_cloture != null ? Number(p.montant_cloture) : null;
-                  const ecart = compte != null ? compte - theorique : null;
+                  const ecart = compte != null ? arrondiCentimes(compte - theorique) : null;
                   return (
                     <div key={p.poste_id} className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 opacity-70">
                       <div className="flex items-center justify-between">
@@ -317,12 +320,12 @@ export default async function DashboardGestionPage() {
                       </div>
                       <p className="mt-1 text-xs text-zinc-400">Clôturée</p>
                       <p className="mt-1 text-xs text-zinc-600">
-                        Théorique : {theorique}.– · Compté : {compte ?? "—"}.–
+                        Théorique : {formaterMontant(theorique)} · Compté : {compte != null ? formaterMontant(compte) : "—"}
                       </p>
                       {ecart != null && ecart !== 0 && (
                         <p className="text-xs font-medium text-red-600">
                           Écart : {ecart > 0 ? "+" : ""}
-                          {ecart}.–
+                          {formaterMontant(ecart)}
                         </p>
                       )}
                       {p.caisse_id && (
