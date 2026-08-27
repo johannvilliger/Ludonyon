@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { arrondiCentimes, formaterMontant } from "@/lib/argent";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 import { CameraScanner } from "./camera-scanner";
@@ -23,6 +23,47 @@ function sAbonner() {
 }
 function snapshotServeur() {
   return false;
+}
+
+// Suit la connectivité réseau du téléphone, pour prévenir la caissière
+// visuellement plutôt que de la laisser découvrir le problème seulement au
+// moment où une action échoue.
+function sAbonnerReseau(callback: () => void) {
+  window.addEventListener("online", callback);
+  window.addEventListener("offline", callback);
+  return () => {
+    window.removeEventListener("online", callback);
+    window.removeEventListener("offline", callback);
+  };
+}
+function snapshotReseau() {
+  return navigator.onLine;
+}
+function snapshotReseauServeur() {
+  return true;
+}
+
+// Le panier n'existe qu'en mémoire React : si le téléphone perd le réseau
+// quelques secondes pendant qu'une action échoue et que la page se recharge
+// (ou si la caissière recharge par réflexe), tout le travail en cours serait
+// perdu. On le sauvegarde donc à chaque changement dans localStorage (propre
+// à chaque caisse) et on le restaure au montage — les réservations
+// (articles_reserves) survivent déjà côté serveur, ce filet ne fait que
+// remettre l'écran dans le même état.
+function clePanier(caisseId: string) {
+  return `caisse-panier-${caisseId}`;
+}
+
+function chargerPanierSauvegarde(caisseId: string): { panier: ArticleTrouve[]; acheteurBenevole: boolean } | null {
+  try {
+    const brut = window.localStorage.getItem(clePanier(caisseId));
+    if (!brut) return null;
+    const donnees = JSON.parse(brut);
+    if (!Array.isArray(donnees.panier)) return null;
+    return { panier: donnees.panier, acheteurBenevole: Boolean(donnees.acheteurBenevole) };
+  } catch {
+    return null;
+  }
 }
 
 function prixAffiche(article: ArticleTrouve, acheteurBenevole: boolean, tauxAchat: number) {
@@ -49,12 +90,51 @@ export function CaisseScanner({
   const [scannerCameraOuvert, setScannerCameraOuvert] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const estMobile = useSyncExternalStore(sAbonner, detecterMobile, snapshotServeur);
+  const enLigne = useSyncExternalStore(sAbonnerReseau, snapshotReseau, snapshotReseauServeur);
+  const panierRestaure = useRef(false);
+
+  // Restauration au montage (une fois) : si un panier a été sauvegardé avant
+  // un rechargement, on le remet en place plutôt que de repartir à vide. Fait
+  // volontairement en effet plutôt qu'en initialiseur de useState : lire
+  // localStorage pendant le rendu initial produirait un contenu différent de
+  // celui rendu côté serveur (toujours vide) et casserait l'hydratation.
+  useEffect(() => {
+    if (panierRestaure.current) return;
+    panierRestaure.current = true;
+    const sauvegarde = chargerPanierSauvegarde(caisseId);
+    if (sauvegarde && sauvegarde.panier.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPanier(sauvegarde.panier);
+      setAcheteurBenevole(sauvegarde.acheteurBenevole);
+    }
+  }, [caisseId]);
+
+  // Sauvegarde à chaque changement : le panier vide n'a rien à protéger, on
+  // efface alors l'entrée pour ne pas laisser traîner un panier fantôme.
+  useEffect(() => {
+    if (!panierRestaure.current) return;
+    try {
+      if (panier.length === 0) {
+        window.localStorage.removeItem(clePanier(caisseId));
+      } else {
+        window.localStorage.setItem(clePanier(caisseId), JSON.stringify({ panier, acheteurBenevole }));
+      }
+    } catch {
+      // Stockage indisponible (navigation privée, quota...) : le panier
+      // reste fonctionnel en mémoire, seul le filet de sécurité est absent.
+    }
+  }, [caisseId, panier, acheteurBenevole]);
 
   // Utilisé à la fois par la saisie manuelle/scanner USB (formulaire texte)
   // et par le scan caméra — un seul chemin pour chercher l'article et
   // l'ajouter au panier.
   async function traiterCode(valeur: string): Promise<{ ok: true; nom: string } | { ok: false; erreur: string }> {
-    const resultat = await rechercherArticle(editionId, valeur, caisseId);
+    let resultat;
+    try {
+      resultat = await rechercherArticle(editionId, valeur, caisseId);
+    } catch {
+      return { ok: false, erreur: "Connexion perdue — le panier est conservé, réessayez dans quelques secondes." };
+    }
     if (!resultat.ok) return { ok: false, erreur: resultat.error };
 
     if (panier.some((a) => a.articleId === resultat.article.articleId)) {
@@ -86,18 +166,27 @@ export function CaisseScanner({
 
   function retirer(articleId: string) {
     setPanier((prev) => prev.filter((a) => a.articleId !== articleId));
-    void libererArticle(articleId, caisseId);
+    // Best-effort : si la connexion flanche ici, la réservation expirera
+    // d'elle-même côté serveur (voir rechercherArticle) sans bloquer la caissière.
+    void libererArticle(articleId, caisseId).catch(() => {});
   }
 
   async function handleEncaisser() {
     setEnCours(true);
     setErreur(null);
-    const resultat = await encaisserPanier(
-      caisseId,
-      editionId,
-      acheteurBenevole,
-      panier.map((a) => a.articleId),
-    );
+    let resultat;
+    try {
+      resultat = await encaisserPanier(
+        caisseId,
+        editionId,
+        acheteurBenevole,
+        panier.map((a) => a.articleId),
+      );
+    } catch {
+      setEnCours(false);
+      setErreur("Connexion perdue pendant l'encaissement — le panier n'a pas été perdu, réessayez.");
+      return;
+    }
     setEnCours(false);
 
     if (!resultat.ok) {
@@ -118,6 +207,13 @@ export function CaisseScanner({
 
   return (
     <div>
+      {!enLigne && (
+        <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+          Pas de connexion — le panier est conservé sur le téléphone, il suffit d&apos;attendre le retour du
+          réseau pour continuer.
+        </p>
+      )}
+
       <form onSubmit={handleScan} className="flex gap-2">
         <input
           ref={inputRef}
