@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import QRCode from "qrcode";
 import { query, queryOne } from "@/lib/db";
+import { enregistrerEchec, ipAppelante, reinitialiserEchecs, verifierBlocage } from "@/lib/rate-limit";
+import { BlocageTentatives } from "@/components/BlocageTentatives";
 import { PrintButton } from "./print-button";
 
 type Participation = { id: string; numero_vendeur: number; code_confirmation: string };
@@ -10,12 +12,23 @@ type Article = { numero_article: number; nom: string; prix: number };
 export default async function ConfirmationPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
 
+  // Le code fait 48 bits d'entropie (peu devinable), mais on protège quand
+  // même contre une tentative de brute-force automatisée sur ce lien public.
+  const ip = await ipAppelante();
+  const cle = `vendeur-lien:${ip}`;
+  const blocage = verifierBlocage(cle);
+  if (blocage.bloque) return <BlocageTentatives secondesRestantes={blocage.secondesRestantes} />;
+
   const participation = await queryOne<Participation>(
     "SELECT id, numero_vendeur, code_confirmation FROM participations WHERE code_confirmation = ?",
     [code],
   );
 
-  if (!participation) notFound();
+  if (!participation) {
+    await enregistrerEchec(cle, ip, "/vendeur/confirmation ou /vendeur/modifier");
+    notFound();
+  }
+  reinitialiserEchecs(cle);
 
   const articles = await query<Article>(
     "SELECT numero_article, nom, prix FROM articles WHERE participation_id = ? ORDER BY numero_article",

@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { query, queryOne } from "@/lib/db";
+import { enregistrerEchec, ipAppelante, reinitialiserEchecs, verifierBlocage } from "@/lib/rate-limit";
+import { BlocageTentatives } from "@/components/BlocageTentatives";
 import { EditForm } from "./edit-form";
 
 type Participation = { id: string; numero_vendeur: number; phase: string };
@@ -10,6 +12,14 @@ export const dynamic = "force-dynamic";
 export default async function ModifierListePage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
 
+  // Même compteur que /vendeur/confirmation/[code] : les deux pages
+  // exposent le même espace de codes, un partage évite qu'on contourne le
+  // blocage en alternant entre les deux URLs.
+  const ip = await ipAppelante();
+  const cle = `vendeur-lien:${ip}`;
+  const blocage = verifierBlocage(cle);
+  if (blocage.bloque) return <BlocageTentatives secondesRestantes={blocage.secondesRestantes} />;
+
   const participation = await queryOne<Participation>(
     `SELECT p.id, p.numero_vendeur, e.phase
      FROM participations p JOIN editions e ON e.id = p.edition_id
@@ -17,7 +27,11 @@ export default async function ModifierListePage({ params }: { params: Promise<{ 
     [code],
   );
 
-  if (!participation) notFound();
+  if (!participation) {
+    await enregistrerEchec(cle, ip, "/vendeur/confirmation ou /vendeur/modifier");
+    notFound();
+  }
+  reinitialiserEchecs(cle);
 
   const articles = await query<Article>(
     "SELECT nom, prix FROM articles WHERE participation_id = ? ORDER BY numero_article",
