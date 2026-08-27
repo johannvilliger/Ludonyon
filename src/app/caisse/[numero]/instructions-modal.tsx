@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { INSTRUCTIONS_CAISSE } from "@/lib/instructions-caisse";
 import { voirInstructions } from "./actions";
+import { VisuelMonnaie } from "./visuel-monnaie";
 
 export function InstructionsCaisse({ posteId, dejaVues }: { posteId: string; dejaVues: boolean }) {
   const [ouvert, setOuvert] = useState(!dejaVues);
@@ -31,10 +32,13 @@ export function InstructionsCaisse({ posteId, dejaVues }: { posteId: string; dej
               {INSTRUCTIONS_CAISSE.detailFond.map((piece) => (
                 <div
                   key={piece.valeur}
-                  className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-center"
+                  className="flex flex-col items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-2 text-center"
                 >
-                  <span className="font-mono text-base font-semibold text-zinc-800">{piece.qte}×</span>{" "}
-                  <span className="font-mono text-base text-zinc-700">{piece.valeur}</span>
+                  <VisuelMonnaie valeur={piece.valeur} />
+                  <span>
+                    <span className="font-mono text-base font-semibold text-zinc-800">{piece.qte}×</span>{" "}
+                    <span className="font-mono text-base text-zinc-700">{piece.valeur}</span>
+                  </span>
                 </div>
               ))}
             </div>
