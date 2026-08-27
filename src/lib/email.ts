@@ -37,6 +37,44 @@ function getTransporteur(): nodemailer.Transporter | null {
   return transporteur;
 }
 
+// Adresse de l'admin à prévenir en cas de blocage brute-force — surchargeable
+// via env si besoin, mais fonctionne sans configuration supplémentaire.
+const EMAIL_ADMIN = process.env.ADMIN_EMAIL || "johannvilliger@ludonyonregion.ch";
+
+export async function envoyerAlerteBruteForce(params: {
+  ip: string;
+  formulaire: string;
+  dureeMinutes: number;
+}): Promise<void> {
+  const transport = getTransporteur();
+  if (!transport) {
+    console.warn("SMTP non configuré — alerte brute-force non envoyée (voir logs serveur).");
+    return;
+  }
+
+  try {
+    await transport.sendMail({
+      from: {
+        name: "Troc - Ludothèque Nyon Région",
+        address: process.env.SMTP_FROM || process.env.SMTP_USER || "",
+      },
+      to: EMAIL_ADMIN,
+      subject: `Troc — blocage brute-force (${params.formulaire})`,
+      html: `
+        <p>Une adresse IP a été bloquée après trop de tentatives de connexion échouées.</p>
+        <ul>
+          <li><strong>Formulaire :</strong> ${echapperHtml(params.formulaire)}</li>
+          <li><strong>IP :</strong> ${echapperHtml(params.ip)}</li>
+          <li><strong>Durée du blocage :</strong> ${params.dureeMinutes} minute(s)</li>
+          <li><strong>Date :</strong> ${new Date().toLocaleString("fr-CH")}</li>
+        </ul>
+      `,
+    });
+  } catch (err) {
+    console.error("Échec de l'envoi de l'alerte brute-force :", err);
+  }
+}
+
 export async function envoyerEmailConfirmationListe(params: {
   destinataire: string;
   nomVendeur: string;

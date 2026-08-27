@@ -4,10 +4,21 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { nouvelId, query, queryOne } from "@/lib/db";
 import { COOKIE_ACCUEIL, COOKIE_CAISSE, COOKIE_DASHBOARD, OPTIONS_COOKIE_SESSION } from "@/lib/gestion";
+import { enregistrerEchec, ipAppelante, reinitialiserEchecs, verifierBlocage } from "@/lib/rate-limit";
 
 export type CodeState = { error: string | null };
 
+function messageBlocage(secondesRestantes: number): string {
+  const unite = secondesRestantes > 60 ? `${Math.ceil(secondesRestantes / 60)} minute(s)` : `${secondesRestantes} seconde(s)`;
+  return `Trop de tentatives échouées. Réessayez dans ${unite}.`;
+}
+
 export async function validerCode(_prevState: CodeState, formData: FormData): Promise<CodeState> {
+  const ip = await ipAppelante();
+  const cle = `gestion:${ip}`;
+  const blocage = verifierBlocage(cle);
+  if (blocage.bloque) return { error: messageBlocage(blocage.secondesRestantes) };
+
   const code = String(formData.get("code") ?? "").trim();
   if (!code) return { error: "Entrez un code." };
 
@@ -20,6 +31,7 @@ export async function validerCode(_prevState: CodeState, formData: FormData): Pr
     await query("UPDATE parametres_gestion SET session_token = ? WHERE id = 1", [token]);
     const jar = await cookies();
     jar.set(COOKIE_DASHBOARD, token, OPTIONS_COOKIE_SESSION);
+    reinitialiserEchecs(cle);
     redirect("/gestion/dashboard");
   }
 
@@ -28,6 +40,7 @@ export async function validerCode(_prevState: CodeState, formData: FormData): Pr
   if (accueil) {
     const jar = await cookies();
     jar.set(COOKIE_ACCUEIL, code, OPTIONS_COOKIE_SESSION);
+    reinitialiserEchecs(cle);
     redirect("/accueil");
   }
 
@@ -37,6 +50,8 @@ export async function validerCode(_prevState: CodeState, formData: FormData): Pr
   );
 
   if (poste) {
+    reinitialiserEchecs(cle);
+
     if (poste.connecte) {
       return { error: `La caisse ${poste.numero} est déjà connectée ailleurs.` };
     }
@@ -59,6 +74,7 @@ export async function validerCode(_prevState: CodeState, formData: FormData): Pr
     redirect(`/gestion/attente/${poste.numero}`);
   }
 
+  await enregistrerEchec(cle, ip, "/gestion (dashboard/accueil/caisse)");
   return { error: "Code invalide." };
 }
 
