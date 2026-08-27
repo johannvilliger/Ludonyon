@@ -161,7 +161,10 @@ export function CaisseScanner({
         Acheteur bénévole
       </label>
 
-      <ul className="mt-4 divide-y divide-zinc-200 rounded-md border border-zinc-200">
+      <p className="mt-4 text-sm font-medium text-zinc-700">
+        Panier — {panier.length} article{panier.length > 1 ? "s" : ""}
+      </p>
+      <ul className="mt-1 divide-y divide-zinc-200 rounded-md border border-zinc-200">
         {panier.length === 0 && (
           <li className="px-4 py-6 text-center text-sm text-zinc-400">Panier vide</li>
         )}
