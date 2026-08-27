@@ -34,7 +34,12 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          // camera=(self) : le scanner QR de la caisse (camera-scanner.tsx)
+          // utilise getUserMedia — un blanket camera=() bloque l'accès au
+          // niveau du navigateur avant même le prompt de permission, quelle
+          // que soit l'autorisation accordée au site. Micro/géoloc restent
+          // désactivés, l'appli ne s'en sert jamais.
+          { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
           // Ignoré par le navigateur tant que le site n'est pas servi en
           // HTTPS (dev local) — actif dès le passage en prod sur Infomaniak.
           { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
