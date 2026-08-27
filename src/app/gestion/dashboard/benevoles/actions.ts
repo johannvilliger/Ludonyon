@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { nouveauCode, nouvelId, queryOne, withTransaction } from "@/lib/db";
+import { nouveauCode, nouvelId, query, queryOne, withTransaction } from "@/lib/db";
+import { dashboardEstConnecte } from "@/lib/gestion";
 import { hasherMotDePasse } from "@/lib/mot-de-passe";
+import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 
 export type FormState = { error: string | null };
 
@@ -103,6 +105,36 @@ export async function creerBenevole(_prevState: FormState, formData: FormData): 
     });
   } catch {
     return { error: "Impossible de créer le bénévole, réessayez." };
+  }
+
+  revalidatePath("/gestion/dashboard/benevoles");
+  return { error: null };
+}
+
+// Supprime un bénévole créé par erreur (doublon...). Efface le vendeur
+// associé, ce qui entraîne en cascade ses participations/articles sur
+// toutes les éditions (FK ON DELETE CASCADE) — mais bloque tout seul
+// (contrainte FK sans cascade) si un de ses articles a déjà été vendu ou si
+// une clôture a été enregistrée pour lui sur une édition quelconque : pas
+// de perte de données réelles possible via ce bouton, seulement des
+// bénévoles encore "vides".
+export async function supprimerBenevole(benevoleId: string): Promise<FormState> {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+
+  const benevole = await queryOne<{ vendeur_id: string; numero_fixe: number }>(
+    "SELECT vendeur_id, numero_fixe FROM benevoles WHERE id = ?",
+    [benevoleId],
+  );
+  if (!benevole) return { error: "Bénévole introuvable." };
+  if (estVendeurSpecial(benevole.numero_fixe)) return { error: "Ce bénévole système ne peut pas être supprimé." };
+
+  try {
+    await query("DELETE FROM vendeurs WHERE id = ?", [benevole.vendeur_id]);
+  } catch {
+    return {
+      error:
+        "Impossible de supprimer : ce bénévole a déjà des articles vendus ou une clôture enregistrée sur une édition.",
+    };
   }
 
   revalidatePath("/gestion/dashboard/benevoles");

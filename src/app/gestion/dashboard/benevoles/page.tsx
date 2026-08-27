@@ -5,6 +5,7 @@ import { dashboardEstConnecte } from "@/lib/gestion";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 import { BenevoleEditRow } from "./benevole-edit-row";
 import { BenevoleForm } from "./benevole-form";
+import { SupprimerBenevoleButton } from "./supprimer-benevole-button";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,7 @@ export default async function BenevolesPage() {
               </span>
               <span className="flex items-center gap-3">
                 {!special && <BenevoleEditRow benevoleId={b.id} numeroFixe={b.numero_fixe} nom={b.nom} />}
+                {!special && <SupprimerBenevoleButton benevoleId={b.id} nom={b.nom} />}
                 {b.code_confirmation && (
                   <Link
                     href={`/accueil/vendeur/${b.code_confirmation}`}
