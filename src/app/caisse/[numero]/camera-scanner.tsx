@@ -5,6 +5,25 @@ import jsQR from "jsqr";
 
 type ResultatScan = { ok: boolean; message: string };
 
+// L'autorisation caméra du système Android (visible dans les paramètres de
+// l'appli) est distincte de l'autorisation par SITE que garde le navigateur
+// lui-même — une appli autorisée peut quand même avoir un site bloqué. Le
+// message distingue donc ce cas (le plus fréquent en pratique) des vraies
+// pannes matérielles.
+function messageErreurCamera(err: unknown): string {
+  const nom = err instanceof DOMException ? err.name : "";
+  if (nom === "NotAllowedError") {
+    return "Caméra bloquée pour ce site précisément (différent de l'autorisation de l'appli dans les réglages Android) — appuyez sur le cadenas à côté de l'adresse, autorisez la caméra pour ce site, puis rechargez la page.";
+  }
+  if (nom === "NotReadableError") {
+    return "La caméra est peut-être utilisée par une autre application — fermez-la puis réessayez.";
+  }
+  if (nom === "NotFoundError") {
+    return "Aucune caméra détectée sur cet appareil.";
+  }
+  return "Impossible d'accéder à la caméra — vérifiez les autorisations du site (pas seulement de l'appli) via le cadenas à côté de l'adresse.";
+}
+
 export function CameraScanner({
   onScan,
   onClose,
@@ -35,11 +54,17 @@ export function CameraScanner({
     async function demarrer() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      } catch {
-        if (!annule) {
-          setErreurCamera("Impossible d'accéder à la caméra — vérifiez les autorisations du navigateur.");
+      } catch (err) {
+        // Certains navigateurs (Samsung Internet notamment) refusent la
+        // contrainte facingMode si l'appareil a plusieurs caméras arrière
+        // (plusieurs objectifs, écran pliable...) — on retente sans
+        // contrainte de caméra avant d'abandonner.
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        } catch {
+          if (!annule) setErreurCamera(messageErreurCamera(err));
+          return;
         }
-        return;
       }
       if (annule) {
         stream.getTracks().forEach((t) => t.stop());
