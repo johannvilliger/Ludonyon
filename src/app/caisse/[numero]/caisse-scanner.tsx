@@ -92,6 +92,8 @@ export function CaisseScanner({
   const estMobile = useSyncExternalStore(sAbonner, detecterMobile, snapshotServeur);
   const enLigne = useSyncExternalStore(sAbonnerReseau, snapshotReseau, snapshotReseauServeur);
   const panierRestaure = useRef(false);
+  const [scanEnCours, setScanEnCours] = useState(false);
+  const scanEnCoursRef = useRef(false);
 
   // Restauration au montage (une fois) : si un panier a été sauvegardé avant
   // un rechargement, on le remet en place plutôt que de repartir à vide. Fait
@@ -151,16 +153,29 @@ export function CaisseScanner({
     setCode("");
     inputRef.current?.focus();
     if (!valeur) return;
+    // Garde sur une ref (pas juste l'état visuel du bouton) : un scanner
+    // douchette envoie ses touches directement dans le champ, sans passer
+    // par un clic — seule une garde synchrone bloque vraiment un double-scan
+    // tiré pendant qu'une connexion lente traite encore le précédent.
+    if (scanEnCoursRef.current) return;
 
     setErreur(null);
     setConfirmation(null);
-
+    scanEnCoursRef.current = true;
+    setScanEnCours(true);
     const resultat = await traiterCode(valeur);
+    scanEnCoursRef.current = false;
+    setScanEnCours(false);
     if (!resultat.ok) setErreur(resultat.erreur);
   }
 
   async function handleCameraScan(valeur: string) {
+    if (scanEnCoursRef.current) return { ok: false, message: "Scan précédent encore en cours…" };
+    scanEnCoursRef.current = true;
+    setScanEnCours(true);
     const resultat = await traiterCode(valeur);
+    scanEnCoursRef.current = false;
+    setScanEnCours(false);
     return resultat.ok ? { ok: true, message: `✓ ${resultat.nom}` } : { ok: false, message: resultat.erreur };
   }
 
@@ -225,17 +240,19 @@ export function CaisseScanner({
         />
         <button
           type="submit"
-          className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:border-zinc-400"
+          disabled={scanEnCours}
+          className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:border-zinc-400 disabled:opacity-50"
         >
-          Ajouter
+          {scanEnCours ? "…" : "Ajouter"}
         </button>
       </form>
 
       {estMobile && (
         <button
           type="button"
+          disabled={scanEnCours}
           onClick={() => setScannerCameraOuvert(true)}
-          className="mt-2 w-full rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:border-zinc-400"
+          className="mt-2 w-full rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:border-zinc-400 disabled:opacity-50"
         >
           📷 Scanner avec l&apos;appareil photo
         </button>
