@@ -235,7 +235,15 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
           plus de sens une fois l'édition passée. */}
       {vendeurs.length > 0 && (
         <section className="mt-10">
-          <h2 className="text-lg font-medium">Vendeurs</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium">Vendeurs</h2>
+            <Link
+              href={`/gestion/dashboard/bilans/${editionId}/imprimer`}
+              className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:border-zinc-400"
+            >
+              Imprimer la liste
+            </Link>
+          </div>
           <div className="mt-3 space-y-4">
             {vendeurs.map((v) => {
               const liste = articlesParVendeur.get(v.participation_id) ?? [];
