@@ -214,6 +214,64 @@ export async function encaisserPanier(
   return { ok: true, total };
 }
 
+export type DerniereVente = {
+  total: number;
+  articles: { nom: string; numeroVendeur: number }[];
+};
+
+// La vente la plus récente de CETTE caisse (peu importe quand — pas de
+// limite de temps), pour permettre de l'annuler en cas d'erreur de scan.
+// Toujours recalculée depuis la base plutôt que gardée en mémoire côté
+// client : reste correcte même après un rechargement de page.
+export async function obtenirDerniereVente(caisseId: string): Promise<DerniereVente | null> {
+  const vente = await queryOne<{ id: string }>(
+    "SELECT id FROM ventes WHERE caisse_id = ? ORDER BY created_at DESC LIMIT 1",
+    [caisseId],
+  );
+  if (!vente) return null;
+
+  const lignes = await query<{ nom: string; numero_vendeur: number; prix_encaisse: number }>(
+    `SELECT a.nom, p.numero_vendeur, va.prix_encaisse
+     FROM vente_articles va
+     JOIN articles a ON a.id = va.article_id
+     JOIN participations p ON p.id = a.participation_id
+     WHERE va.vente_id = ?`,
+    [vente.id],
+  );
+
+  return {
+    total: arrondiCentimes(lignes.reduce((sum, l) => sum + Number(l.prix_encaisse), 0)),
+    articles: lignes.map((l) => ({ nom: l.nom, numeroVendeur: l.numero_vendeur })),
+  };
+}
+
+// Annule la dernière vente de cette caisse : remet les articles au statut
+// qu'ils avaient avant la vente ('recu', le seul état possible avant un
+// encaissement dans le flux actuel) pour qu'ils redeviennent scannables, et
+// supprime la vente (vente_articles suit en cascade). Restreint à la caisse
+// appelante par construction : on ne cherche que sa propre dernière vente.
+export async function annulerDerniereVente(caisseId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const vente = await queryOne<{ id: string }>(
+    "SELECT id FROM ventes WHERE caisse_id = ? ORDER BY created_at DESC LIMIT 1",
+    [caisseId],
+  );
+  if (!vente) return { ok: false, error: "Aucune vente à annuler." };
+
+  const articleIds = (
+    await query<{ article_id: string }>("SELECT article_id FROM vente_articles WHERE vente_id = ?", [vente.id])
+  ).map((r) => r.article_id);
+
+  await withTransaction(async (conn) => {
+    await conn.query("DELETE FROM ventes WHERE id = ?", [vente.id]);
+    if (articleIds.length > 0) {
+      const placeholders = articleIds.map(() => "?").join(", ");
+      await conn.query(`UPDATE articles SET statut = 'recu' WHERE id IN (${placeholders})`, articleIds);
+    }
+  });
+
+  return { ok: true };
+}
+
 export async function libererArticle(articleId: string, caisseId: string) {
   await query("DELETE FROM articles_reserves WHERE article_id = ? AND caisse_id = ?", [articleId, caisseId]);
 }

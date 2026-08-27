@@ -3,6 +3,7 @@ import Link from "next/link";
 import { arrondiCentimes, formaterMontant } from "@/lib/argent";
 import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
+import { ExportExcelButton } from "./export-excel-button";
 
 export const dynamic = "force-dynamic";
 
@@ -237,12 +238,15 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
         <section className="mt-10">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium">Vendeurs</h2>
-            <Link
-              href={`/gestion/dashboard/bilans/${editionId}/imprimer`}
-              className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:border-zinc-400"
-            >
-              Imprimer la liste
-            </Link>
+            <div className="flex items-center gap-2">
+              <ExportExcelButton editionId={editionId} />
+              <Link
+                href={`/gestion/dashboard/bilans/${editionId}/imprimer`}
+                className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:border-zinc-400"
+              >
+                Imprimer la liste
+              </Link>
+            </div>
           </div>
           <div className="mt-3 space-y-4">
             {vendeurs.map((v) => {

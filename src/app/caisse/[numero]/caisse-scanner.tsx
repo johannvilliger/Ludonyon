@@ -5,11 +5,23 @@ import { arrondiCentimes, formaterMontant } from "@/lib/argent";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 import { CameraScanner } from "./camera-scanner";
 import {
+  annulerDerniereVente,
   encaisserPanier,
   libererArticle,
+  obtenirDerniereVente,
   rechercherArticle,
   type ArticleTrouve,
+  type DerniereVente,
 } from "./actions";
+
+// Retour haptique très léger — juste de quoi confirmer un scan sans avoir à
+// regarder l'écran, mains prises. `vibrate` n'existe que sur certains
+// navigateurs mobiles (jamais sur iOS Safari) : no-op silencieux ailleurs.
+function vibrer(pattern: number | number[]) {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    navigator.vibrate(pattern);
+  }
+}
 
 // navigator.userAgent est statique le temps de la session : pas besoin de
 // s'abonner à un vrai changement, juste de lire une valeur qui n'existe que
@@ -94,6 +106,18 @@ export function CaisseScanner({
   const panierRestaure = useRef(false);
   const [scanEnCours, setScanEnCours] = useState(false);
   const scanEnCoursRef = useRef(false);
+  const [derniereVente, setDerniereVente] = useState<DerniereVente | null>(null);
+  const [annulationEnCours, setAnnulationEnCours] = useState(false);
+
+  // Chargée depuis le serveur (pas gardée en mémoire client uniquement) :
+  // reste correcte même après un rechargement de page.
+  useEffect(() => {
+    obtenirDerniereVente(caisseId)
+      .then((v) => {
+        setDerniereVente(v);
+      })
+      .catch(() => {});
+  }, [caisseId]);
 
   // Restauration au montage (une fois) : si un panier a été sauvegardé avant
   // un rechargement, on le remet en place plutôt que de repartir à vide. Fait
@@ -135,15 +159,21 @@ export function CaisseScanner({
     try {
       resultat = await rechercherArticle(editionId, valeur, caisseId);
     } catch {
+      vibrer([15, 60, 15]);
       return { ok: false, erreur: "Connexion perdue — le panier est conservé, réessayez dans quelques secondes." };
     }
-    if (!resultat.ok) return { ok: false, erreur: resultat.error };
+    if (!resultat.ok) {
+      vibrer([15, 60, 15]);
+      return { ok: false, erreur: resultat.error };
+    }
 
     if (panier.some((a) => a.articleId === resultat.article.articleId)) {
+      vibrer([15, 60, 15]);
       return { ok: false, erreur: `« ${resultat.article.nom} » est déjà dans le panier.` };
     }
 
     setPanier((prev) => [...prev, resultat.article]);
+    vibrer(15);
     return { ok: true, nom: resultat.article.nom };
   }
 
@@ -199,21 +229,51 @@ export function CaisseScanner({
       );
     } catch {
       setEnCours(false);
+      vibrer([15, 60, 15]);
       setErreur("Connexion perdue pendant l'encaissement — le panier n'a pas été perdu, réessayez.");
       return;
     }
     setEnCours(false);
 
     if (!resultat.ok) {
+      vibrer([15, 60, 15]);
       setErreur(resultat.error);
       return;
     }
 
+    vibrer(15);
     setConfirmation(`Encaissé : ${formaterMontant(resultat.total)}`);
+    setDerniereVente({
+      total: resultat.total,
+      articles: panier.map((a) => ({ nom: a.nom, numeroVendeur: a.numeroVendeur })),
+    });
     setPanier([]);
     setAcheteurBenevole(false);
     setMontantRecu("");
     inputRef.current?.focus();
+  }
+
+  async function handleAnnulerDerniereVente() {
+    if (
+      !window.confirm(
+        "Annuler la dernière vente de cette caisse ? Les articles redeviennent disponibles à la vente.",
+      )
+    )
+      return;
+    setAnnulationEnCours(true);
+    setErreur(null);
+    try {
+      const resultat = await annulerDerniereVente(caisseId);
+      if (!resultat.ok) {
+        setErreur(resultat.error);
+      } else {
+        setDerniereVente(null);
+        setConfirmation("Vente annulée — les articles sont de nouveau disponibles.");
+      }
+    } catch {
+      setErreur("Connexion perdue — réessayez, la vente n'a pas été annulée.");
+    }
+    setAnnulationEnCours(false);
   }
 
   const total = arrondiCentimes(panier.reduce((sum, a) => sum + prixAffiche(a, acheteurBenevole, tauxAchat), 0));
@@ -263,6 +323,23 @@ export function CaisseScanner({
 
       {erreur && <p className="mt-3 text-sm text-red-600">{erreur}</p>}
       {confirmation && <p className="mt-3 text-sm text-green-700">{confirmation}</p>}
+
+      {derniereVente && (
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
+          <span className="text-zinc-600">
+            Dernière vente : {derniereVente.articles.length} article{derniereVente.articles.length > 1 ? "s" : ""}{" "}
+            — {formaterMontant(derniereVente.total)}
+          </span>
+          <button
+            type="button"
+            onClick={handleAnnulerDerniereVente}
+            disabled={annulationEnCours}
+            className="shrink-0 rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-600 hover:border-red-400 hover:bg-red-50 disabled:opacity-50"
+          >
+            {annulationEnCours ? "…" : "Annuler cette vente"}
+          </button>
+        </div>
+      )}
 
       <label className="mt-6 flex items-center gap-2 text-sm font-medium text-zinc-700">
         <input

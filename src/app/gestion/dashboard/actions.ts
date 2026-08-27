@@ -13,7 +13,10 @@ import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 
 export async function telechargerSauvegarde(): Promise<string> {
   if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
-  return genererSauvegardeSql();
+  const sql = await genererSauvegardeSql();
+  await query("UPDATE parametres_gestion SET derniere_sauvegarde_le = NOW() WHERE id = 1");
+  revalidatePath("/gestion/dashboard");
+  return sql;
 }
 
 // Réservé aux tests : une édition "terminée" (phase = 'terminee') devient

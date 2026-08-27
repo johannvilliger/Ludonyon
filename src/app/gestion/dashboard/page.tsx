@@ -42,6 +42,7 @@ type Parametres = {
   code_accueil: string;
   deverrouille_manuellement: number;
   date_ouverture_troc: string | null;
+  derniere_sauvegarde_le: string | null;
 };
 type PosteLigne = {
   poste_id: string;
@@ -67,6 +68,15 @@ const LABELS_PHASE: Record<Phase, string> = {
 };
 const ORDRE_PHASES: Phase[] = ["depot", "reception", "caisse", "post_vente"];
 
+function texteDerniereSauvegarde(dateStr: string | null): { texte: string; ancienne: boolean } {
+  if (!dateStr) return { texte: "jamais", ancienne: true };
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(dateStr.replace(" ", "T")).getTime()) / 60000));
+  const ancienne = minutes >= 60;
+  if (minutes < 1) return { texte: "à l'instant", ancienne };
+  if (minutes < 60) return { texte: `il y a ${minutes} min`, ancienne };
+  return { texte: `il y a ${Math.round(minutes / 60)} h`, ancienne };
+}
+
 export default async function DashboardGestionPage() {
   if (!(await dashboardEstConnecte())) redirect("/gestion");
 
@@ -77,7 +87,7 @@ export default async function DashboardGestionPage() {
         "SELECT id, annee FROM editions WHERE active_flag IS NULL ORDER BY annee DESC",
       );
   const parametres = await queryOne<Parametres>(
-    "SELECT code_dashboard, code_accueil, deverrouille_manuellement, date_ouverture_troc FROM parametres_gestion WHERE id = 1",
+    "SELECT code_dashboard, code_accueil, deverrouille_manuellement, date_ouverture_troc, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
   );
   const edition2025 = await queryOne<{ id: string }>("SELECT id FROM editions WHERE annee = 2025");
 
@@ -405,6 +415,17 @@ export default async function DashboardGestionPage() {
           Télécharge un instantané complet de la base (toutes les données, pas seulement l&apos;édition
           en cours), à faire régulièrement pendant la vente pour avoir un secours en cas de problème.
         </p>
+        {parametres &&
+          (() => {
+            const { texte, ancienne } = texteDerniereSauvegarde(parametres.derniere_sauvegarde_le);
+            const alerte = ancienne && edition?.phase === "caisse";
+            return (
+              <p className={`mt-2 text-sm ${alerte ? "font-medium text-amber-700" : "text-zinc-500"}`}>
+                Dernière sauvegarde : {texte}
+                {alerte && " — pensez à en refaire une pendant la vente."}
+              </p>
+            );
+          })()}
         <div className="mt-3">
           <SauvegardeButton />
         </div>
