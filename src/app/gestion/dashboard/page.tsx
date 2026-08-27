@@ -22,6 +22,7 @@ import { CodeEditor } from "./code-editor";
 import { DateOuvertureEditor } from "./date-ouverture-editor";
 import { EditionForm } from "./edition-form";
 import { EditionPanel } from "./edition-panel";
+import { Import2025Button } from "./import-2025-button";
 import { PhaseButton } from "./phase-button";
 import { ReouvrirCaisseButton } from "./reouvrir-caisse-button";
 import { ResetTestDataButton } from "./reset-test-data-button";
@@ -78,6 +79,7 @@ export default async function DashboardGestionPage() {
   const parametres = await queryOne<Parametres>(
     "SELECT code_dashboard, code_accueil, deverrouille_manuellement, date_ouverture_troc FROM parametres_gestion WHERE id = 1",
   );
+  const edition2025 = await queryOne<{ id: string }>("SELECT id FROM editions WHERE annee = 2025");
 
   const postes = await query<PosteLigne>(
     `SELECT
@@ -407,6 +409,21 @@ export default async function DashboardGestionPage() {
           <SauvegardeButton />
         </div>
       </section>
+
+      {/* Import démo 2025 : indépendant de l'édition active, se fait une
+          seule fois — bouton retiré dès que l'édition 2025 existe. */}
+      {!edition2025 && (
+        <section className="mt-8 rounded-md border border-blue-200 bg-blue-50/40 p-4">
+          <h2 className="text-lg font-medium text-blue-900">Import démo — édition 2025</h2>
+          <p className="mt-1 text-xs text-blue-800">
+            Importe les données du cahier vendeur papier 2025 (156 vendeurs) comme édition terminée, pour
+            tester les bilans et impressions sans attendre le prochain vrai troc.
+          </p>
+          <div className="mt-3">
+            <Import2025Button />
+          </div>
+        </section>
+      )}
 
       {/* Zone de test : à retirer avant le vrai troc */}
       {edition && (

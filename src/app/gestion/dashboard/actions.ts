@@ -6,6 +6,7 @@ import { arrondiCentimes } from "@/lib/argent";
 import { nouveauCode as genererCode, nouvelId, query, queryOne, withTransaction } from "@/lib/db";
 import { CATEGORIES_ARTICLES } from "@/lib/categories";
 import { dashboardEstConnecte } from "@/lib/gestion";
+import { DONNEES_2025, repartirValeur } from "@/lib/import-2025";
 import { genererSauvegardeSql } from "@/lib/sauvegarde";
 import { NB_VENDEURS_TEST, PRIX_ARTICLES_TEST } from "@/lib/test-data";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
@@ -244,6 +245,101 @@ export async function enregistrerVidage(_prevState: VidageState, formData: FormD
 
   revalidatePath("/gestion/dashboard");
   return { error: null };
+}
+
+// Import à usage unique des données du cahier vendeur papier 2025 (voir
+// src/lib/import-2025.ts), pour la démo/le test du comité : crée une édition
+// 2025 déjà "terminee" (donc jamais active_flag = 1, aucun conflit avec une
+// édition en cours) avec ses 156 vendeurs, articles et ventes reconstitués.
+// Bloqué dès qu'une édition 2025 existe (UNIQUE KEY editions_annee_uk de
+// toute façon, mais on vérifie avant pour un message clair).
+export async function importerEdition2025() {
+  const existante = await queryOne<{ id: string }>("SELECT id FROM editions WHERE annee = 2025");
+  if (existante) throw new Error("L'édition 2025 existe déjà.");
+
+  const benevolesFixes = await query<{ vendeur_id: string; numero_fixe: number }>(
+    "SELECT vendeur_id, numero_fixe FROM benevoles WHERE numero_fixe IN (901, 902)",
+  );
+  const vendeurParNumeroFixe = new Map(benevolesFixes.map((b) => [b.numero_fixe, b.vendeur_id]));
+  const tauxAchat = 0.1;
+
+  await withTransaction(async (conn) => {
+    const editionId = nouvelId();
+    await conn.query(
+      "INSERT INTO editions (id, annee, phase, taux_achat, taux_vendeur) VALUES (?, 2025, 'terminee', ?, ?)",
+      [editionId, tauxAchat, tauxAchat],
+    );
+
+    // Une seule caisse synthétique pour rattacher les ventes reconstituées —
+    // sans poste_caisse_id (nullable), elle n'apparaît pas dans la grille des
+    // caisses du dashboard/bilan, ce qui est correct : elle n'a jamais existé.
+    const caisseId = nouvelId();
+    await conn.query("INSERT INTO caisses (id, edition_id, nom, fond_initial) VALUES (?, ?, ?, ?)", [
+      caisseId,
+      editionId,
+      "Import 2025",
+      250,
+    ]);
+
+    for (const ligne of DONNEES_2025) {
+      // 901/902 réutilisent le vendeur fixe existant (base partagée entre
+      // éditions, voir migration 0007) ; les autres numéros >= 900 (bénévoles
+      // de cette édition-là) obtiennent un vendeur propre à cette édition,
+      // comme n'importe quel vendeur classique.
+      let vendeurId = vendeurParNumeroFixe.get(ligne.numero) ?? null;
+      if (!vendeurId) {
+        vendeurId = nouvelId();
+        await conn.query("INSERT INTO vendeurs (id, nom, telephone) VALUES (?, ?, ?)", [
+          vendeurId,
+          ligne.nom,
+          ligne.telephone,
+        ]);
+      }
+
+      const participationId = nouvelId();
+      const estBenevole = ligne.numero >= 900 && !estVendeurSpecial(ligne.numero);
+      await conn.query(
+        `INSERT INTO participations (id, edition_id, vendeur_id, numero_vendeur, code_confirmation, statut, est_benevole)
+         VALUES (?, ?, ?, ?, ?, 'cloturee', ?)`,
+        [participationId, editionId, vendeurId, ligne.numero, genererCode(), estBenevole],
+      );
+
+      const prixVendus = repartirValeur(ligne.valeurVendue, ligne.vendus);
+
+      let venteId: string | null = null;
+      if (ligne.vendus > 0) {
+        venteId = nouvelId();
+        await conn.query("INSERT INTO ventes (id, edition_id, caisse_id) VALUES (?, ?, ?)", [
+          venteId,
+          editionId,
+          caisseId,
+        ]);
+      }
+
+      // Le cahier ne détaille jamais les objets un par un, seulement des
+      // totaux par vendeur — les objets invendus reçoivent un prix plausible
+      // arbitraire (aucune donnée réelle à reconstituer pour eux).
+      for (let i = 0; i < ligne.aVendre; i++) {
+        const articleId = nouvelId();
+        const vendu = i < ligne.vendus;
+        const prix = vendu ? prixVendus[i] : 5 + (i % 5) * 5;
+        await conn.query(
+          "INSERT INTO articles (id, participation_id, numero_article, nom, prix, statut) VALUES (?, ?, ?, ?, ?, ?)",
+          [articleId, participationId, i + 1, "Objet (dépôt 2025)", prix, vendu ? "vendu" : "invendu"],
+        );
+
+        if (vendu && venteId) {
+          await conn.query(
+            "INSERT INTO vente_articles (id, vente_id, article_id, prix_encaisse) VALUES (?, ?, ?, ?)",
+            [nouvelId(), venteId, articleId, arrondiCentimes(prix * (1 + tauxAchat))],
+          );
+        }
+      }
+    }
+  });
+
+  revalidatePath("/gestion/dashboard");
+  revalidatePath("/gestion/dashboard/bilans");
 }
 
 export async function reinitialiserDonneesTest() {
