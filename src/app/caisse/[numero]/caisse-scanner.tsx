@@ -14,12 +14,54 @@ import {
   type DerniereVente,
 } from "./actions";
 
-// Retour haptique très léger — juste de quoi confirmer un scan sans avoir à
-// regarder l'écran, mains prises. `vibrate` n'existe que sur certains
-// navigateurs mobiles (jamais sur iOS Safari) : no-op silencieux ailleurs.
-function vibrer(pattern: number | number[]) {
+// Retour sensoriel très léger — juste de quoi confirmer un scan sans avoir à
+// regarder l'écran, mains prises. `vibrate` n'existe sur aucun navigateur
+// iOS (WebKit ne l'expose pas, quel que soit le navigateur) : sur ces
+// appareils on joue à la place un bip discret via Web Audio.
+let audioCtx: AudioContext | null = null;
+
+function obtenirAudioCtx(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  try {
+    if (!audioCtx) {
+      const Ctor =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctor) return null;
+      audioCtx = new Ctor();
+    }
+    if (audioCtx.state === "suspended") void audioCtx.resume();
+    return audioCtx;
+  } catch {
+    return null;
+  }
+}
+
+// Une ou deux notes brèves et discrètes (gain volontairement bas — à
+// ajuster si trop fort/faible en usage réel).
+function biper(frequences: number[]) {
+  const ctx = obtenirAudioCtx();
+  if (!ctx) return;
+  frequences.forEach((freq, i) => {
+    const debut = ctx.currentTime + i * 0.1;
+    const oscillateur = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillateur.type = "sine";
+    oscillateur.frequency.value = freq;
+    oscillateur.connect(gain);
+    gain.connect(ctx.destination);
+    gain.gain.setValueAtTime(0.04, debut);
+    gain.gain.exponentialRampToValueAtTime(0.0001, debut + 0.08);
+    oscillateur.start(debut);
+    oscillateur.stop(debut + 0.09);
+  });
+}
+
+function retourScan(succes: boolean) {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-    navigator.vibrate(pattern);
+    navigator.vibrate(succes ? 15 : [15, 60, 15]);
+  } else {
+    biper(succes ? [880] : [330, 330]);
   }
 }
 
@@ -159,21 +201,21 @@ export function CaisseScanner({
     try {
       resultat = await rechercherArticle(editionId, valeur, caisseId);
     } catch {
-      vibrer([15, 60, 15]);
+      retourScan(false);
       return { ok: false, erreur: "Connexion perdue — le panier est conservé, réessayez dans quelques secondes." };
     }
     if (!resultat.ok) {
-      vibrer([15, 60, 15]);
+      retourScan(false);
       return { ok: false, erreur: resultat.error };
     }
 
     if (panier.some((a) => a.articleId === resultat.article.articleId)) {
-      vibrer([15, 60, 15]);
+      retourScan(false);
       return { ok: false, erreur: `« ${resultat.article.nom} » est déjà dans le panier.` };
     }
 
     setPanier((prev) => [...prev, resultat.article]);
-    vibrer(15);
+    retourScan(true);
     return { ok: true, nom: resultat.article.nom };
   }
 
@@ -229,19 +271,19 @@ export function CaisseScanner({
       );
     } catch {
       setEnCours(false);
-      vibrer([15, 60, 15]);
+      retourScan(false);
       setErreur("Connexion perdue pendant l'encaissement — le panier n'a pas été perdu, réessayez.");
       return;
     }
     setEnCours(false);
 
     if (!resultat.ok) {
-      vibrer([15, 60, 15]);
+      retourScan(false);
       setErreur(resultat.error);
       return;
     }
 
-    vibrer(15);
+    retourScan(true);
     setConfirmation(`Encaissé : ${formaterMontant(resultat.total)}`);
     setDerniereVente({
       total: resultat.total,
