@@ -5,6 +5,19 @@ import { CONDITIONS_TROC } from "./conditions";
 
 let transporteur: nodemailer.Transporter | null = null;
 
+// Le nom du vendeur est une donnée saisie par le public, injectée telle
+// quelle dans un email HTML — sans échappement, un nom contenant du HTML/JS
+// (ex. "<img src=x onerror=...>") s'exécuterait dans le client mail du
+// destinataire.
+function echapperHtml(valeur: string): string {
+  return valeur
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 // Fonctionnalité optionnelle, comme la classification IA (voir
 // .env.local.example) : sans identifiants SMTP configurés, on log juste un
 // avertissement plutôt que de faire planter la soumission de liste — un
@@ -53,7 +66,7 @@ export async function envoyerEmailConfirmationListe(params: {
       to: params.destinataire,
       subject: `Troc de la ludothèque — vendeur n° ${params.numeroVendeur}`,
       html: `
-        <p>Bonjour ${params.nomVendeur},</p>
+        <p>Bonjour ${echapperHtml(params.nomVendeur)},</p>
         <p>Votre liste a bien été enregistrée pour le troc de la ludothèque.</p>
         <p><strong>Vous êtes le vendeur n° ${params.numeroVendeur}</strong>.</p>
         <p>Présentez ce code (ou le QR ci-dessous) au dépôt :</p>

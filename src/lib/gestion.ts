@@ -11,6 +11,11 @@ const DUREE_SESSION_SECONDES = 60 * 60 * 16; // une longue journée de troc
 export const OPTIONS_COOKIE_SESSION = {
   httpOnly: true,
   sameSite: "lax" as const,
+  // "secure" désactivé en dev (npm run dev tourne en http://localhost, un
+  // cookie secure ne serait jamais envoyé) mais actif en production, où le
+  // site est toujours servi en HTTPS — empêche le cookie de session de
+  // transiter en clair si jamais une requête HTTP non chiffrée passait.
+  secure: process.env.NODE_ENV === "production",
   path: "/",
   maxAge: DUREE_SESSION_SECONDES,
 };
