@@ -14,6 +14,7 @@ import {
   modifierDateOuverture,
   refuserConnexionCaisse,
   validerConnexionCaisse,
+  type ModeVerrouillage,
   type Phase,
 } from "./actions";
 import { AutoRefresh } from "./auto-refresh";
@@ -40,7 +41,7 @@ type Edition = { id: string; annee: number; phase: Phase };
 type Parametres = {
   code_dashboard: string;
   code_accueil: string;
-  deverrouille_manuellement: number;
+  mode_verrouillage: ModeVerrouillage;
   date_ouverture_troc: string | null;
   derniere_sauvegarde_le: string | null;
 };
@@ -87,7 +88,7 @@ export default async function DashboardGestionPage() {
         "SELECT id, annee FROM editions WHERE active_flag IS NULL ORDER BY annee DESC",
       );
   const parametres = await queryOne<Parametres>(
-    "SELECT code_dashboard, code_accueil, deverrouille_manuellement, date_ouverture_troc, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
+    "SELECT code_dashboard, code_accueil, mode_verrouillage, date_ouverture_troc, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
   );
   const edition2025 = await queryOne<{ id: string }>("SELECT id FROM editions WHERE annee = 2025");
 
@@ -354,16 +355,17 @@ export default async function DashboardGestionPage() {
         </section>
       )}
 
-      {/* Verrouillage du site public : locked par défaut tant qu'aucune
-          édition n'est active, sauf déverrouillage manuel (phase de
-          test/démo). Une fois une édition active, le site est déverrouillé
-          automatiquement et ce bouton devient sans effet. */}
+      {/* Verrouillage du site public : 3 modes (voir siteTrocOuvert). Par
+          défaut ("Automatique"), verrouillé sans édition active et
+          déverrouillé avec — les deux modes manuels forcent l'un ou l'autre
+          quelle que soit l'édition (démo sans édition, ou tests en
+          conditions réelles avec édition sans exposer le site). */}
       {parametres && (
         <section className="mt-8">
           <h2 className="text-lg font-medium">Accès au site public</h2>
           <div className="mt-3 rounded-md border border-zinc-200 p-4">
             <VerrouillageSiteButton
-              deverrouilleManuellement={Boolean(parametres.deverrouille_manuellement)}
+              mode={parametres.mode_verrouillage}
               editionActive={Boolean(edition)}
               onToggle={basculerVerrouillageSite}
             />

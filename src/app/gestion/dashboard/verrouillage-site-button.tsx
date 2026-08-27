@@ -1,18 +1,25 @@
 "use client";
 
 import { useTransition } from "react";
+import type { ModeVerrouillage } from "./actions";
+
+const OPTIONS: { valeur: ModeVerrouillage; label: string }[] = [
+  { valeur: "auto", label: "Automatique" },
+  { valeur: "deverrouille", label: "Forcer déverrouillé" },
+  { valeur: "verrouille", label: "Forcer verrouillé" },
+];
 
 export function VerrouillageSiteButton({
-  deverrouilleManuellement,
+  mode,
   editionActive,
   onToggle,
 }: {
-  deverrouilleManuellement: boolean;
+  mode: ModeVerrouillage;
   editionActive: boolean;
-  onToggle: (deverrouille: boolean) => Promise<void>;
+  onToggle: (mode: ModeVerrouillage) => Promise<void>;
 }) {
   const [pending, startTransition] = useTransition();
-  const siteOuvert = deverrouilleManuellement || editionActive;
+  const siteOuvert = mode === "verrouille" ? false : mode === "deverrouille" ? true : editionActive;
 
   return (
     <div>
@@ -20,18 +27,30 @@ export function VerrouillageSiteButton({
         {siteOuvert ? "🔓 Site accessible au public" : "🔒 Site verrouillé — accès public bloqué"}
       </p>
       <p className="mt-1 text-xs text-zinc-500">
-        {editionActive
-          ? "Une édition est active : le site est déverrouillé automatiquement, quel que soit ce bouton."
-          : "Aucune édition active : verrouillé par défaut. Utilisez ce bouton pour tester/démontrer sans exposer le site au public."}
+        {mode === "auto" &&
+          (editionActive
+            ? "Automatique : déverrouillé car une édition est active."
+            : "Automatique : verrouillé par défaut, aucune édition active.")}
+        {mode === "deverrouille" && "Forcé déverrouillé manuellement, quelle que soit l'édition."}
+        {mode === "verrouille" && "Forcé verrouillé manuellement, même avec une édition active."}
       </p>
-      <button
-        type="button"
-        disabled={pending || editionActive}
-        onClick={() => startTransition(() => onToggle(!deverrouilleManuellement))}
-        className="mt-3 rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:border-zinc-400 disabled:opacity-50"
-      >
-        {pending ? "…" : deverrouilleManuellement ? "Verrouiller à nouveau" : "Déverrouiller"}
-      </button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {OPTIONS.map((o) => (
+          <button
+            key={o.valeur}
+            type="button"
+            disabled={pending || mode === o.valeur}
+            onClick={() => startTransition(() => onToggle(o.valeur))}
+            className={`rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-50 ${
+              mode === o.valeur
+                ? "border-zinc-900 bg-zinc-900 text-white"
+                : "border-zinc-300 hover:border-zinc-400"
+            }`}
+          >
+            {pending ? "…" : o.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

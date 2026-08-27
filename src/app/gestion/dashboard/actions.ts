@@ -154,9 +154,13 @@ export async function lancerClotureVente() {
   redirect("/gestion/dashboard/cloture-vente");
 }
 
-export async function basculerVerrouillageSite(deverrouille: boolean) {
+const MODES_VERROUILLAGE = ["auto", "deverrouille", "verrouille"] as const;
+export type ModeVerrouillage = (typeof MODES_VERROUILLAGE)[number];
+
+export async function basculerVerrouillageSite(mode: ModeVerrouillage) {
   if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
-  await query("UPDATE parametres_gestion SET deverrouille_manuellement = ? WHERE id = 1", [deverrouille]);
+  if (!MODES_VERROUILLAGE.includes(mode)) throw new Error("Mode invalide.");
+  await query("UPDATE parametres_gestion SET mode_verrouillage = ? WHERE id = 1", [mode]);
   revalidatePath("/gestion/dashboard");
 }
 
