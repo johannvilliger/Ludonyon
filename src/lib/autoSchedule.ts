@@ -8,7 +8,8 @@ import {
   type Site,
   type Periode,
 } from "@/lib/planning";
-import { canCoverPoste, isValidPoste, type Poste } from "@/lib/postes";
+import { canCoverPoste, isValidPoste, POSTE_LABELS, type Poste } from "@/lib/postes";
+import { ROLE_LABELS, type Role } from "@/lib/roles";
 
 // Composition des ouvertures par créneau, fixée avec le comité le
 // 28.08.2026 (voir aussi Espace organisation > Bénévoles > Import groupé,
@@ -87,6 +88,7 @@ export interface ProposedShift {
   assignees: ProposedAssignee[];
   missingResponsable: boolean;
   understaffed: boolean;
+  manuallyOverridden: boolean;
 }
 
 export interface AutoScheduleResult {
@@ -247,15 +249,81 @@ export function generateAutoSchedule(
       assignees: selected,
       missingResponsable: !selected.some((a) => a.isResponsableSeat),
       understaffed: selected.length < seatDefs.length,
+      manuallyOverridden: false,
     });
   }
 
   return { shifts, assignmentCountByUser: countByUser };
 }
 
+function seatLabelFor(role: string, poste: string | null): string {
+  if (poste && isValidPoste(poste)) return POSTE_LABELS[poste];
+  if (role !== "BENEVOLE") return ROLE_LABELS[role as Role] ?? role;
+  return "Bénévole";
+}
+
+// Remplace, dans la proposition calculée, les créneaux pour lesquels
+// un·e responsable/comité a corrigé manuellement la composition (voir
+// Espace organisation > Planning > auto, boutons +/× sous chaque
+// créneau) — pour ne pas avoir à relancer tout l'algorithme quand
+// seul·e·s un ou deux créneaux se sont avérés faux à la relecture.
+// L'équité affichée (recap par personne) est recalculée à partir du
+// résultat final, overrides compris.
+function applyOverrides(
+  result: AutoScheduleResult,
+  overrides: { date: Date; site: string; periode: string; userIds: string }[],
+  usersById: Map<string, { id: string; name: string; role: string; poste: string | null }>
+): AutoScheduleResult {
+  if (overrides.length === 0) return result;
+
+  const overrideByKey = new Map(
+    overrides.map((o) => [`${dateKey(o.date)}|${o.site}|${o.periode}`, o])
+  );
+
+  const shifts = result.shifts.map((shift) => {
+    const override = overrideByKey.get(`${shift.dateKeyStr}|${shift.site}|${shift.periode}`);
+    if (!override) return shift;
+
+    const assignees: ProposedAssignee[] = override.userIds
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean)
+      .map((id) => usersById.get(id))
+      .filter((u): u is NonNullable<typeof u> => !!u)
+      .map((u) => ({
+        userId: u.id,
+        name: u.name,
+        role: u.role,
+        poste: u.poste,
+        isResponsableSeat: u.role === "RESPONSABLE" || u.role === "COMITE",
+        seatLabel: seatLabelFor(u.role, u.poste),
+      }));
+
+    return {
+      ...shift,
+      assignees,
+      missingResponsable: !assignees.some((a) => a.isResponsableSeat),
+      understaffed: assignees.length < shift.required,
+      manuallyOverridden: true,
+    };
+  });
+
+  const assignmentCountByUser = new Map<string, number>();
+  for (const id of result.assignmentCountByUser.keys()) assignmentCountByUser.set(id, 0);
+  for (const shift of shifts) {
+    for (const a of shift.assignees) {
+      assignmentCountByUser.set(a.userId, (assignmentCountByUser.get(a.userId) ?? 0) + 1);
+    }
+  }
+
+  return { shifts, assignmentCountByUser };
+}
+
 // Charge les données nécessaires (bénévoles actif·ve·s, dispos, vacances,
-// fermetures) et calcule la proposition pour le mois demandé — utilisé à
-// la fois par la page de consultation et par l'action d'application.
+// fermetures) et calcule la proposition pour le mois demandé, puis
+// applique les éventuelles corrections manuelles (voir applyOverrides) —
+// utilisé à la fois par la page de consultation et par l'action
+// d'application.
 export async function computeAutoScheduleForMonth(
   year: number,
   month: number
@@ -265,7 +333,7 @@ export async function computeAutoScheduleForMonth(
   const rangeEnd = new Date(weeks[weeks.length - 1].monday);
   rangeEnd.setDate(rangeEnd.getDate() + 7);
 
-  const [users, closures] = await Promise.all([
+  const [users, closures, overrides] = await Promise.all([
     prisma.user.findMany({
       where: { active: true },
       select: {
@@ -279,6 +347,9 @@ export async function computeAutoScheduleForMonth(
     }),
     prisma.planningClosure.findMany({
       where: { startDate: { lt: rangeEnd }, endDate: { gte: rangeStart } },
+    }),
+    prisma.autoScheduleOverride.findMany({
+      where: { date: { gte: rangeStart, lt: rangeEnd } },
     }),
   ]);
 
@@ -299,5 +370,7 @@ export async function computeAutoScheduleForMonth(
 
   const closedDateKeys = new Set(buildClosureLabelByDate(closures).keys());
 
-  return generateAutoSchedule(year, month, candidates, closedDateKeys);
+  const result = generateAutoSchedule(year, month, candidates, closedDateKeys);
+  const usersById = new Map(users.map((u) => [u.id, u]));
+  return applyOverrides(result, overrides, usersById);
 }

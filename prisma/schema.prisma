@@ -314,6 +314,27 @@ model OpeningShift {
   @@index([date])
 }
 
+// Modification manuelle apportée à la proposition de répartition
+// automatique du planning (test, voir Espace organisation > Planning >
+// Tester la répartition automatique), pour corriger un ou deux créneaux
+// que l'algorithme aurait mal proposés sans relancer tout le calcul. Une
+// ligne par créneau modifié ; userIds est la liste des identifiants
+// bénévole choisis manuellement, séparés par des virgules (ordre =
+// ordre d'affichage). "Réinitialiser" (voir actions/autoSchedule.ts)
+// supprime toutes les lignes d'un mois pour repartir de la proposition
+// calculée par l'algorithme.
+model AutoScheduleOverride {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  site      String
+  periode   String
+  userIds   String
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, site, periode])
+  @@index([date])
+}
+
 // Fermeture globale de la ludothèque (vacances scolaires, jours fériés
 // exceptionnels, etc.), saisie par un·e responsable/comité et affichée sur
 // le planning des ouvertures (public et gestion). Distincte des Vacation,
