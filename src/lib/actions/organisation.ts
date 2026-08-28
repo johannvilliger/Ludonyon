@@ -704,7 +704,7 @@ export async function createVolunteer(formData: FormData) {
   revalidatePath("/organisation/benevoles");
 }
 
-async function sendWelcomeEmail(
+export async function sendWelcomeEmail(
   name: string,
   email: string,
   password: string

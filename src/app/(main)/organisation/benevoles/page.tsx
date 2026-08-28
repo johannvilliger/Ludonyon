@@ -42,9 +42,17 @@ export default async function OrganisationBenevolesPage({
   return (
     <div className="space-y-8">
       <section>
-        <h2 className="text-lg font-medium text-stone-900">
-          Ajouter un·e bénévole
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-medium text-stone-900">
+            Ajouter un·e bénévole
+          </h2>
+          <Link
+            href="/organisation/benevoles/import"
+            className="text-sm text-brand-blue hover:underline"
+          >
+            📋 Import groupé depuis Excel
+          </Link>
+        </div>
         <p className="mt-1 text-xs text-stone-400">
           {mailConfigured()
             ? "Un email avec les identifiants sera envoyé automatiquement à la personne."
