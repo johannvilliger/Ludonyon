@@ -17,6 +17,7 @@ export type RechercheRemboursementParams = {
   numeroVendeur?: number;
   numeroArticle?: number;
   heure?: string;
+  nomArticle?: string;
 };
 
 // Uniquement les lignes ENCORE actives (remboursee_le IS NULL) : une vente
@@ -27,7 +28,13 @@ export async function rechercherVentesPourRemboursement(
   editionId: string,
   params: RechercheRemboursementParams,
 ): Promise<LigneRemboursable[]> {
-  if (params.numeroVendeur == null && params.numeroArticle == null && !params.heure) return [];
+  if (
+    params.numeroVendeur == null &&
+    params.numeroArticle == null &&
+    !params.heure &&
+    !params.nomArticle?.trim()
+  )
+    return [];
 
   const conditions: string[] = ["v.edition_id = ?", "va.remboursee_le IS NULL"];
   const args: (string | number)[] = [editionId];
@@ -43,6 +50,10 @@ export async function rechercherVentesPourRemboursement(
   if (params.heure) {
     conditions.push("TIME_FORMAT(v.created_at, '%H:%i') = ?");
     args.push(params.heure);
+  }
+  if (params.nomArticle?.trim()) {
+    conditions.push("a.nom LIKE ?");
+    args.push(`%${params.nomArticle.trim()}%`);
   }
 
   const lignes = await query<{

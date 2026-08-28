@@ -31,6 +31,7 @@ export function RechercheRemboursement({ caisseId, editionId }: { caisseId: stri
   const router = useRouter();
   const [numeroVendeur, setNumeroVendeur] = useState("");
   const [numeroArticle, setNumeroArticle] = useState("");
+  const [nomArticle, setNomArticle] = useState("");
   const [heure, setHeure] = useState("");
   const [resultats, setResultats] = useState<LigneRemboursable[] | null>(null);
   const [selection, setSelection] = useState<Set<string>>(new Set());
@@ -47,6 +48,7 @@ export function RechercheRemboursement({ caisseId, editionId }: { caisseId: stri
         numeroVendeur: extraireNumero(numeroVendeur, 0),
         numeroArticle: extraireNumero(numeroArticle, 1),
         heure: heure.trim() || undefined,
+        nomArticle: nomArticle.trim() || undefined,
       });
       setResultats(resultat);
       setSelection(new Set());
@@ -88,7 +90,7 @@ export function RechercheRemboursement({ caisseId, editionId }: { caisseId: stri
   return (
     <div>
       <h2 className="text-lg font-semibold">Rechercher une vente</h2>
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className="block text-sm font-medium text-zinc-700" htmlFor="numero-vendeur">
             N° vendeur
@@ -118,6 +120,19 @@ export function RechercheRemboursement({ caisseId, editionId }: { caisseId: stri
           />
         </div>
         <div>
+          <label className="block text-sm font-medium text-zinc-700" htmlFor="nom-article">
+            Nom de l&apos;article
+          </label>
+          <input
+            id="nom-article"
+            type="text"
+            placeholder="ex. Catane"
+            value={nomArticle}
+            onChange={(e) => setNomArticle(e.target.value)}
+            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2"
+          />
+        </div>
+        <div>
           <label className="block text-sm font-medium text-zinc-700" htmlFor="heure-vente">
             Heure (approx.)
           </label>
@@ -133,7 +148,9 @@ export function RechercheRemboursement({ caisseId, editionId }: { caisseId: stri
 
       <button
         type="button"
-        disabled={pending || (!numeroVendeur.trim() && !numeroArticle.trim() && !heure.trim())}
+        disabled={
+          pending || (!numeroVendeur.trim() && !numeroArticle.trim() && !heure.trim() && !nomArticle.trim())
+        }
         onClick={rechercher}
         className="mt-3 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
       >
