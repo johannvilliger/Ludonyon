@@ -10,7 +10,6 @@ import {
   formatHoursRange,
 } from "@/lib/planning";
 import { ROLE_LABELS, type Role } from "@/lib/roles";
-import { POSTE_LABELS, type Poste } from "@/lib/postes";
 import PlanningMonthNav from "@/components/PlanningMonthNav";
 
 export default async function AutoPlanningPage({
@@ -62,10 +61,14 @@ export default async function AutoPlanningPage({
           vacances déclarées et des fermetures, en essayant de répartir les
           créneaux équitablement (personne n&rsquo;est proposé·e deux fois
           tant que d&rsquo;autres personnes disponibles n&rsquo;ont encore
-          rien). Chaque créneau inclut au moins un·e responsable ou membre
-          du comité. Purement consultatif tant que vous ne cliquez pas sur
-          « Appliquer » ci-dessous — le planning normal n&rsquo;est pas
-          modifié entre-temps.
+          rien). Le poste Sortie est réservé au/à la responsable
+          d&rsquo;ouverture (ou, à défaut, un·e bénévole de niveau Sortie),
+          Retour et Accueil aux bénévoles qualifié·e·s ; le samedi ajoute
+          une place Anim./accueil ouverte à tou·te·s. À Gland, la seule
+          place reste strictement réservée au/à la responsable, sans
+          bénévole de repli. Purement consultatif tant que vous ne cliquez
+          pas sur « Appliquer » ci-dessous — le planning normal
+          n&rsquo;est pas modifié entre-temps.
         </p>
 
         {(missingResponsableCount > 0 || understaffedCount > 0) && (
@@ -112,12 +115,8 @@ export default async function AutoPlanningPage({
                             : "bg-brand-blue-soft text-brand-blue-dark"
                         }`}
                       >
-                        {a.name}
-                        {a.isResponsableSeat
-                          ? ` · ${ROLE_LABELS[a.role as Role] ?? a.role}`
-                          : a.poste
-                            ? ` · ${POSTE_LABELS[a.poste as Poste] ?? a.poste}`
-                            : ""}
+                        {a.name} · {a.seatLabel}
+                        {a.isResponsableSeat ? ` (${ROLE_LABELS[a.role as Role] ?? a.role})` : ""}
                       </li>
                     ))}
                   </ul>

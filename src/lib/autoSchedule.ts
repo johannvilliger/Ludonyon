@@ -8,21 +8,54 @@ import {
   type Site,
   type Periode,
 } from "@/lib/planning";
-import { POSTES, isValidPoste } from "@/lib/postes";
+import { canCoverPoste, isValidPoste, type Poste } from "@/lib/postes";
 
-// Nombre de bénévoles requis par créneau, clé = slotKey(groupKey, site)
-// (même convention que les disponibilités bénévoles). Fixé avec le comité
-// le 26.08.2026 — à ajuster ici si la grille de couverture change.
-// Chaque créneau doit compter au moins un·e responsable/comité parmi ce
-// total (pas en plus) : voir REQUIRES_RESPONSABLE dans generateAutoSchedule.
-export const REQUIRED_STAFF: Record<string, number> = {
-  "mardi:NYON": 3,
-  "mercredi-matin:NYON": 3,
-  "mercredi-apres-midi:NYON": 3,
-  "mercredi-apres-midi:GLAND": 1,
-  "vendredi:NYON": 2,
-  "samedi:NYON": 4,
-  "samedi:GLAND": 1,
+// Composition des ouvertures par créneau, fixée avec le comité le
+// 28.08.2026 (voir aussi Espace organisation > Bénévoles > Import groupé,
+// qui fixe le poste de chacun·e à partir du niveau de formation) :
+//   - Le poste Sortie (caisse) est réservé au/à la responsable d'ouverture
+//     (rôle Responsable ou Comité) — c'est toujours iel qui l'occupe. À
+//     défaut de responsable/comité disponible, un·e bénévole de niveau
+//     Sortie peut le couvrir en repli (créneau signalé "sans responsable"
+//     mais pas vide), SAUF à Gland où la place unique reste strictement
+//     réservée au/à la responsable (aucun repli bénévole).
+//   - Le poste Retour et le poste Accueil demandent respectivement un
+//     niveau Retour et un niveau Accueil (un niveau supérieur peut couvrir
+//     un niveau inférieur, voir canCoverPoste).
+//   - Le samedi ajoute une place "Anim./accueil" ouverte à tou·te·s, sans
+//     condition de poste (y compris les bénévoles non formé·e·s aux
+//     ouvertures, niveau 0/1).
+type SeatKind = "responsable" | "poste" | "open";
+
+interface SeatSpec {
+  kind: SeatKind;
+  posteRequired?: Poste; // uniquement pour kind "poste"
+  allowBenevoleFallback?: boolean; // uniquement pour kind "responsable"
+  label: string;
+}
+
+const RESPONSABLE_SEAT: SeatSpec = {
+  kind: "responsable",
+  allowBenevoleFallback: true,
+  label: "Responsable (poste Sortie)",
+};
+const RESPONSABLE_ONLY_SEAT: SeatSpec = {
+  kind: "responsable",
+  allowBenevoleFallback: false,
+  label: "Responsable",
+};
+const RETOUR_SEAT: SeatSpec = { kind: "poste", posteRequired: "RETOUR", label: "Poste retour" };
+const ACCUEIL_SEAT: SeatSpec = { kind: "poste", posteRequired: "ACCUEIL", label: "Poste accueil" };
+const ANIM_SEAT: SeatSpec = { kind: "open", label: "Anim./accueil" };
+
+export const SEAT_REQUIREMENTS: Record<string, SeatSpec[]> = {
+  "mardi:NYON": [RESPONSABLE_SEAT, RETOUR_SEAT, ACCUEIL_SEAT],
+  "mercredi-matin:NYON": [RESPONSABLE_SEAT, RETOUR_SEAT, ACCUEIL_SEAT],
+  "mercredi-apres-midi:NYON": [RESPONSABLE_SEAT, RETOUR_SEAT, ACCUEIL_SEAT],
+  "mercredi-apres-midi:GLAND": [RESPONSABLE_ONLY_SEAT],
+  "vendredi:NYON": [RESPONSABLE_SEAT, ACCUEIL_SEAT],
+  "samedi:NYON": [RESPONSABLE_SEAT, RETOUR_SEAT, ACCUEIL_SEAT, ANIM_SEAT],
+  "samedi:GLAND": [RESPONSABLE_ONLY_SEAT],
 };
 
 export interface AutoScheduleCandidate {
@@ -40,6 +73,7 @@ export interface ProposedAssignee {
   role: string;
   poste: string | null;
   isResponsableSeat: boolean;
+  seatLabel: string;
 }
 
 export interface ProposedShift {
@@ -70,20 +104,71 @@ function expandDateRangeKeys(start: Date, end: Date): Set<string> {
   return keys;
 }
 
+function posteCanCover(poste: string | null, required: Poste): boolean {
+  return !!poste && isValidPoste(poste) && canCoverPoste(poste, required);
+}
+
+function byEquity(countByUser: Map<string, number>) {
+  return (a: AutoScheduleCandidate, b: AutoScheduleCandidate) =>
+    countByUser.get(a.id)! - countByUser.get(b.id)! || a.name.localeCompare(b.name);
+}
+
+// Choisit qui occupe un siège donné parmi le vivier encore disponible pour
+// ce créneau, en priorisant toujours l'équité (le moins de créneaux déjà
+// proposés ce mois-ci), puis — pour un siège de poste — un niveau exact
+// plutôt que supérieur, pour ne pas "gaspiller" une personne de niveau
+// Sortie sur un siège Accueil alors qu'elle pourrait être nécessaire
+// ailleurs (les sièges sont remplis dans l'ordre Responsable > Retour >
+// Accueil > Anim., du plus contraint au moins contraint).
+function pickForSeat(
+  seat: SeatSpec,
+  pool: AutoScheduleCandidate[],
+  countByUser: Map<string, number>
+): AutoScheduleCandidate | null {
+  const equitySort = byEquity(countByUser);
+
+  if (seat.kind === "responsable") {
+    const responsables = pool
+      .filter((c) => c.role === "RESPONSABLE" || c.role === "COMITE")
+      .sort(equitySort);
+    if (responsables.length > 0) return responsables[0];
+    if (seat.allowBenevoleFallback) {
+      const fallback = pool.filter((c) => c.poste === "SORTIE").sort(equitySort);
+      if (fallback.length > 0) return fallback[0];
+    }
+    return null;
+  }
+
+  if (seat.kind === "poste") {
+    const required = seat.posteRequired!;
+    const qualified = pool
+      .filter((c) => posteCanCover(c.poste, required))
+      .sort(
+        (a, b) =>
+          countByUser.get(a.id)! - countByUser.get(b.id)! ||
+          (a.poste === required ? 0 : 1) - (b.poste === required ? 0 : 1) ||
+          a.name.localeCompare(b.name)
+      );
+    return qualified[0] ?? null;
+  }
+
+  // "open" (Anim./accueil) : n'importe qui de disponible, sans condition
+  // de poste ni de rôle — y compris les bénévoles non formé·e·s aux
+  // ouvertures (niveau 0/1, poste non défini).
+  const anyone = [...pool].sort(equitySort);
+  return anyone[0] ?? null;
+}
+
 // Algorithme glouton avec équité : parcourt les créneaux du mois dans
-// l'ordre chronologique, et pour chacun choisit d'abord un·e
-// responsable/comité obligatoire (parmi celleux ayant le moins de
-// créneaux ce mois-ci), puis complète avec les bénévoles disponibles,
-// toujours en priorisant celleux ayant le moins de créneaux déjà proposés
-// ce mois-ci — pour éviter de solliciter deux fois la même personne
-// pendant qu'une autre disponible n'a encore rien. En seconde priorité
-// (à équité égale), un poste plus élevé (hiérarchie Accueil < Retour <
-// Sortie) est préféré, pour qu'une personne capable de fermer soit
-// présente autant que possible. Une même personne n'est jamais proposée
-// deux fois sur des créneaux qui se chevauchent réellement dans le temps
-// (même date et même période, ex. Nyon/Gland le même après-midi) — elle
-// peut en revanche très bien faire deux créneaux différents le même jour
-// (ex. Nyon le matin, Gland l'après-midi).
+// l'ordre chronologique, et pour chacun remplit ses sièges (voir
+// SEAT_REQUIREMENTS) un par un, du plus contraint au moins contraint, en
+// choisissant à chaque fois — parmi les personnes encore éligibles pour ce
+// créneau — celle ayant le moins de créneaux déjà proposés ce mois-ci. Une
+// même personne n'est jamais proposée deux fois sur des créneaux qui se
+// chevauchent réellement dans le temps (même date et même période, ex.
+// Nyon/Gland le même après-midi) — elle peut en revanche très bien faire
+// deux créneaux différents le même jour (ex. Nyon le matin, Gland
+// l'après-midi).
 export function generateAutoSchedule(
   year: number,
   month: number,
@@ -108,7 +193,6 @@ export function generateAutoSchedule(
   // mercredi) : une même personne peut très bien faire Nyon le matin puis
   // Gland l'après-midi, ce ne sont pas les mêmes horaires.
   const assignedOnDatePeriode = new Map<string, Set<string>>();
-  const posteLevel = (p: string | null) => (p && isValidPoste(p) ? POSTES.indexOf(p) : -1);
 
   const shifts: ProposedShift[] = [];
 
@@ -117,11 +201,11 @@ export function generateAutoSchedule(
     if (closedDateKeys.has(dKey)) continue;
 
     const key = slotKey(leaf.groupKey, leaf.site);
-    const required = REQUIRED_STAFF[key] ?? 1;
+    const seatDefs = SEAT_REQUIREMENTS[key] ?? [RESPONSABLE_ONLY_SEAT];
     const overlapKey = `${dKey}|${leaf.periode}`;
     const alreadyThisPeriode = assignedOnDatePeriode.get(overlapKey) ?? new Set<string>();
 
-    const eligible = candidates.filter(
+    const eligibleBase = candidates.filter(
       (c) =>
         c.availabilitySlotKeys.has(key) &&
         !c.vacationDateKeys.has(dKey) &&
@@ -131,42 +215,20 @@ export function generateAutoSchedule(
     const selected: ProposedAssignee[] = [];
     const usedIds = new Set<string>();
 
-    const responsables = eligible
-      .filter((c) => c.role === "RESPONSABLE" || c.role === "COMITE")
-      .sort(
-        (a, b) =>
-          countByUser.get(a.id)! - countByUser.get(b.id)! || a.name.localeCompare(b.name)
-      );
-    if (responsables.length > 0) {
-      const chosen = responsables[0];
+    for (const seat of seatDefs) {
+      const pool = eligibleBase.filter((c) => !usedIds.has(c.id));
+      const chosen = pickForSeat(seat, pool, countByUser);
+      if (!chosen) continue;
       selected.push({
         userId: chosen.id,
         name: chosen.name,
         role: chosen.role,
         poste: chosen.poste,
-        isResponsableSeat: true,
+        isResponsableSeat:
+          seat.kind === "responsable" && (chosen.role === "RESPONSABLE" || chosen.role === "COMITE"),
+        seatLabel: seat.label,
       });
       usedIds.add(chosen.id);
-    }
-
-    const rest = eligible
-      .filter((c) => !usedIds.has(c.id))
-      .sort(
-        (a, b) =>
-          countByUser.get(a.id)! - countByUser.get(b.id)! ||
-          posteLevel(b.poste) - posteLevel(a.poste) ||
-          a.name.localeCompare(b.name)
-      );
-    for (const c of rest) {
-      if (selected.length >= required) break;
-      selected.push({
-        userId: c.id,
-        name: c.name,
-        role: c.role,
-        poste: c.poste,
-        isResponsableSeat: false,
-      });
-      usedIds.add(c.id);
     }
 
     for (const id of usedIds) {
@@ -181,10 +243,10 @@ export function generateAutoSchedule(
       periode: leaf.periode,
       groupLabel: leaf.groupLabel,
       slotKey: key,
-      required,
+      required: seatDefs.length,
       assignees: selected,
       missingResponsable: !selected.some((a) => a.isResponsableSeat),
-      understaffed: selected.length < required,
+      understaffed: selected.length < seatDefs.length,
     });
   }
 
