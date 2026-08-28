@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { verifierApprobation, type StatutAttente } from "../../actions";
 
-export function PollClient({ numero }: { numero: number }) {
+export function PollClient({ numero, redirectTo }: { numero: number; redirectTo: string }) {
   const router = useRouter();
   const [statut, setStatut] = useState<StatutAttente>("attente");
 
@@ -16,7 +16,7 @@ export function PollClient({ numero }: { numero: number }) {
       if (annule) return;
       setStatut(resultat.statut);
       if (resultat.statut === "approuve") {
-        router.push(`/caisse/${numero}`);
+        router.push(redirectTo);
       }
     };
 
@@ -25,7 +25,7 @@ export function PollClient({ numero }: { numero: number }) {
       annule = true;
       clearInterval(interval);
     };
-  }, [numero, router]);
+  }, [numero, redirectTo, router]);
 
   if (statut === "refuse") {
     return (

@@ -49,6 +49,7 @@ type PosteLigne = {
   poste_id: string;
   numero: number;
   code_acces: string;
+  type: "vente" | "remboursement";
   connecte: number;
   demande_en_attente: number;
   caisse_id: string | null;
@@ -97,6 +98,7 @@ export default async function DashboardGestionPage() {
        pc.id AS poste_id,
        pc.numero,
        pc.code_acces,
+       pc.type,
        pc.connecte,
        pc.demande_en_attente,
        c.id AS caisse_id,
@@ -110,10 +112,20 @@ export default async function DashboardGestionPage() {
      LEFT JOIN caisses c ON c.poste_caisse_id = pc.id AND c.edition_id = ?
      LEFT JOIN ventes v ON v.caisse_id = c.id
      LEFT JOIN vente_articles va ON va.vente_id = v.id
-     GROUP BY pc.id, pc.numero, pc.code_acces, pc.connecte, pc.demande_en_attente, c.id, c.cloturee, c.fond_initial, c.montant_cloture
+     GROUP BY pc.id, pc.numero, pc.code_acces, pc.type, pc.connecte, pc.demande_en_attente, c.id, c.cloturee, c.fond_initial, c.montant_cloture
      ORDER BY pc.numero`,
     [edition?.id ?? null],
   );
+
+  const posteRemboursement = postes.find((p) => p.type === "remboursement") ?? null;
+  const remboursementsTotal = posteRemboursement?.caisse_id
+    ? await queryOne<{ total: number; nb: number }>(
+        `SELECT COALESCE(SUM(va.prix_encaisse), 0) AS total, COUNT(*) AS nb
+         FROM remboursements r JOIN vente_articles va ON va.id = r.vente_article_id
+         WHERE r.caisse_id = ?`,
+        [posteRemboursement.caisse_id],
+      )
+    : null;
 
   const controlesManquants = edition
     ? await queryOne<{ nb: number }>(
@@ -139,7 +151,7 @@ export default async function DashboardGestionPage() {
          JOIN articles a ON a.id = va.article_id
          JOIN participations p ON p.id = a.participation_id
          JOIN editions e ON e.id = v.edition_id
-         WHERE v.edition_id = ?`,
+         WHERE v.edition_id = ? AND a.statut = 'vendu'`,
         [edition.id],
       )
     : null;
@@ -150,8 +162,9 @@ export default async function DashboardGestionPage() {
 
   const demandes = postes.filter((p) => p.demande_en_attente);
   const connectees = postes.filter((p) => p.connecte);
-  const postesActifs = postes.filter((p) => !p.cloturee);
-  const postesClotures = postes.filter((p) => p.cloturee);
+  const postesVente = postes.filter((p) => p.type === "vente");
+  const postesActifs = postesVente.filter((p) => !p.cloturee);
+  const postesClotures = postesVente.filter((p) => p.cloturee);
 
   return (
     <main className="mx-auto w-full max-w-[1600px] px-6 py-12">
@@ -358,6 +371,55 @@ export default async function DashboardGestionPage() {
         </section>
       )}
 
+      {/* Poste de remboursement : à part de la grille des caisses de vente,
+          car ses chiffres (argent qui SORT plutôt qu'entre) n'ont pas le
+          même sens — voir theoriqueCaisseRemboursement. */}
+      {edition && posteRemboursement && (
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Poste de remboursement</h2>
+          <div className="mt-3 max-w-xs rounded-lg border border-zinc-200 bg-white p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-lg font-semibold">Remboursements</span>
+              {posteRemboursement.caisse_id && Boolean(posteRemboursement.cloturee) && (
+                <ReouvrirCaisseButton
+                  caisseId={posteRemboursement.caisse_id}
+                  numero={posteRemboursement.numero}
+                />
+              )}
+            </div>
+            <p
+              className={`mt-1 text-xs font-medium uppercase tracking-wide ${
+                posteRemboursement.cloturee
+                  ? "text-zinc-400"
+                  : posteRemboursement.connecte
+                    ? "text-emerald-700"
+                    : "text-zinc-400"
+              }`}
+            >
+              {posteRemboursement.cloturee ? "Clôturé" : posteRemboursement.connecte ? "Ouvert" : "Fermé"}
+            </p>
+            {posteRemboursement.caisse_id ? (
+              <>
+                <p className="mt-2 text-sm text-zinc-600">
+                  {remboursementsTotal ? Number(remboursementsTotal.nb) : 0} article(s) remboursé(s) —{" "}
+                  {formaterMontant(remboursementsTotal ? Number(remboursementsTotal.total) : 0)}
+                </p>
+                {!posteRemboursement.cloturee && (
+                  <div className="mt-2">
+                    <VidageForm
+                      caisseId={posteRemboursement.caisse_id}
+                      nbArticlesVendus={Number(posteRemboursement.nb_articles_vendus)}
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-zinc-400">Pas encore de caisse pour cette édition.</p>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Verrouillage du site public : 3 modes (voir siteTrocOuvert). Par
           défaut ("Automatique"), verrouillé sans édition active et
           déverrouillé avec — les deux modes manuels forcent l'un ou l'autre
@@ -394,7 +456,7 @@ export default async function DashboardGestionPage() {
             postes.map((p) => (
               <CodeEditor
                 key={p.poste_id}
-                label={`Caisse ${p.numero}`}
+                label={p.type === "remboursement" ? "Remboursements" : `Caisse ${p.numero}`}
                 valeurInitiale={p.code_acces}
                 onSave={modifierCodeCaisse.bind(null, p.poste_id)}
               />
@@ -505,7 +567,9 @@ export default async function DashboardGestionPage() {
                     key={p.poste_id}
                     className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3"
                   >
-                    <p className="text-sm font-medium">Caisse {p.numero} veut se connecter</p>
+                    <p className="text-sm font-medium">
+                      {p.type === "remboursement" ? "Remboursements" : `Caisse ${p.numero}`} veut se connecter
+                    </p>
                     <div className="mt-2 flex gap-2">
                       <form action={validerConnexionCaisse.bind(null, p.poste_id)}>
                         <button
@@ -536,7 +600,9 @@ export default async function DashboardGestionPage() {
               <ul className="mt-3 space-y-2">
                 {connectees.map((p) => (
                   <li key={p.poste_id} className="rounded-md border border-zinc-200 px-4 py-3">
-                    <p className="text-sm font-medium">Caisse {p.numero}</p>
+                    <p className="text-sm font-medium">
+                      {p.type === "remboursement" ? "Remboursements" : `Caisse ${p.numero}`}
+                    </p>
                     <form action={deconnecterCaisse.bind(null, p.poste_id)}>
                       <button
                         type="submit"

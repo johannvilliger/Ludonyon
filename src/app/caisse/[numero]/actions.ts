@@ -46,8 +46,8 @@ export async function rechercherArticle(editionId: string, codeBrut: string, cai
 
   if (!participation) return { ok: false, error: `Vendeur n° ${numeroVendeur} introuvable.` };
 
-  const article = await queryOne<{ id: string; numero_article: number; nom: string; prix: number }>(
-    "SELECT id, numero_article, nom, prix FROM articles WHERE participation_id = ? AND numero_article = ?",
+  const article = await queryOne<{ id: string; numero_article: number; nom: string; prix: number; statut: string }>(
+    "SELECT id, numero_article, nom, prix, statut FROM articles WHERE participation_id = ? AND numero_article = ?",
     [participation.id, numeroArticle],
   );
 
@@ -62,9 +62,11 @@ export async function rechercherArticle(editionId: string, codeBrut: string, cai
     };
   }
 
-  const dejaVendu = await queryOne<{ id: string }>("SELECT id FROM vente_articles WHERE article_id = ?", [article.id]);
-
-  if (dejaVendu) {
+  // articles.statut est la source de vérité pour "actuellement vendu ?" —
+  // un article remboursé repasse à 'recu' et redevient donc scannable, sans
+  // que sa ligne vente_articles d'origine (conservée pour l'historique de
+  // la caisse de vente d'origine) n'entre en compte ici.
+  if (article.statut === "vendu") {
     return { ok: false, error: `« ${article.nom} » (vendeur n° ${numeroVendeur}) a déjà été vendu.` };
   }
 
@@ -121,8 +123,7 @@ async function articlesDejaVendus(
     `SELECT a.id, a.nom, p.numero_vendeur
      FROM articles a
      JOIN participations p ON p.id = a.participation_id
-     JOIN vente_articles va ON va.article_id = a.id
-     WHERE a.id IN (${placeholders})`,
+     WHERE a.id IN (${placeholders}) AND a.statut = 'vendu'`,
     articleIds,
   );
 }
@@ -262,12 +263,15 @@ export async function encaisserPanier(
       ]);
 
       for (const ligne of lignes) {
-        await conn.query("INSERT INTO vente_articles (id, vente_id, article_id, prix_encaisse) VALUES (?, ?, ?, ?)", [
-          ligne.id,
-          venteId,
-          ligne.article_id,
-          ligne.prix_encaisse,
-        ]);
+        // article_id_libre = article_id à la vente : c'est cette colonne
+        // (unique) qui empêche la double-vente d'un même article, y compris
+        // en cas de course entre deux caisses (voir la gestion de
+        // ER_DUP_ENTRY plus bas). Elle repasse à NULL au remboursement pour
+        // libérer l'article, sans jamais toucher à cette ligne d'origine.
+        await conn.query(
+          "INSERT INTO vente_articles (id, vente_id, article_id, article_id_libre, prix_encaisse) VALUES (?, ?, ?, ?, ?)",
+          [ligne.id, venteId, ligne.article_id, ligne.article_id, ligne.prix_encaisse],
+        );
       }
 
       await conn.query(`UPDATE articles SET statut = 'vendu' WHERE id IN (${placeholders})`, articleIds);

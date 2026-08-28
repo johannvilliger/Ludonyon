@@ -84,15 +84,15 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
        (SELECT COUNT(*) FROM vente_articles va
           JOIN articles a2 ON a2.id = va.article_id
           JOIN participations p2 ON p2.id = a2.participation_id
-          WHERE p2.edition_id = ? AND p2.numero_vendeur = 901 AND va.prix_encaisse > 0) AS objets_vendus_901,
+          WHERE p2.edition_id = ? AND p2.numero_vendeur = 901 AND va.prix_encaisse > 0 AND a2.statut = 'vendu') AS objets_vendus_901,
        (SELECT COUNT(*) FROM vente_articles va
           JOIN articles a2 ON a2.id = va.article_id
           JOIN participations p2 ON p2.id = a2.participation_id
-          WHERE p2.edition_id = ? AND p2.numero_vendeur = 902 AND va.prix_encaisse > 0) AS objets_vendus_902,
+          WHERE p2.edition_id = ? AND p2.numero_vendeur = 902 AND va.prix_encaisse > 0 AND a2.statut = 'vendu') AS objets_vendus_902,
        (SELECT COUNT(*) FROM vente_articles va
           JOIN articles a2 ON a2.id = va.article_id
           JOIN participations p2 ON p2.id = a2.participation_id
-          WHERE p2.edition_id = ? AND p2.numero_vendeur IN (901, 902) AND va.prix_encaisse = 0) AS objets_donnes_901_902
+          WHERE p2.edition_id = ? AND p2.numero_vendeur IN (901, 902) AND va.prix_encaisse = 0 AND a2.statut = 'vendu') AS objets_donnes_901_902
      FROM participations p
      LEFT JOIN articles a ON a.participation_id = p.id
      WHERE p.edition_id = ?`,
@@ -114,10 +114,13 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
      JOIN articles a ON a.id = va.article_id
      JOIN participations p ON p.id = a.participation_id
      JOIN editions e ON e.id = v.edition_id
-     WHERE v.edition_id = ?`,
+     WHERE v.edition_id = ? AND a.statut = 'vendu'`,
     [editionId],
   );
 
+  // Uniquement les caisses de vente : leur théorique (ventes - vidages)
+  // n'a pas le même sens que celui du poste de remboursement (voir
+  // posteRemboursement ci-dessous), affiché séparément.
   const caisses = await query<CaisseEcart>(
     `SELECT
        pc.numero,
@@ -128,9 +131,25 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
      JOIN postes_caisse pc ON pc.id = c.poste_caisse_id
      LEFT JOIN ventes v ON v.caisse_id = c.id
      LEFT JOIN vente_articles va ON va.vente_id = v.id
-     WHERE c.edition_id = ?
+     WHERE c.edition_id = ? AND pc.type = 'vente'
      GROUP BY c.id, pc.numero, c.cloturee, c.montant_cloture
      ORDER BY pc.numero`,
+    [editionId],
+  );
+
+  // Symétrique des caisses de vente (theorique = ventes - vidages) mais en
+  // sens inverse : l'argent SORT de ce poste, théorique est donc négatif dès
+  // qu'un remboursement a eu lieu — voir theoriqueCaisseRemboursement.
+  const posteRemboursement = await queryOne<{ cloturee: number; compte: number | null; theorique: number; total_rembourse: number }>(
+    `SELECT
+       c.cloturee,
+       c.montant_cloture AS compte,
+       -COALESCE((SELECT SUM(va.prix_encaisse) FROM remboursements r JOIN vente_articles va ON va.id = r.vente_article_id WHERE r.caisse_id = c.id), 0)
+         - COALESCE((SELECT SUM(mc.montant) FROM mouvements_caisse mc WHERE mc.caisse_id = c.id), 0) AS theorique,
+       COALESCE((SELECT SUM(va.prix_encaisse) FROM remboursements r JOIN vente_articles va ON va.id = r.vente_article_id WHERE r.caisse_id = c.id), 0) AS total_rembourse
+     FROM caisses c
+     JOIN postes_caisse pc ON pc.id = c.poste_caisse_id
+     WHERE c.edition_id = ? AND pc.type = 'remboursement'`,
     [editionId],
   );
 
@@ -163,8 +182,11 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
   const totalEncaisse = Number(totaux?.total_encaisse ?? 0);
   const totalDuVendeurs = Number(totaux?.total_du_vendeurs ?? 0);
   const beneficeTheorique = arrondiCentimes(totalEncaisse - totalDuVendeurs);
+  const ecartRemboursement =
+    posteRemboursement?.compte != null ? Number(posteRemboursement.compte) - Number(posteRemboursement.theorique) : 0;
   const ecartTotal = arrondiCentimes(
-    caisses.reduce((sum, c) => sum + (c.compte != null ? Number(c.compte) - Number(c.theorique) : 0), 0),
+    caisses.reduce((sum, c) => sum + (c.compte != null ? Number(c.compte) - Number(c.theorique) : 0), 0) +
+      ecartRemboursement,
   );
   const beneficeReel = arrondiCentimes(beneficeTheorique + ecartTotal);
 
@@ -203,7 +225,7 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
 
       {/* État des caisses : consultation seule, utile pour revenir sur une
           édition terminée sans pouvoir la modifier. */}
-      {caisses.length > 0 && (
+      {(caisses.length > 0 || posteRemboursement) && (
         <section className="mt-10">
           <h2 className="text-lg font-medium">Caisses</h2>
           <ul className="mt-3 divide-y divide-zinc-200 rounded-md border border-zinc-200">
@@ -227,6 +249,23 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
                 </li>
               );
             })}
+            {posteRemboursement && (
+              <li className="flex items-center justify-between px-4 py-3 text-sm">
+                <span className="font-medium">Remboursements</span>
+                <span className="text-zinc-500">
+                  {posteRemboursement.cloturee ? "Clôturé" : "Non clôturé"} ·{" "}
+                  {formaterMontant(Number(posteRemboursement.total_rembourse))} remboursé · Théorique{" "}
+                  {formaterMontant(arrondiCentimes(Number(posteRemboursement.theorique)))} · Compté{" "}
+                  {posteRemboursement.compte != null ? formaterMontant(Number(posteRemboursement.compte)) : "—"}
+                  {posteRemboursement.compte != null && arrondiCentimes(ecartRemboursement) !== 0 && (
+                    <span className="ml-1 font-medium text-red-600">
+                      (écart {ecartRemboursement > 0 ? "+" : ""}
+                      {formaterMontant(arrondiCentimes(ecartRemboursement))})
+                    </span>
+                  )}
+                </span>
+              </li>
+            )}
           </ul>
         </section>
       )}

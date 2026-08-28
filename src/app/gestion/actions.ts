@@ -44,8 +44,8 @@ export async function validerCode(_prevState: CodeState, formData: FormData): Pr
     redirect("/accueil");
   }
 
-  const poste = await queryOne<{ id: string; numero: number; connecte: number }>(
-    "SELECT id, numero, connecte FROM postes_caisse WHERE code_acces = ?",
+  const poste = await queryOne<{ id: string; numero: number; connecte: number; type: "vente" | "remboursement" }>(
+    "SELECT id, numero, connecte, type FROM postes_caisse WHERE code_acces = ?",
     [code],
   );
 
@@ -57,7 +57,11 @@ export async function validerCode(_prevState: CodeState, formData: FormData): Pr
     }
 
     const edition = await queryOne<{ phase: string }>("SELECT phase FROM editions WHERE active_flag = 1");
-    if (!edition || edition.phase !== "caisse") {
+    // Les remboursements peuvent avoir lieu après la fin de la vente (un
+    // acheteur revient plus tard) — on autorise donc aussi la phase
+    // "post_vente" pour ce type de poste, contrairement aux caisses de vente.
+    const phasesAutorisees = poste.type === "remboursement" ? ["caisse", "post_vente"] : ["caisse"];
+    if (!edition || !phasesAutorisees.includes(edition.phase)) {
       return { error: "Les caisses ne sont pas encore ouvertes — l'édition n'est pas en phase « Caisse »." };
     }
 
