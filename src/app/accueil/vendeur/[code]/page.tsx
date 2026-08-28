@@ -194,7 +194,7 @@ export default async function VendeurAccueilPage({
         })}
       </ul>
 
-      {participation.numero_vendeur >= 900 && <AjouterArticleForm code={code} />}
+      <AjouterArticleForm code={code} />
     </main>
   );
 }

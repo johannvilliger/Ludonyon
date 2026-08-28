@@ -73,20 +73,20 @@ export async function modifierArticle(articleId: string, code: string, nom: stri
   revalidatePath(`/accueil/vendeur/${code}`);
 }
 
-// Pas de plafond de 30 articles ici, contrairement au dépôt normal : c'est
-// réservé aux comptes 9xx (bénévoles + 901/902), qui n'ont pas cette
-// limite.
+// Pas de plafond de 30 articles ici, contrairement au dépôt normal : permet
+// à l'accueil de rattraper un article oublié par le vendeur sans lui faire
+// refaire toute sa liste, même si elle est déjà à 30. Les étiquettes sont
+// imprimées par le staff (jamais par le vendeur), à partir de la liste en
+// base au moment de l'impression — un article ajouté ici a donc son
+// étiquette dès le prochain passage sur /accueil/vendeur/[code]/etiquettes.
 export async function ajouterArticle(code: string, nom: string, prix: number) {
   if (!(await accueilEstConnecte())) throw new Error("Non autorisé.");
 
-  const participation = await queryOne<{ id: string; numero_vendeur: number }>(
-    "SELECT id, numero_vendeur FROM participations WHERE code_confirmation = ?",
+  const participation = await queryOne<{ id: string }>(
+    "SELECT id FROM participations WHERE code_confirmation = ?",
     [code],
   );
   if (!participation) throw new Error("Vendeur introuvable.");
-  if (participation.numero_vendeur < 900) {
-    throw new Error("L'ajout libre d'articles n'est réservé qu'aux comptes 9xx.");
-  }
 
   const nomTrim = nom.trim();
   if (!nomTrim) throw new Error("Le nom est obligatoire.");

@@ -32,7 +32,9 @@ export function AjouterArticleForm({ code }: { code: string }) {
 
   return (
     <div className="mt-4 rounded-md border border-zinc-200 p-4">
-      <p className="text-sm font-medium text-zinc-700">Ajouter un article (pas de limite pour ce compte)</p>
+      <p className="text-sm font-medium text-zinc-700">
+        Ajouter un article oublié (pas de plafond, même si la liste est déjà à 30)
+      </p>
       <div className="mt-2 flex flex-wrap items-start gap-2">
         <div className="min-w-0 flex-1">
           <input
