@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireOrganisationUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { loadPlanningWeeksAndShifts } from "@/lib/planningData";
@@ -45,6 +46,12 @@ export default async function OrganisationPlanningPage({
           Choisissez un·e bénévole dans la liste déroulante de chaque case
           pour l&rsquo;assigner ; cliquez sur le × pour le retirer.
         </p>
+        <Link
+          href="/organisation/planning/auto"
+          className="mt-2 inline-block text-sm text-brand-blue hover:underline"
+        >
+          🧪 Tester la répartition automatique
+        </Link>
 
         <div className="mt-4">
           <PlanningTable
