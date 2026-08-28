@@ -13,6 +13,20 @@ function formaterHeure(iso: string): string {
   return new Date(iso.replace(" ", "T")).toLocaleString("fr-CH");
 }
 
+// Les champs acceptent un simple numéro, mais aussi — par habitude du code
+// scanné à la caisse — un code complet "vendeur-article-prix" : dans ce cas
+// on extrait automatiquement le bon segment plutôt que de faire échouer la
+// recherche. `segment` désigne l'index dans ce code (0 = vendeur, 1 =
+// article).
+function extraireNumero(valeur: string, segment: 0 | 1): number | undefined {
+  const v = valeur.trim();
+  if (!v) return undefined;
+  const complet = v.match(/^(\d+)-(\d+)-(\d+)$/);
+  if (complet) return Number(complet[segment + 1]);
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 export function RechercheRemboursement({ caisseId, editionId }: { caisseId: string; editionId: string }) {
   const router = useRouter();
   const [numeroVendeur, setNumeroVendeur] = useState("");
@@ -30,8 +44,8 @@ export function RechercheRemboursement({ caisseId, editionId }: { caisseId: stri
     setSucces(null);
     startTransition(async () => {
       const resultat = await rechercherVentesPourRemboursement(editionId, {
-        numeroVendeur: numeroVendeur.trim() ? Number(numeroVendeur) : undefined,
-        numeroArticle: numeroArticle.trim() ? Number(numeroArticle) : undefined,
+        numeroVendeur: extraireNumero(numeroVendeur, 0),
+        numeroArticle: extraireNumero(numeroArticle, 1),
         heure: heure.trim() || undefined,
       });
       setResultats(resultat);
@@ -81,7 +95,9 @@ export function RechercheRemboursement({ caisseId, editionId }: { caisseId: stri
           </label>
           <input
             id="numero-vendeur"
-            type="number"
+            type="text"
+            inputMode="numeric"
+            placeholder="ex. 77"
             value={numeroVendeur}
             onChange={(e) => setNumeroVendeur(e.target.value)}
             className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2"
@@ -93,7 +109,9 @@ export function RechercheRemboursement({ caisseId, editionId }: { caisseId: stri
           </label>
           <input
             id="numero-article"
-            type="number"
+            type="text"
+            inputMode="numeric"
+            placeholder="ex. 01"
             value={numeroArticle}
             onChange={(e) => setNumeroArticle(e.target.value)}
             className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2"
