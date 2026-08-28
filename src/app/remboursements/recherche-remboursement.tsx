@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { CameraScanner } from "@/app/caisse/[numero]/camera-scanner";
 import { formaterMontant } from "@/lib/argent";
 import {
   rechercherVentesPourRemboursement,
@@ -11,6 +12,21 @@ import {
 
 function formaterHeure(iso: string): string {
   return new Date(iso.replace(" ", "T")).toLocaleString("fr-CH");
+}
+
+// navigator.userAgent est statique le temps de la session : pas besoin de
+// s'abonner à un vrai changement, juste de lire une valeur qui n'existe que
+// côté client (useSyncExternalStore gère proprement l'écart serveur/client
+// sans provoquer d'erreur d'hydratation) — même détection que dans
+// caisse-scanner.tsx.
+function detecterMobile(): boolean {
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+function sAbonner() {
+  return () => {};
+}
+function snapshotServeur() {
+  return false;
 }
 
 // Les champs acceptent un simple numéro, mais aussi — par habitude du code
@@ -29,6 +45,7 @@ function extraireNumero(valeur: string, segment: 0 | 1): number | undefined {
 
 export function RechercheRemboursement({ caisseId, editionId }: { caisseId: string; editionId: string }) {
   const router = useRouter();
+  const estMobile = useSyncExternalStore(sAbonner, detecterMobile, snapshotServeur);
   const [numeroVendeur, setNumeroVendeur] = useState("");
   const [numeroArticle, setNumeroArticle] = useState("");
   const [nomArticle, setNomArticle] = useState("");
@@ -38,15 +55,19 @@ export function RechercheRemboursement({ caisseId, editionId }: { caisseId: stri
   const [effectuePar, setEffectuePar] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
   const [succes, setSucces] = useState<string | null>(null);
+  const [scannerCameraOuvert, setScannerCameraOuvert] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const rechercher = () => {
+  // `overrides` permet au scan caméra de lancer la recherche avec les
+  // numéros tout juste lus, sans attendre le prochain rendu (un setState
+  // ne serait pas encore reflété dans les champs à ce moment précis).
+  const rechercher = (overrides?: { numeroVendeur?: number; numeroArticle?: number }) => {
     setErreur(null);
     setSucces(null);
     startTransition(async () => {
       const resultat = await rechercherVentesPourRemboursement(editionId, {
-        numeroVendeur: extraireNumero(numeroVendeur, 0),
-        numeroArticle: extraireNumero(numeroArticle, 1),
+        numeroVendeur: overrides?.numeroVendeur ?? extraireNumero(numeroVendeur, 0),
+        numeroArticle: overrides?.numeroArticle ?? extraireNumero(numeroArticle, 1),
         heure: heure.trim() || undefined,
         nomArticle: nomArticle.trim() || undefined,
       });
@@ -54,6 +75,19 @@ export function RechercheRemboursement({ caisseId, editionId }: { caisseId: stri
       setSelection(new Set());
     });
   };
+
+  // Scanne l'étiquette de l'article (même code "vendeur-article-prix" qu'à
+  // la caisse) et lance directement la recherche avec les deux numéros lus —
+  // pas besoin de connaître le nom de l'article pour le retrouver.
+  async function handleCameraScan(valeur: string): Promise<{ ok: boolean; message: string }> {
+    const match = valeur.trim().match(/^(\d+)-(\d+)-(\d+)$/);
+    if (!match) return { ok: false, message: `Code illisible : « ${valeur} »` };
+    const [, vendeurStr, articleStr] = match;
+    setNumeroVendeur(vendeurStr);
+    setNumeroArticle(articleStr);
+    rechercher({ numeroVendeur: Number(vendeurStr), numeroArticle: Number(articleStr) });
+    return { ok: true, message: `Recherche : vendeur ${vendeurStr}, article ${articleStr}` };
+  }
 
   const basculer = (id: string) => {
     setSelection((prev) => {
@@ -151,11 +185,24 @@ export function RechercheRemboursement({ caisseId, editionId }: { caisseId: stri
         disabled={
           pending || (!numeroVendeur.trim() && !numeroArticle.trim() && !heure.trim() && !nomArticle.trim())
         }
-        onClick={rechercher}
+        onClick={() => rechercher()}
         className="mt-3 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
       >
         {pending ? "…" : "Rechercher"}
       </button>
+
+      {estMobile && (
+        <button
+          type="button"
+          onClick={() => setScannerCameraOuvert(true)}
+          className="mt-2 w-full rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:border-zinc-400 sm:w-auto"
+        >
+          📷 Scanner avec l&apos;appareil photo
+        </button>
+      )}
+      {scannerCameraOuvert && (
+        <CameraScanner onScan={handleCameraScan} onClose={() => setScannerCameraOuvert(false)} />
+      )}
 
       {resultats !== null && (
         <div className="mt-4">
