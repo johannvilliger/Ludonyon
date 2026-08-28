@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { arrondiCentimes } from "@/lib/argent";
 import { nouvelId, query, queryOne, withTransaction } from "@/lib/db";
+import { envoyerQuittanceAchat } from "@/lib/email";
 import { COOKIE_CAISSE } from "@/lib/gestion";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 
@@ -134,15 +135,92 @@ function messageArticlesDejaVendus(articles: { nom: string; numero_vendeur: numb
   } du panier et réessayez.`;
 }
 
-export type EncaissementResult = { ok: true; total: number } | { ok: false; error: string };
+// Envoie une quittance précise (indépendamment de son statut actuel, donc
+// réutilisable aussi pour un renvoi manuel depuis le dashboard) et met à
+// jour son statut. Ne lève jamais — une quittance ratée ne doit jamais faire
+// planter la vente qui l'a demandée ni la clôture de caisse qui la purge.
+export async function envoyerUneQuittance(quittanceId: string): Promise<void> {
+  const quittance = await queryOne<{
+    id: string;
+    vente_id: string;
+    email: string;
+    numero: number;
+    vente_created_at: string;
+  }>(
+    `SELECT q.id, q.vente_id, q.email, pc.numero, v.created_at AS vente_created_at
+     FROM quittances q
+     JOIN ventes v ON v.id = q.vente_id
+     JOIN caisses c ON c.id = v.caisse_id
+     JOIN postes_caisse pc ON pc.id = c.poste_caisse_id
+     WHERE q.id = ?`,
+    [quittanceId],
+  );
+  if (!quittance) return;
+
+  const lignes = await query<{ nom: string; numero_vendeur: number; prix_encaisse: number }>(
+    `SELECT a.nom, p.numero_vendeur, va.prix_encaisse
+     FROM vente_articles va
+     JOIN articles a ON a.id = va.article_id
+     JOIN participations p ON p.id = a.participation_id
+     WHERE va.vente_id = ?`,
+    [quittance.vente_id],
+  );
+  const total = arrondiCentimes(lignes.reduce((sum, l) => sum + Number(l.prix_encaisse), 0));
+
+  let envoyee = false;
+  try {
+    envoyee = await envoyerQuittanceAchat({
+      destinataire: quittance.email,
+      numeroCaisse: quittance.numero,
+      dateVente: new Date(quittance.vente_created_at.replace(" ", "T")),
+      articles: lignes.map((l) => ({
+        nom: l.nom,
+        numeroVendeur: l.numero_vendeur,
+        prixEncaisse: Number(l.prix_encaisse),
+      })),
+      total,
+    });
+  } catch {
+    envoyee = false;
+  }
+
+  await query("UPDATE quittances SET statut = ?, envoyee_le = NOW() WHERE id = ?", [
+    envoyee ? "envoyee" : "echec",
+    quittanceId,
+  ]);
+}
+
+// Envoie toutes les quittances encore en_attente d'une caisse — appelé juste
+// avant d'encaisser une nouvelle vente (elles ne peuvent alors plus
+// concerner "la dernière vente" de la caisse, donc plus jamais être annulées
+// silencieusement après coup) et à la clôture de caisse (dernier filet).
+async function flusherQuittancesEnAttente(caisseId: string): Promise<void> {
+  const enAttente = await query<{ id: string }>("SELECT id FROM quittances WHERE caisse_id = ? AND statut = 'en_attente'", [
+    caisseId,
+  ]);
+  for (const q of enAttente) {
+    await envoyerUneQuittance(q.id);
+  }
+}
+
+export type EncaissementResult =
+  | { ok: true; total: number; quittanceEnregistree: boolean }
+  | { ok: false; error: string };
 
 export async function encaisserPanier(
   caisseId: string,
   editionId: string,
   acheteurBenevole: boolean,
   articleIds: string[],
+  emailQuittance: string | null,
 ): Promise<EncaissementResult> {
   if (articleIds.length === 0) return { ok: false, error: "Le panier est vide." };
+
+  // Avant d'encaisser une nouvelle vente : toute quittance encore en attente
+  // sur cette caisse concerne forcément une vente plus ancienne — elle peut
+  // donc être envoyée sans risque qu'on l'annule après coup (voir
+  // annulerDerniereVente, qui ne cible jamais que LA dernière vente).
+  await flusherQuittancesEnAttente(caisseId).catch(() => {});
 
   const edition = await queryOne<{ taux_achat: number }>("SELECT taux_achat FROM editions WHERE id = ?", [editionId]);
   if (!edition) return { ok: false, error: "Édition introuvable." };
@@ -210,13 +288,34 @@ export async function encaisserPanier(
     return { ok: false, error: "Impossible d'encaisser, réessayez." };
   }
 
+  let quittanceEnregistree = true;
+  if (emailQuittance) {
+    // En_attente volontairement : voir flusherQuittancesEnAttente — envoyée
+    // seulement à la vente suivante sur cette caisse ou à sa clôture, jamais
+    // immédiatement, pour ne jamais envoyer un ticket pour une vente encore
+    // annulable. La vente elle-même est déjà actée à ce stade (transaction
+    // commitée juste avant) — un raté ici ne doit jamais la remettre en
+    // cause, juste être signalé pour que la caissière puisse redemander.
+    try {
+      await query("INSERT INTO quittances (id, vente_id, caisse_id, email) VALUES (?, ?, ?, ?)", [
+        nouvelId(),
+        venteId,
+        caisseId,
+        emailQuittance,
+      ]);
+    } catch {
+      quittanceEnregistree = false;
+    }
+  }
+
   const total = arrondiCentimes(lignes.reduce((sum, l) => sum + l.prix_encaisse, 0));
-  return { ok: true, total };
+  return { ok: true, total, quittanceEnregistree };
 }
 
 export type DerniereVente = {
   total: number;
   articles: { nom: string; numeroVendeur: number }[];
+  quittanceEnAttente: boolean;
 };
 
 // La vente la plus récente de CETTE caisse (peu importe quand — pas de
@@ -239,9 +338,15 @@ export async function obtenirDerniereVente(caisseId: string): Promise<DerniereVe
     [vente.id],
   );
 
+  const quittance = await queryOne<{ id: string }>(
+    "SELECT id FROM quittances WHERE vente_id = ? AND statut = 'en_attente'",
+    [vente.id],
+  );
+
   return {
     total: arrondiCentimes(lignes.reduce((sum, l) => sum + Number(l.prix_encaisse), 0)),
     articles: lignes.map((l) => ({ nom: l.nom, numeroVendeur: l.numero_vendeur })),
+    quittanceEnAttente: Boolean(quittance),
   };
 }
 
@@ -293,6 +398,9 @@ export async function theoriqueCaisse(caisseId: string): Promise<number> {
 }
 
 export async function cloturerCaisse(caisseId: string, posteId: string, montantCompte: number) {
+  // Dernier filet : toute quittance encore en_attente à la clôture n'aura
+  // plus jamais de "vente suivante" pour déclencher son envoi normal.
+  await flusherQuittancesEnAttente(caisseId).catch(() => {});
   await query("DELETE FROM articles_reserves WHERE caisse_id = ?", [caisseId]);
   await query("UPDATE caisses SET cloturee = 1, montant_cloture = ? WHERE id = ?", [
     arrondiCentimes(montantCompte),

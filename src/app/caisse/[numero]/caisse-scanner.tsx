@@ -125,6 +125,10 @@ function prixAffiche(article: ArticleTrouve, acheteurBenevole: boolean, tauxAcha
   return acheteurBenevole ? article.prix : arrondiCentimes(article.prix * (1 + tauxAchat));
 }
 
+function emailValide(valeur: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valeur.trim());
+}
+
 export function CaisseScanner({
   caisseId,
   editionId,
@@ -136,6 +140,8 @@ export function CaisseScanner({
 }) {
   const [panier, setPanier] = useState<ArticleTrouve[]>([]);
   const [acheteurBenevole, setAcheteurBenevole] = useState(false);
+  const [quittanceDemandee, setQuittanceDemandee] = useState(false);
+  const [emailQuittance, setEmailQuittance] = useState("");
   const [montantRecu, setMontantRecu] = useState("");
   const [code, setCode] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
@@ -261,6 +267,7 @@ export function CaisseScanner({
   async function handleEncaisser() {
     setEnCours(true);
     setErreur(null);
+    const emailPourQuittance = quittanceDemandee && emailValide(emailQuittance) ? emailQuittance.trim() : null;
     let resultat;
     try {
       resultat = await encaisserPanier(
@@ -268,6 +275,7 @@ export function CaisseScanner({
         editionId,
         acheteurBenevole,
         panier.map((a) => a.articleId),
+        emailPourQuittance,
       );
     } catch {
       setEnCours(false);
@@ -284,13 +292,21 @@ export function CaisseScanner({
     }
 
     retourScan(true);
-    setConfirmation(`Encaissé : ${formaterMontant(resultat.total)}`);
+    setConfirmation(
+      `Encaissé : ${formaterMontant(resultat.total)}` +
+        (emailPourQuittance && !resultat.quittanceEnregistree
+          ? " — la quittance n'a pas pu être enregistrée, redemandez-la si besoin."
+          : ""),
+    );
     setDerniereVente({
       total: resultat.total,
       articles: panier.map((a) => ({ nom: a.nom, numeroVendeur: a.numeroVendeur })),
+      quittanceEnAttente: Boolean(emailPourQuittance && resultat.quittanceEnregistree),
     });
     setPanier([]);
     setAcheteurBenevole(false);
+    setQuittanceDemandee(false);
+    setEmailQuittance("");
     setMontantRecu("");
     inputRef.current?.focus();
   }
@@ -367,19 +383,26 @@ export function CaisseScanner({
       {confirmation && <p className="mt-3 text-sm text-green-700">{confirmation}</p>}
 
       {derniereVente && (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
-          <span className="text-zinc-600">
-            Dernière vente : {derniereVente.articles.length} article{derniereVente.articles.length > 1 ? "s" : ""}{" "}
-            — {formaterMontant(derniereVente.total)}
-          </span>
-          <button
-            type="button"
-            onClick={handleAnnulerDerniereVente}
-            disabled={annulationEnCours}
-            className="shrink-0 rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-600 hover:border-red-400 hover:bg-red-50 disabled:opacity-50"
-          >
-            {annulationEnCours ? "…" : "Annuler cette vente"}
-          </button>
+        <div className="mt-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-zinc-600">
+              Dernière vente : {derniereVente.articles.length} article{derniereVente.articles.length > 1 ? "s" : ""}{" "}
+              — {formaterMontant(derniereVente.total)}
+            </span>
+            <button
+              type="button"
+              onClick={handleAnnulerDerniereVente}
+              disabled={annulationEnCours}
+              className="shrink-0 rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-600 hover:border-red-400 hover:bg-red-50 disabled:opacity-50"
+            >
+              {annulationEnCours ? "…" : "Annuler cette vente"}
+            </button>
+          </div>
+          {derniereVente.quittanceEnAttente && (
+            <p className="mt-1 text-xs text-zinc-500">
+              Quittance en attente d&apos;envoi (partira à la prochaine vente ou à la clôture de caisse).
+            </p>
+          )}
         </div>
       )}
 
@@ -392,6 +415,25 @@ export function CaisseScanner({
         />
         Acheteur bénévole
       </label>
+
+      <label className="mt-2 flex items-center gap-2 text-sm font-medium text-zinc-700">
+        <input
+          type="checkbox"
+          checked={quittanceDemandee}
+          onChange={(e) => setQuittanceDemandee(e.target.checked)}
+          className="h-4 w-4 rounded border-zinc-300"
+        />
+        Envoyer une quittance par email
+      </label>
+      {quittanceDemandee && (
+        <input
+          type="email"
+          value={emailQuittance}
+          onChange={(e) => setEmailQuittance(e.target.value)}
+          placeholder="email@exemple.ch"
+          className="mt-2 w-full rounded-md border border-zinc-300 px-3 py-2"
+        />
+      )}
 
       <p className="mt-4 text-sm font-medium text-zinc-700">
         Panier — {panier.length} article{panier.length > 1 ? "s" : ""}
@@ -451,11 +493,14 @@ export function CaisseScanner({
         </div>
       )}
 
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex flex-col items-end gap-1">
+        {quittanceDemandee && emailQuittance.trim() !== "" && !emailValide(emailQuittance) && (
+          <p className="text-xs text-red-600">Adresse email invalide.</p>
+        )}
         <button
           type="button"
           onClick={handleEncaisser}
-          disabled={panier.length === 0 || enCours}
+          disabled={panier.length === 0 || enCours || (quittanceDemandee && !emailValide(emailQuittance))}
           className="rounded-md bg-zinc-900 px-6 py-3 font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
         >
           {enCours ? "Encaissement…" : "Encaisser"}

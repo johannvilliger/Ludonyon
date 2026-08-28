@@ -1,6 +1,7 @@
 import "server-only";
 import nodemailer from "nodemailer";
 import QRCode from "qrcode";
+import { formaterMontant } from "./argent";
 import { CONDITIONS_TROC } from "./conditions";
 
 let transporteur: nodemailer.Transporter | null = null;
@@ -129,5 +130,64 @@ export async function envoyerEmailConfirmationListe(params: {
     });
   } catch (err) {
     console.error("Échec de l'envoi de l'email de confirmation :", err);
+  }
+}
+
+export async function envoyerQuittanceAchat(params: {
+  destinataire: string;
+  numeroCaisse: number;
+  dateVente: Date;
+  articles: { nom: string; numeroVendeur: number; prixEncaisse: number }[];
+  total: number;
+}): Promise<boolean> {
+  const transport = getTransporteur();
+  if (!transport) {
+    console.warn("SMTP non configuré (voir .env.local.example) — quittance non envoyée.");
+    return false;
+  }
+
+  const lignes = params.articles
+    .map(
+      (a) =>
+        `<tr>
+           <td style="padding: 4px 8px; border-bottom: 1px solid #eee;">${echapperHtml(a.nom)} (vendeur n° ${a.numeroVendeur})</td>
+           <td style="padding: 4px 8px; border-bottom: 1px solid #eee; text-align: right;">${formaterMontant(a.prixEncaisse)}</td>
+         </tr>`,
+    )
+    .join("");
+
+  try {
+    await transport.sendMail({
+      from: {
+        name: "Troc - Ludothèque Nyon Région",
+        address: process.env.SMTP_FROM || process.env.SMTP_USER || "",
+      },
+      to: params.destinataire,
+      subject: "Quittance d'achat — Troc Ludothèque Nyon Région",
+      html: `
+        <p>Bonjour,</p>
+        <p>Voici la quittance de votre achat au troc de la ludothèque (caisse ${params.numeroCaisse}, le ${params.dateVente.toLocaleString("fr-CH")}).</p>
+        <table style="border-collapse: collapse; width: 100%; max-width: 480px;">
+          <thead>
+            <tr>
+              <th style="padding: 4px 8px; text-align: left; border-bottom: 2px solid #333;">Article</th>
+              <th style="padding: 4px 8px; text-align: right; border-bottom: 2px solid #333;">Prix</th>
+            </tr>
+          </thead>
+          <tbody>${lignes}</tbody>
+          <tfoot>
+            <tr>
+              <td style="padding: 8px; font-weight: bold;">Total</td>
+              <td style="padding: 8px; font-weight: bold; text-align: right;">${formaterMontant(params.total)}</td>
+            </tr>
+          </tfoot>
+        </table>
+        <p style="font-size: 0.9em; color: #444;">Merci de votre visite !</p>
+      `,
+    });
+    return true;
+  } catch (err) {
+    console.error("Échec de l'envoi de la quittance :", err);
+    return false;
   }
 }
