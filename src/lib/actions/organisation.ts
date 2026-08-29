@@ -753,6 +753,47 @@ export async function sendWelcomeEmail(
   });
 }
 
+const volunteerContactInfoSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1, "Le nom est requis").max(200),
+  email: z.string().trim().toLowerCase().email("Email invalide"),
+  phone: z.string().trim().max(50).optional(),
+});
+
+// Édition du nom, téléphone et email d'un·e bénévole — séparée de
+// updateVolunteerProfile (rôle/poste/disponibilités/habits) pour rester un
+// petit formulaire autonome ("✏️ Éditer" replié par défaut sur la fiche),
+// utilisable même sur son propre compte.
+export async function updateVolunteerContactInfo(formData: FormData) {
+  await requireOrganisationUser();
+
+  const parsed = volunteerContactInfoSchema.safeParse({
+    id: formData.get("id"),
+    name: formData.get("name"),
+    email: formData.get("email"),
+    phone: formData.get("phone") || undefined,
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
+  }
+  const { id, name, email, phone } = parsed.data;
+
+  const existing = await prisma.user.findFirst({
+    where: { email, NOT: { id } },
+  });
+  if (existing) {
+    throw new Error("Un compte existe déjà avec cet email");
+  }
+
+  await prisma.user.update({
+    where: { id },
+    data: { name, email, phone: phone ?? null },
+  });
+
+  revalidatePath("/annuaire");
+  revalidatePath("/organisation/benevoles");
+}
+
 const volunteerProfileSchema = z.object({
   id: z.string().min(1),
   role: z.enum(ROLES).optional(),

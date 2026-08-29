@@ -12,6 +12,7 @@ import { AvailabilityFields } from "@/components/AvailabilityForm";
 import SaveButton from "@/components/SaveButton";
 import {
   createVolunteer,
+  updateVolunteerContactInfo,
   updateVolunteerProfile,
   archiveVolunteer,
   unarchiveVolunteer,
@@ -189,37 +190,89 @@ export default async function OrganisationBenevolesPage({
                 key={u.id}
                 className="rounded-xl border border-stone-200 bg-white p-4"
               >
-                <form action={updateVolunteerProfile}>
-                  <input type="hidden" name="id" value={u.id} />
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <Avatar name={u.name} photoPath={u.photoPath} />
-                      <div>
-                        <p className="font-medium text-stone-900">{u.name}</p>
-                        <p className="text-sm text-stone-600">{u.email}</p>
-                        <span
-                          className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs ${
-                            u.wantsOpeningReminders && u._count.pushSubscriptions > 0
-                              ? "bg-brand-blue-soft text-brand-blue-dark"
-                              : "bg-stone-100 text-stone-400"
-                          }`}
-                        >
-                          🔔{" "}
-                          {u.wantsOpeningReminders
-                            ? u._count.pushSubscriptions > 0
-                              ? "Rappels ouverture actifs"
-                              : "Rappel demandé — notifications désactivées sur l’appareil"
-                            : "Rappels ouverture désactivés"}
-                        </span>
-                        <p className="mt-1 text-xs text-stone-400">
-                          {u.lastSeenAt
-                            ? `Dernière connexion : ${formatDateTime(u.lastSeenAt)}`
-                            : "Jamais connecté·e"}
-                        </p>
-                      </div>
-                    </div>
+                <div className="flex items-start gap-3">
+                    <Avatar name={u.name} photoPath={u.photoPath} />
+                    <div>
+                      <p className="font-medium text-stone-900">{u.name}</p>
+                      <p className="text-sm text-stone-600">{u.email}</p>
+                      {u.phone && <p className="text-sm text-stone-600">📞 {u.phone}</p>}
+                      <span
+                        className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs ${
+                          u.wantsOpeningReminders && u._count.pushSubscriptions > 0
+                            ? "bg-brand-blue-soft text-brand-blue-dark"
+                            : "bg-stone-100 text-stone-400"
+                        }`}
+                      >
+                        🔔{" "}
+                        {u.wantsOpeningReminders
+                          ? u._count.pushSubscriptions > 0
+                            ? "Rappels ouverture actifs"
+                            : "Rappel demandé — notifications désactivées sur l’appareil"
+                          : "Rappels ouverture désactivés"}
+                      </span>
+                      <p className="mt-1 text-xs text-stone-400">
+                        {u.lastSeenAt
+                          ? `Dernière connexion : ${formatDateTime(u.lastSeenAt)}`
+                          : "Jamais connecté·e"}
+                      </p>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                      <details className="mt-1.5">
+                        <summary className="cursor-pointer text-xs text-brand-blue hover:underline">
+                          ✏️ Éditer nom / téléphone / email
+                        </summary>
+                        <form
+                          action={updateVolunteerContactInfo}
+                          className="mt-2 space-y-2 rounded-lg border border-stone-200 bg-stone-50 p-2"
+                        >
+                          <input type="hidden" name="id" value={u.id} />
+                          <div>
+                            <label className="mb-0.5 block text-xs font-medium text-stone-600">
+                              Nom complet
+                            </label>
+                            <input
+                              type="text"
+                              name="name"
+                              defaultValue={u.name}
+                              required
+                              maxLength={200}
+                              className="w-full rounded-lg border border-stone-300 px-2 py-1 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-0.5 block text-xs font-medium text-stone-600">
+                              Email
+                            </label>
+                            <input
+                              type="email"
+                              name="email"
+                              defaultValue={u.email}
+                              required
+                              className="w-full rounded-lg border border-stone-300 px-2 py-1 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-0.5 block text-xs font-medium text-stone-600">
+                              Téléphone
+                            </label>
+                            <input
+                              type="tel"
+                              name="phone"
+                              defaultValue={u.phone ?? ""}
+                              maxLength={50}
+                              className="w-full rounded-lg border border-stone-300 px-2 py-1 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                            />
+                          </div>
+                          <SaveButton className="rounded-lg border-2 border-black bg-brand-yellow px-2 py-1 text-xs font-semibold text-black hover:bg-brand-yellow-dark disabled:opacity-60">
+                            Enregistrer
+                          </SaveButton>
+                        </form>
+                      </details>
+                    </div>
+                  </div>
+
+                <form action={updateVolunteerProfile} className="mt-3">
+                  <input type="hidden" name="id" value={u.id} />
+                  <div className="flex flex-wrap items-center gap-2">
                       <select
                         key={u.role}
                         name="role"
@@ -251,7 +304,6 @@ export default async function OrganisationBenevolesPage({
                       )}
 
                       <SaveButton className="rounded-lg border-2 border-black bg-brand-yellow px-2 py-1 text-xs font-semibold text-black hover:bg-brand-yellow-dark disabled:opacity-60" />
-                    </div>
                   </div>
 
                   <details className="mt-2">
