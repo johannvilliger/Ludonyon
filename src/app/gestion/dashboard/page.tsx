@@ -26,6 +26,7 @@ import { EditionForm } from "./edition-form";
 import { EditionPanel } from "./edition-panel";
 import { Import2025Button } from "./import-2025-button";
 import { PhaseButton } from "./phase-button";
+import { RefreshPauseProvider } from "./refresh-pause-context";
 import { ReouvrirCaisseButton } from "./reouvrir-caisse-button";
 import { ResetTestDataButton } from "./reset-test-data-button";
 import { SauvegardeButton } from "./sauvegarde-button";
@@ -169,6 +170,7 @@ export default async function DashboardGestionPage() {
   const postesClotures = postesVente.filter((p) => p.cloturee);
 
   return (
+    <RefreshPauseProvider>
     <main className="mx-auto w-full max-w-[1600px] px-6 py-12">
       <AutoRefresh />
 
@@ -641,5 +643,6 @@ export default async function DashboardGestionPage() {
         </div>
       </div>
     </main>
+    </RefreshPauseProvider>
   );
 }

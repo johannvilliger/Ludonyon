@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useAutoRefreshPause } from "./refresh-pause-context";
 
 export function EditionPanel({ resume, children }: { resume: string; children: ReactNode }) {
   const [ouvert, setOuvert] = useState(false);
+  useAutoRefreshPause(ouvert);
 
   return (
     <div className="rounded-md border border-zinc-200 p-4">

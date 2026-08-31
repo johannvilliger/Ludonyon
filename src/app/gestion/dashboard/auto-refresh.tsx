@@ -2,14 +2,16 @@
 
 import { useEffect, useLayoutEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useAutoRefreshPauseRef } from "./refresh-pause-context";
 
 function estChampDeSaisie(el: EventTarget | null): boolean {
   if (!(el instanceof Element)) return false;
   return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT";
 }
 
-export function AutoRefresh({ intervalMs = 3000 }: { intervalMs?: number }) {
+export function AutoRefresh({ intervalMs = 15000 }: { intervalMs?: number }) {
   const router = useRouter();
+  const pauseRef = useAutoRefreshPauseRef();
   const [isPending, startTransition] = useTransition();
   const scrollYRef = useRef(0);
   const isPendingRef = useRef(false);
@@ -63,6 +65,10 @@ export function AutoRefresh({ intervalMs = 3000 }: { intervalMs?: number }) {
   useEffect(() => {
     const id = setInterval(() => {
       if (saisieEnCoursRef.current) return;
+      // Tant qu'un panneau dépliable (changement de phase, édition d'un
+      // code...) reste ouvert quelque part sur la page, on saute ce tour —
+      // voir refresh-pause-context.tsx.
+      if (pauseRef.current > 0) return;
       // Si un refresh précédent traîne encore (requête lente), on saute ce
       // tour plutôt que de déclencher un second refresh chevauchant.
       if (isPendingRef.current) return;
@@ -72,7 +78,7 @@ export function AutoRefresh({ intervalMs = 3000 }: { intervalMs?: number }) {
       });
     }, intervalMs);
     return () => clearInterval(id);
-  }, [router, intervalMs]);
+  }, [router, intervalMs, pauseRef]);
 
   // useLayoutEffect plutôt que useEffect : restaure le scroll avant que le
   // navigateur peigne le nouveau contenu, pour éviter tout flash visible.
