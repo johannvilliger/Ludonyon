@@ -29,15 +29,20 @@ CREATE TABLE postes_caisse (
   UNIQUE KEY postes_caisse_numero_uk (numero)
 ) ENGINE = InnoDB;
 
+-- Codes générés aléatoirement (jamais de valeur fixe en dur dans le code
+-- source) : `npm run db:migrate` les affiche dans le terminal juste après
+-- les avoir créés, à noter sur le moment — c'est la seule fois où ils
+-- apparaissent en clair hors de la base. Changeables ensuite depuis le
+-- dashboard, section "Codes d'accès".
 INSERT INTO postes_caisse (id, numero, code_acces) VALUES
-  (UUID(), 1, '1234'),
-  (UUID(), 2, '2345'),
-  (UUID(), 3, '3456'),
-  (UUID(), 4, '4567'),
-  (UUID(), 5, '5678');
+  (UUID(), 1, SUBSTRING(MD5(RAND()), 1, 6)),
+  (UUID(), 2, SUBSTRING(MD5(RAND()), 1, 6)),
+  (UUID(), 3, SUBSTRING(MD5(RAND()), 1, 6)),
+  (UUID(), 4, SUBSTRING(MD5(RAND()), 1, 6)),
+  (UUID(), 5, SUBSTRING(MD5(RAND()), 1, 6));
 
--- Accès dashboard : une seule ligne, code volontairement plus complexe.
--- Change-le depuis le dashboard une fois connecté la première fois.
+-- Accès dashboard : une seule ligne, code volontairement plus complexe et
+-- généré aléatoirement (voir commentaire ci-dessus).
 CREATE TABLE parametres_gestion (
   id TINYINT NOT NULL PRIMARY KEY DEFAULT 1,
   code_dashboard VARCHAR(50) NOT NULL,
@@ -45,7 +50,7 @@ CREATE TABLE parametres_gestion (
   CONSTRAINT parametres_gestion_singleton CHECK (id = 1)
 ) ENGINE = InnoDB;
 
-INSERT INTO parametres_gestion (id, code_dashboard) VALUES (1, 'YNorfRMBtucZ5XMr');
+INSERT INTO parametres_gestion (id, code_dashboard) VALUES (1, SUBSTRING(MD5(RAND()), 1, 20));
 
 -- Chaque caisse d'une édition est rattachée à l'un des 5 postes fixes.
 ALTER TABLE caisses

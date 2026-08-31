@@ -57,28 +57,24 @@ MariaDB (hébergée chez Infomaniak, accès direct via `mysql2`).
    ```
    (lit `db/migrations/*.sql` et les exécute sur la base configurée à
    l'étape 2 — pas besoin d'un client `mariadb` séparé, juste Node. Ça crée
-   aussi les 5 postes de caisse avec des codes par défaut et le code
-   dashboard par défaut, voir plus bas.)
+   aussi les 5 postes de caisse et le compte dashboard avec des codes
+   d'accès générés aléatoirement, affichés dans le terminal à la fin — voir
+   plus bas.)
 4. `npm run dev`, puis ouvre [http://localhost:3000](http://localhost:3000).
-5. Va sur `/gestion`, connecte-toi avec le code dashboard par défaut
-   (`YNorfRMBtucZ5XMr` — **change-le tout de suite** dans la section "Codes
-   d'accès" du dashboard une fois connecté), puis "Lancer une nouvelle
+5. Va sur `/gestion`, connecte-toi avec le code dashboard affiché par
+   `npm run db:migrate` à l'étape 3 (**change-le** ensuite dans la section
+   "Codes d'accès" du dashboard si besoin), puis "Lancer une nouvelle
    édition" pour pouvoir tester le dépôt de liste et la caisse.
 
-### Codes d'accès par défaut
+### Codes d'accès
 
-Générés par la migration, à changer avant toute utilisation réelle (section
-"Codes d'accès" du dashboard) :
-
-| Poste     | Code par défaut    |
-|-----------|---------------------|
-| Accueil   | `7890`              |
-| Caisse 1  | `1234`              |
-| Caisse 2  | `2345`              |
-| Caisse 3  | `3456`              |
-| Caisse 4  | `4567`              |
-| Caisse 5  | `5678`              |
-| Dashboard | `YNorfRMBtucZ5XMr`  |
+Jamais de valeur fixe dans le code source : chaque code (5 caisses, accueil,
+remboursements, dashboard) est généré aléatoirement par les migrations. La
+commande `npm run db:migrate` les affiche en clair dans le terminal juste
+après — c'est la seule fois où ils apparaissent hors de la base (elle les
+réaffiche aussi telle quelle si tu la relances plus tard, pratique pour
+retrouver un code perdu sans requête SQL manuelle). Changeables à tout moment
+depuis le dashboard, section "Codes d'accès".
 
 ### Déploiement (Infomaniak, hébergement Node.js)
 

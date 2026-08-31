@@ -6,7 +6,9 @@
 ALTER TABLE postes_caisse
   ADD COLUMN type ENUM('vente', 'remboursement') NOT NULL DEFAULT 'vente';
 
-INSERT INTO postes_caisse (id, numero, code_acces, type) VALUES (UUID(), 6, 'REMB-8146', 'remboursement');
+-- Généré aléatoirement, comme les autres codes (voir 0002_gestion.sql).
+INSERT INTO postes_caisse (id, numero, code_acces, type)
+  VALUES (UUID(), 6, CONCAT('REMB-', SUBSTRING(MD5(RAND()), 1, 6)), 'remboursement');
 
 -- Un article remboursé redevient disponible à la vente (articles.statut
 -- repasse à 'recu', peut être re-scanné et revendu) — mais la ligne de

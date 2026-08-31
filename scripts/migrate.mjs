@@ -71,4 +71,24 @@ for (const fichier of fichiers) {
 }
 
 console.log(nbAppliques > 0 ? `${nbAppliques} nouveau(x) fichier(s) appliqué(s).` : "Rien à appliquer, tout est à jour.");
+
+// Les codes d'accès sont générés aléatoirement par les migrations (jamais de
+// valeur fixe dans le code source, voir 0002_gestion.sql) — ce terminal est
+// donc le seul endroit où ils apparaissent en clair hors de la base. Toujours
+// affiché (pas seulement après une première installation) : pratique aussi
+// pour retrouver un code perdu sans requête SQL manuelle.
+const [postes] = await connection.query("SELECT numero, code_acces, type FROM postes_caisse ORDER BY numero");
+const [params] = await connection.query("SELECT code_dashboard, code_accueil FROM parametres_gestion WHERE id = 1");
+if (postes.length > 0 || params.length > 0) {
+  console.log("\nCodes d'accès actuels :");
+  for (const p of postes) {
+    const label = p.type === "remboursement" ? "Remboursements" : `Caisse ${p.numero}`;
+    console.log(`  ${label} : ${p.code_acces}`);
+  }
+  if (params[0]) {
+    console.log(`  Accueil : ${params[0].code_accueil}`);
+    console.log(`  Dashboard : ${params[0].code_dashboard}`);
+  }
+}
+
 await connection.end();
