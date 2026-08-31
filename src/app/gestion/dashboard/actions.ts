@@ -177,6 +177,17 @@ export async function modifierDateOuverture(valeurDatetimeLocal: string) {
   revalidatePath("/verrouille");
 }
 
+// Même mécanisme que modifierDateOuverture (voir juste au-dessus) : rappelée
+// dans l'email envoyé par l'accueil à la réception d'une liste (voir
+// marquerControlee, accueil/vendeur/[code]/actions.ts).
+export async function modifierDateRecuperation(valeurDatetimeLocal: string) {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+  const valeur = valeurDatetimeLocal.trim();
+  const datetimeMysql = valeur ? `${valeur.replace("T", " ")}:00`.slice(0, 19) : null;
+  await query("UPDATE parametres_gestion SET date_recuperation_invendus = ? WHERE id = 1", [datetimeMysql]);
+  revalidatePath("/gestion/dashboard");
+}
+
 export async function modifierCodeCaisse(posteId: string, nouveauCode: string) {
   const code = nouveauCode.trim();
   if (!code) throw new Error("Le code ne peut pas être vide.");

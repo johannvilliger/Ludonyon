@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { query, queryOne } from "@/lib/db";
 import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
+import { envoyerEmailReceptionConfirmee } from "@/lib/email";
 import { accueilEstConnecte } from "@/lib/gestion";
+import { formaterTelephone, telephoneValide } from "@/lib/telephone";
+import { urlAbsolue } from "@/lib/url";
 
 export async function definirBenevole(code: string, estBenevole: boolean) {
   if (!(await accueilEstConnecte())) throw new Error("Non autorisé.");
@@ -14,10 +17,75 @@ export async function definirBenevole(code: string, estBenevole: boolean) {
   revalidatePath(`/accueil/vendeur/${code}`);
 }
 
+// Envoie un email de confirmation de réception au vendeur, avec son code/QR
+// (le même que celui du dépôt) pour venir récupérer ses invendus — jamais si
+// le statut était déjà "contrôlée" (reclic accidentel) ni s'il n'a pas
+// d'email en base (voir /accueil/nouveau : le téléphone est obligatoire,
+// l'email non).
 export async function marquerControlee(code: string) {
   if (!(await accueilEstConnecte())) throw new Error("Non autorisé.");
 
+  const avant = await queryOne<{
+    statut: string;
+    numero_vendeur: number;
+    nom_vendeur: string;
+    email: string | null;
+  }>(
+    `SELECT p.statut, p.numero_vendeur, v.nom AS nom_vendeur, v.email
+     FROM participations p JOIN vendeurs v ON v.id = p.vendeur_id
+     WHERE p.code_confirmation = ?`,
+    [code],
+  );
+  if (!avant) throw new Error("Vendeur introuvable.");
+
   await query("UPDATE participations SET statut = 'controlee' WHERE code_confirmation = ?", [code]);
+  revalidatePath(`/accueil/vendeur/${code}`);
+
+  if (avant.statut === "controlee" || !avant.email) return;
+
+  const parametres = await queryOne<{ date_recuperation_invendus: string | null }>(
+    "SELECT date_recuperation_invendus FROM parametres_gestion WHERE id = 1",
+  );
+
+  await envoyerEmailReceptionConfirmee({
+    destinataire: avant.email,
+    nomVendeur: avant.nom_vendeur,
+    numeroVendeur: avant.numero_vendeur,
+    codeConfirmation: code,
+    lienConfirmation: await urlAbsolue(`/vendeur/confirmation/${code}`),
+    dateRecuperation: parametres?.date_recuperation_invendus
+      ? new Date(parametres.date_recuperation_invendus.replace(" ", "T"))
+      : null,
+  });
+}
+
+// Corrige les coordonnées d'un vendeur depuis l'accueil (erreur de saisie au
+// dépôt, changement de numéro...) — mêmes règles de validation qu'au dépôt
+// initial (téléphone obligatoire, email libre).
+export async function modifierCoordonneesVendeur(code: string, nom: string, telephone: string, email: string) {
+  if (!(await accueilEstConnecte())) throw new Error("Non autorisé.");
+
+  const nomTrim = nom.trim();
+  if (!nomTrim) throw new Error("Le nom est obligatoire.");
+
+  if (!telephoneValide(telephone)) {
+    throw new Error("Numéro de téléphone invalide (mobile suisse ou français).");
+  }
+
+  const emailTrim = email.trim();
+
+  const participation = await queryOne<{ vendeur_id: string }>(
+    "SELECT vendeur_id FROM participations WHERE code_confirmation = ?",
+    [code],
+  );
+  if (!participation) throw new Error("Vendeur introuvable.");
+
+  await query("UPDATE vendeurs SET nom = ?, telephone = ?, email = ? WHERE id = ?", [
+    nomTrim,
+    formaterTelephone(telephone),
+    emailTrim || null,
+    participation.vendeur_id,
+  ]);
 
   revalidatePath(`/accueil/vendeur/${code}`);
 }

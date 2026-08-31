@@ -12,6 +12,7 @@ import {
   modifierCodeCaisse,
   modifierCodeDashboard,
   modifierDateOuverture,
+  modifierDateRecuperation,
   refuserConnexionCaisse,
   validerConnexionCaisse,
   type ModeVerrouillage,
@@ -43,6 +44,7 @@ type Parametres = {
   code_accueil: string;
   mode_verrouillage: ModeVerrouillage;
   date_ouverture_troc: string | null;
+  date_recuperation_invendus: string | null;
   derniere_sauvegarde_le: string | null;
 };
 type PosteLigne = {
@@ -89,7 +91,7 @@ export default async function DashboardGestionPage() {
         "SELECT id, annee FROM editions WHERE active_flag IS NULL ORDER BY annee DESC",
       );
   const parametres = await queryOne<Parametres>(
-    "SELECT code_dashboard, code_accueil, mode_verrouillage, date_ouverture_troc, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
+    "SELECT code_dashboard, code_accueil, mode_verrouillage, date_ouverture_troc, date_recuperation_invendus, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
   );
   const edition2025 = await queryOne<{ id: string }>("SELECT id FROM editions WHERE annee = 2025");
 
@@ -444,6 +446,26 @@ export default async function DashboardGestionPage() {
                 afficher.
               </p>
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Rappelée dans l'email envoyé par l'accueil à la réception d'une
+          liste (voir marquerControlee) — un seul réglage pour toute
+          l'édition, pas par vendeur. */}
+      {parametres && (
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Récupération des invendus</h2>
+          <div className="mt-3 rounded-md border border-zinc-200 p-4">
+            <DateOuvertureEditor
+              label="Date de récupération"
+              valeurInitiale={parametres.date_recuperation_invendus}
+              onSave={modifierDateRecuperation}
+            />
+            <p className="mt-1 text-xs text-zinc-500">
+              Rappelée aux vendeurs dans l&apos;email envoyé quand l&apos;accueil marque leur liste comme
+              contrôlée. Laissez vide si elle n&apos;est pas encore fixée.
+            </p>
           </div>
         </section>
       )}

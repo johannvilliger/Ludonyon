@@ -12,9 +12,11 @@ function versValeurInput(datetimeMysql: string | null): string {
 }
 
 export function DateOuvertureEditor({
+  label = "Date d'ouverture",
   valeurInitiale,
   onSave,
 }: {
+  label?: string;
   valeurInitiale: string | null;
   onSave: (valeur: string) => Promise<void>;
 }) {
@@ -24,7 +26,7 @@ export function DateOuvertureEditor({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="w-40 shrink-0 text-sm text-zinc-600">Date d&apos;ouverture</span>
+      <span className="w-40 shrink-0 text-sm text-zinc-600">{label}</span>
       <input
         type="datetime-local"
         value={valeur}

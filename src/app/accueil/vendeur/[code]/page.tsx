@@ -3,6 +3,7 @@ import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
 import { AjouterArticleForm } from "./ajouter-article-form";
 import { ArticleEditableRow } from "./article-editable-row";
+import { CoordonneesEditor } from "./coordonnees-editor";
 import { accepterArticle, definirBenevole, marquerControlee, refuserArticle, terminerReception } from "./actions";
 
 type Article = { id: string; numero_article: number; nom: string; prix: number; statut: string };
@@ -83,6 +84,14 @@ export default async function VendeurAccueilPage({
           <p className="mt-1 text-sm text-zinc-500">
             {participation.telephone || "—"} · {participation.email || "—"}
           </p>
+          <div className="mt-1">
+            <CoordonneesEditor
+              code={code}
+              nomInitial={participation.nom_vendeur}
+              telephoneInitial={participation.telephone}
+              emailInitial={participation.email}
+            />
+          </div>
         </div>
         <span className="shrink-0 rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700">
           {STATUT_LABELS[participation.statut] ?? participation.statut}

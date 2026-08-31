@@ -133,6 +133,64 @@ export async function envoyerEmailConfirmationListe(params: {
   }
 }
 
+// Envoyé quand l'accueil marque une liste comme « contrôlée » (articles
+// physiquement vérifiés à la réception) — distinct de l'email de dépôt
+// (envoyerEmailConfirmationListe), qui confirme juste l'enregistrement de la
+// liste en ligne avant tout contrôle. Redonne le même code/QR (le vendeur
+// n'en a qu'un seul pour toute l'édition) pour venir récupérer les invendus.
+export async function envoyerEmailReceptionConfirmee(params: {
+  destinataire: string;
+  nomVendeur: string;
+  numeroVendeur: number;
+  codeConfirmation: string;
+  lienConfirmation: string;
+  dateRecuperation: Date | null;
+}): Promise<void> {
+  const transport = getTransporteur();
+  if (!transport) {
+    console.warn("SMTP non configuré (voir .env.local.example) — email de réception non envoyé.");
+    return;
+  }
+
+  const qrBuffer = await QRCode.toBuffer(params.codeConfirmation, { margin: 1, width: 220 });
+
+  // La date de récupération est un réglage global fixé depuis le dashboard
+  // (voir parametres_gestion.date_recuperation_invendus) — pas encore fixée
+  // au moment de l'envoi, on prévient sans donner de fausse date.
+  const paragrapheRecuperation = params.dateRecuperation
+    ? `<p>Vous pourrez venir récupérer vos éventuels invendus le <strong>${params.dateRecuperation.toLocaleString("fr-CH", { dateStyle: "full", timeStyle: "short" })}</strong>. Présentez ce même code (ou le QR ci-dessous).</p>`
+    : `<p>La date et l'heure pour venir récupérer vos éventuels invendus vous seront communiquées prochainement.</p>`;
+
+  try {
+    await transport.sendMail({
+      from: {
+        name: "Troc - Ludothèque Nyon Région",
+        address: process.env.SMTP_FROM || process.env.SMTP_USER || "",
+      },
+      to: params.destinataire,
+      subject: `Réception confirmée — vendeur n° ${params.numeroVendeur}`,
+      html: `
+        <p>Bonjour ${echapperHtml(params.nomVendeur)},</p>
+        <p>Nous avons bien reçu et contrôlé vos articles pour le troc de la ludothèque.</p>
+        ${paragrapheRecuperation}
+        <p style="font-family: monospace; font-size: 1.1em;">${params.codeConfirmation}</p>
+        <p><img src="cid:qr-confirmation" alt="QR de confirmation" width="180" height="180" /></p>
+        <p><a href="${params.lienConfirmation}">Voir ma liste et mon code</a></p>
+        <p style="font-size: 0.9em; color: #444;">Merci pour votre participation !</p>
+      `,
+      attachments: [
+        {
+          filename: "qr-confirmation.png",
+          content: qrBuffer,
+          cid: "qr-confirmation",
+        },
+      ],
+    });
+  } catch (err) {
+    console.error("Échec de l'envoi de l'email de réception confirmée :", err);
+  }
+}
+
 export async function envoyerQuittanceAchat(params: {
   destinataire: string;
   numeroCaisse: number;
