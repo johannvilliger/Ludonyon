@@ -5,7 +5,14 @@ export type ShiftAssignee = {
   userId: string;
   name: string;
   seekingReplacement: boolean;
+  // Fonction Excel (Ordi-caisse/Ordi retours/Accueil/Anim.) attribuée à
+  // l'import — précise et propre à ce créneau, mais absente pour une
+  // assignation manuelle.
   fonction: string | null;
+  // Poste (Accueil/Retour/Sortie — voir postes.ts) fixé sur la fiche du/de
+  // la bénévole, affiché en repli quand aucune fonction Excel n'est
+  // connue pour ce créneau précis.
+  poste: string | null;
 };
 export type ShiftInfo = { id: string; assignees: ShiftAssignee[] };
 export type ShiftMap = Map<string, ShiftInfo>;
@@ -29,7 +36,7 @@ export async function loadPlanningWeeksAndShifts(
       where: { date: { gte: rangeStart, lt: rangeEnd } },
       include: {
         assignees: {
-          include: { user: { select: { id: true, name: true, active: true } } },
+          include: { user: { select: { id: true, name: true, active: true, poste: true } } },
         },
       },
     }),
@@ -50,6 +57,7 @@ export async function loadPlanningWeeksAndShifts(
           name: a.user.name,
           seekingReplacement: a.seekingReplacement,
           fonction: a.fonction,
+          poste: a.user.poste,
         })),
     });
   }

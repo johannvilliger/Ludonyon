@@ -14,7 +14,17 @@ import {
   cancelReplacementRequest,
   fulfillShiftReplacement,
 } from "@/lib/actions/planning";
+import { POSTE_LABELS, isValidPoste } from "@/lib/postes";
 import PlanningAssignSelect from "./PlanningAssignSelect";
+
+// Fonction Excel (précise, propre au créneau) si connue, sinon poste fixé
+// sur la fiche du/de la bénévole (Accueil/Retour/Sortie) en repli — voir
+// ShiftAssignee dans lib/planningData.ts.
+function roleLabel(fonction: string | null, poste: string | null): string | null {
+  if (fonction) return fonction;
+  if (poste && isValidPoste(poste)) return POSTE_LABELS[poste];
+  return null;
+}
 
 export default function PlanningTable({
   weeks,
@@ -154,8 +164,8 @@ export default function PlanningTable({
                             >
                               <span>
                                 {a.name}
-                                {a.fonction && (
-                                  <span className="text-stone-400"> ({a.fonction})</span>
+                                {roleLabel(a.fonction, a.poste) && (
+                                  <span className="text-stone-400"> ({roleLabel(a.fonction, a.poste)})</span>
                                 )}
                                 {a.seekingReplacement && " ⏳"}
                               </span>
