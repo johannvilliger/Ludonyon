@@ -303,8 +303,13 @@ export async function fulfillShiftReplacement(formData: FormData) {
     prisma.openingShiftAssignee.delete({ where: { id: target.id } }),
     prisma.openingShiftAssignee.upsert({
       where: { shiftId_userId: { shiftId, userId: user.id } },
-      update: { seekingReplacement: false, replacementRequestedAt: null, problemAlertSentAt: null },
-      create: { shiftId, userId: user.id },
+      update: {
+        seekingReplacement: false,
+        replacementRequestedAt: null,
+        problemAlertSentAt: null,
+        fonction: target.fonction,
+      },
+      create: { shiftId, userId: user.id, fonction: target.fonction },
     }),
   ]);
 

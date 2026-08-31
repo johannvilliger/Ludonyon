@@ -5,6 +5,7 @@ export type ShiftAssignee = {
   userId: string;
   name: string;
   seekingReplacement: boolean;
+  fonction: string | null;
 };
 export type ShiftInfo = { id: string; assignees: ShiftAssignee[] };
 export type ShiftMap = Map<string, ShiftInfo>;
@@ -48,6 +49,7 @@ export async function loadPlanningWeeksAndShifts(
           userId: a.user.id,
           name: a.user.name,
           seekingReplacement: a.seekingReplacement,
+          fonction: a.fonction,
         })),
     });
   }

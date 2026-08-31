@@ -367,6 +367,13 @@ model OpeningShiftAssignee {
   // Rempli dès que le rappel "la veille à 19h" a été envoyé pour cette
   // assignation, pour ne pas le renvoyer en cas de nouvelle vérification.
   reminderSentAt         DateTime?
+  // Fonction (une des EXCEL_FONCTIONS — voir planning.ts) sous laquelle
+  // ce/cette bénévole a été saisi·e à l'import du planning Excel, affichée
+  // sur les cases du calendrier. Nulle pour une assignation faite
+  // directement depuis l'écran de gestion (pas de fonction choisie) ;
+  // reprise telle quelle quand quelqu'un·e prend le relais via "Je
+  // remplace" (voir fulfillShiftReplacement).
+  fonction               String?
 
   @@unique([shiftId, userId])
   @@index([userId])

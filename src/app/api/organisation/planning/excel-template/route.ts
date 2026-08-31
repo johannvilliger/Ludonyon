@@ -174,7 +174,7 @@ export async function GET(request: Request) {
 
   const legendRow = sheet.getRow(rowIndex + 1);
   legendRow.getCell(1).value =
-    "Une ligne par fonction, pour vous aider à répartir les tâches — à l'import, tout le monde est simplement ajouté·e à l'ouverture du jour, quelle que soit la fonction utilisée. Plusieurs bénévoles sur une même case : séparez les prénoms par une virgule. Utilisez exactement les noms de l'onglet « Bénévoles ».";
+    "Une ligne par fonction : la fonction utilisée pour chaque nom est conservée et affichée sur le planning à l'import. Plusieurs bénévoles sur une même case : séparez les prénoms par une virgule. Utilisez exactement les noms de l'onglet « Bénévoles ».";
   legendRow.getCell(1).font = { italic: true, size: 10, color: { argb: "FF78716C" } };
   legendRow.getCell(1).alignment = { wrapText: true };
   sheet.mergeCells(legendRow.number, 1, legendRow.number, totalCols);

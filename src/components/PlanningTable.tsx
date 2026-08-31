@@ -154,6 +154,9 @@ export default function PlanningTable({
                             >
                               <span>
                                 {a.name}
+                                {a.fonction && (
+                                  <span className="text-stone-400"> ({a.fonction})</span>
+                                )}
                                 {a.seekingReplacement && " ⏳"}
                               </span>
                               {editable && shift && (

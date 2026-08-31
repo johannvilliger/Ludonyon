@@ -22,10 +22,11 @@ const ROWS_PER_WEEK = 1 + FONCTION_COUNT; // 1 ligne date + 4 lignes fonction
 // "Générer le modèle" : un bloc de ROWS_PER_WEEK lignes par semaine (une
 // ligne d'en-tête avec la date exacte de chaque jour, suivie d'une ligne
 // par fonction — voir EXCEL_FONCTIONS), et une colonne par créneau de la
-// grille (même ordre que getLeafSlots()). Les fonctions sont purement
-// organisationnelles côté fichier : tous les noms saisis sous un même jour
-// sont fusionnés dans une seule liste d'assignation, quelle que soit la
-// ligne fonction où ils ont été tapés. Un jour entièrement vide efface
+// grille (même ordre que getLeafSlots()). La fonction sous laquelle
+// chaque nom est saisi est conservée (champ OpeningShiftAssignee.fonction)
+// et affichée sur les cases du calendrier ; si un même nom apparaît sous
+// plusieurs lignes fonction d'un même jour, la première rencontrée
+// (ordre EXCEL_FONCTIONS) est retenue. Un jour entièrement vide efface
 // l'assignation existante ; un jour marqué "—" (hors période au moment de
 // la génération du modèle) reste intouché.
 export async function importPlanningExcel(
@@ -65,7 +66,13 @@ export async function importPlanningExcel(
   });
   const lookup = buildVolunteerNameLookup(computeVolunteerDisplayNames(activeUsers));
 
-  type ParsedShift = { date: Date; site: Site; periode: Periode; userIds: string[] };
+  type ParsedShift = {
+    date: Date;
+    site: Site;
+    periode: Periode;
+    userIds: string[];
+    fonctionByUserId: Map<string, string>;
+  };
   const parsedShifts: ParsedShift[] = [];
   const unmatchedNames = new Set<string>();
   let weekBlocksRead = 0;
@@ -78,7 +85,14 @@ export async function importPlanningExcel(
     const hasAnyDate = leaves.some(
       (_, i) => headerRow.getCell(excelLeafColumn(i, nyonCount)).value instanceof Date
     );
-    if (!hasAnyDate) break; // fin des blocs de semaine (ligne de légende ou vide)
+    if (!hasAnyDate) {
+      // Semaine entièrement hors période (arrive dès que la date de début
+      // demandée ne tombe pas un lundi — la semaine du modèle est quand
+      // même générée, entièrement en "—") : on continue, ce n'est pas
+      // forcément la fin des blocs de semaine (ligne de légende).
+      rowIndex += ROWS_PER_WEEK;
+      continue;
+    }
     weekBlocksRead++;
 
     leaves.forEach((leaf, i) => {
@@ -87,6 +101,7 @@ export async function importPlanningExcel(
       if (!(headerValue instanceof Date)) return; // "—" : hors période, on n'y touche pas
 
       const userIds: string[] = [];
+      const fonctionByUserId = new Map<string, string>();
       for (let f = 0; f < FONCTION_COUNT; f++) {
         const cellValue = sheet.getRow(rowIndex + 1 + f).getCell(col).value;
         const text =
@@ -102,6 +117,7 @@ export async function importPlanningExcel(
           const id = lookup.get(name.toLowerCase());
           if (id) {
             if (!userIds.includes(id)) userIds.push(id);
+            if (!fonctionByUserId.has(id)) fonctionByUserId.set(id, EXCEL_FONCTIONS[f]);
           } else {
             unmatchedNames.add(name);
           }
@@ -110,7 +126,13 @@ export async function importPlanningExcel(
 
       // Un jour entièrement vide (userIds vide, aucun nom non reconnu)
       // efface l'assignation existante — voir plus bas.
-      parsedShifts.push({ date: headerValue, site: leaf.site, periode: leaf.periode, userIds });
+      parsedShifts.push({
+        date: headerValue,
+        site: leaf.site,
+        periode: leaf.periode,
+        userIds,
+        fonctionByUserId,
+      });
     });
 
     rowIndex += ROWS_PER_WEEK;
@@ -149,10 +171,11 @@ export async function importPlanningExcel(
       where: { shiftId: shift.id, userId: { notIn: parsed.userIds } },
     });
     for (const userId of parsed.userIds) {
+      const fonction = parsed.fonctionByUserId.get(userId) ?? null;
       await prisma.openingShiftAssignee.upsert({
         where: { shiftId_userId: { shiftId: shift.id, userId } },
-        create: { shiftId: shift.id, userId },
-        update: {},
+        create: { shiftId: shift.id, userId, fonction },
+        update: { fonction },
       });
     }
     shiftsTouched++;
