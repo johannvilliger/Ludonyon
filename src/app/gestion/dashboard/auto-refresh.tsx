@@ -11,13 +11,34 @@ function estChampDeSaisie(el: EventTarget | null): boolean {
 export function AutoRefresh({ intervalMs = 3000 }: { intervalMs?: number }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const scrollYRef = useRef<number | null>(null);
+  const scrollYRef = useRef(0);
   const isPendingRef = useRef(false);
   const saisieEnCoursRef = useRef(false);
+  // Marque qu'un refresh vient de se terminer et qu'il faut donc restaurer
+  // le scroll juste après — jamais au montage initial (voir l'effet de
+  // layout plus bas).
+  const restaurerAuProchainCommitRef = useRef(false);
 
   useEffect(() => {
     isPendingRef.current = isPending;
   }, [isPending]);
+
+  // Suit en continu la position de scroll réelle, y compris PENDANT qu'un
+  // refresh est en cours (isPending) — et pas seulement au moment où le
+  // refresh démarre. Sur un serveur distant (latence non négligeable, contrairement
+  // à localhost), l'ancienne version figeait la position au tout début du
+  // refresh puis la réappliquait de force à la fin : si la personne avait
+  // continué à faire défiler la page entre-temps, elle se faisait renvoyer
+  // en arrière — d'où l'impression que la page « remontait » sans arrêt, et
+  // qu'un panneau ouvert plus bas se « refermait » alors qu'il était juste
+  // repoussé hors champ par ce recul forcé.
+  useEffect(() => {
+    const onScroll = () => {
+      scrollYRef.current = window.scrollY;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     // Tant qu'un champ (montant de vidage, code d'accès...) a le focus, on
@@ -43,11 +64,9 @@ export function AutoRefresh({ intervalMs = 3000 }: { intervalMs?: number }) {
     const id = setInterval(() => {
       if (saisieEnCoursRef.current) return;
       // Si un refresh précédent traîne encore (requête lente), on saute ce
-      // tour plutôt que d'écraser scrollYRef avec une position capturée
-      // pendant que le DOM était encore en transition — c'est ce qui
-      // provoquait le retour en haut de page de façon intermittente.
+      // tour plutôt que de déclencher un second refresh chevauchant.
       if (isPendingRef.current) return;
-      scrollYRef.current = window.scrollY;
+      restaurerAuProchainCommitRef.current = true;
       startTransition(() => {
         router.refresh();
       });
@@ -57,10 +76,12 @@ export function AutoRefresh({ intervalMs = 3000 }: { intervalMs?: number }) {
 
   // useLayoutEffect plutôt que useEffect : restaure le scroll avant que le
   // navigateur peigne le nouveau contenu, pour éviter tout flash visible.
+  // Utilise toujours la valeur la PLUS RÉCENTE de scrollYRef (mise à jour en
+  // continu ci-dessus), jamais une capture figée avant le refresh.
   useLayoutEffect(() => {
-    if (!isPending && scrollYRef.current !== null) {
+    if (!isPending && restaurerAuProchainCommitRef.current) {
+      restaurerAuProchainCommitRef.current = false;
       window.scrollTo(0, scrollYRef.current);
-      scrollYRef.current = null;
     }
   }, [isPending]);
 
