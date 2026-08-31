@@ -104,6 +104,11 @@ export async function genererPdfClotureVendeurs(editionId: string): Promise<{ ba
   doc.on("data", (chunk: Buffer) => chunks.push(chunk));
   const termine = new Promise<Buffer>((resolve) => doc.on("end", () => resolve(Buffer.concat(chunks))));
 
+  // Même formulation que l'email de confirmation de dépôt (voir
+  // src/lib/email.ts), pourcentage réel de l'édition plutôt qu'une valeur
+  // écrite en dur.
+  const pourcentVendeur = Math.round(Number(edition.taux_vendeur) * 100);
+
   vendeurs.forEach((v, index) => {
     if (index > 0) doc.addPage();
 
@@ -153,6 +158,19 @@ export async function genererPdfClotureVendeurs(editionId: string): Promise<{ ba
       doc.y = y + hauteurLigne + 4;
     }
     doc.font("Helvetica");
+
+    if (doc.y + 20 > doc.page.height - MARGE) doc.addPage();
+    doc.moveDown(0.8);
+    doc
+      .fontSize(8)
+      .fillColor("#666")
+      .text(
+        `Afin de couvrir les frais de fonctionnement du troc, ${pourcentVendeur}% sont soustraits au prix de vente pour le vendeur.`,
+        MARGE,
+        doc.y,
+        { width: FIN_TABLEAU - MARGE },
+      );
+    doc.fillColor("#000");
   });
 
   doc.end();
