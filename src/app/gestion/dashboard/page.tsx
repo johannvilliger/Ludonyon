@@ -186,6 +186,9 @@ export default async function DashboardGestionPage() {
           <Link href="/gestion/dashboard/vendeurs" className="text-sm text-zinc-500 hover:underline">
             Vendeurs →
           </Link>
+          <Link href="/gestion/dashboard/articles" className="text-sm text-zinc-500 hover:underline">
+            Articles →
+          </Link>
           <Link href="/gestion/dashboard/quittances" className="text-sm text-zinc-500 hover:underline">
             Quittances →
           </Link>
