@@ -105,6 +105,16 @@ body {
   color: #8a8a8a;
 }
 
+/* Repère de position affiché dans les cases encore vides de la planche, sur
+   l'écran d'impression manuelle d'une étiquette isolée (choix de la case
+   déjà libre sur une feuille entamée) — jamais imprimé, la case reste
+   blanche (voir print:invisible posé sur .label côté composant). */
+.label__hint {
+  margin: auto;
+  font: 500 3mm/1 Arial, sans-serif;
+  color: #ccc;
+}
+
 .label__price {
   flex: 1;
   display: flex;
