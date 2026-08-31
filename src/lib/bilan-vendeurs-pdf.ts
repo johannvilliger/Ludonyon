@@ -121,17 +121,28 @@ export async function genererPdfClotureVendeurs(editionId: string): Promise<{ ba
 
     dessinerEnTeteTableau(doc);
 
-    const liste = articlesParVendeur.get(v.participation_id) ?? [];
+    // Invendus (et tout ce qui n'est pas vendu, ex. refusé) d'abord par
+    // ordre d'article, puis les vendus — mis en évidence en gras pour
+    // repérer d'un coup d'œil ce qui a effectivement rapporté de l'argent.
+    const liste = [...(articlesParVendeur.get(v.participation_id) ?? [])].sort((a, b) => {
+      const rangA = a.statut === "vendu" ? 1 : 0;
+      const rangB = b.statut === "vendu" ? 1 : 0;
+      return rangA !== rangB ? rangA - rangB : a.numero_article - b.numero_article;
+    });
     const largeurNom = COL.prix - COL.nom - 10;
     doc.fontSize(9);
     for (const a of liste) {
+      const police = a.statut === "vendu" ? "Helvetica-Bold" : "Helvetica";
+      doc.font(police);
+
       // Passage à la page suivante avant la ligne si elle n'entre plus,
       // avec un nouvel en-tête de tableau pour rester lisible.
       const hauteurLigne = Math.max(doc.heightOfString(a.nom, { width: largeurNom }), 12);
       if (doc.y + hauteurLigne > doc.page.height - MARGE) {
         doc.addPage();
-        doc.fontSize(9);
+        doc.fontSize(9).font(police);
         dessinerEnTeteTableau(doc);
+        doc.font(police);
       }
 
       const y = doc.y;
@@ -141,6 +152,7 @@ export async function genererPdfClotureVendeurs(editionId: string): Promise<{ ba
       doc.text(STATUT_LABELS[a.statut] ?? a.statut, COL.statut, y);
       doc.y = y + hauteurLigne + 4;
     }
+    doc.font("Helvetica");
   });
 
   doc.end();
