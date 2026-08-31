@@ -3,6 +3,7 @@ import Link from "next/link";
 import { formaterMontant } from "@/lib/argent";
 import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
+import { PdfVendeursButton } from "./pdf-vendeurs-button";
 import { PrintButton } from "./print-button";
 
 export const dynamic = "force-dynamic";
@@ -54,7 +55,10 @@ export default async function ClotureVentePage() {
             Clôture {edition.annee} — {vendeurs.length} étiquette{vendeurs.length > 1 ? "s" : ""}
           </h1>
         </div>
-        <PrintButton />
+        <div className="flex items-center gap-2">
+          <PdfVendeursButton editionId={edition.id} />
+          <PrintButton />
+        </div>
       </div>
 
       <div className="label-sheet">
