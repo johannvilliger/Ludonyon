@@ -26,9 +26,9 @@ import { ROLE_LABELS, type Role } from "@/lib/roles";
 //   - Le samedi ajoute une place "Anim./accueil" ouverte à tou·te·s, sans
 //     condition de poste (y compris les bénévoles non formé·e·s aux
 //     ouvertures, niveau 0/1).
-type SeatKind = "responsable" | "poste" | "open";
+export type SeatKind = "responsable" | "poste" | "open";
 
-interface SeatSpec {
+export interface SeatSpec {
   kind: SeatKind;
   posteRequired?: Poste; // uniquement pour kind "poste"
   allowBenevoleFallback?: boolean; // uniquement pour kind "responsable"

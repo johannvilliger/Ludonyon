@@ -25,7 +25,7 @@ export default async function OrganisationPlanningPage({
     prisma.user.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, role: true, poste: true },
     }),
     prisma.planningClosure.findMany({
       where: { endDate: { gte: new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())) } },

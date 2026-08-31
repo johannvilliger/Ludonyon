@@ -4,6 +4,7 @@ import {
   formatDayLabel,
   getLeafSlots,
   shiftKey,
+  slotKey,
   type PlanningWeek,
 } from "@/lib/planning";
 import type { ClosureInfo, ShiftMap } from "@/lib/planningData";
@@ -14,8 +15,11 @@ import {
   cancelReplacementRequest,
   fulfillShiftReplacement,
 } from "@/lib/actions/planning";
-import { POSTE_LABELS, isValidPoste } from "@/lib/postes";
+import { SEAT_REQUIREMENTS, type SeatSpec } from "@/lib/autoSchedule";
+import { POSTE_LABELS, canCoverPoste, isValidPoste } from "@/lib/postes";
 import PlanningAssignSelect from "./PlanningAssignSelect";
+
+type ActiveUser = { id: string; name: string; role: string; poste: string | null };
 
 // Fonction Excel (précise, propre au créneau) si connue, sinon poste fixé
 // sur la fiche du/de la bénévole (Accueil/Retour/Sortie) en repli — voir
@@ -24,6 +28,21 @@ function roleLabel(fonction: string | null, poste: string | null): string | null
   if (fonction) return fonction;
   if (poste && isValidPoste(poste)) return POSTE_LABELS[poste];
   return null;
+}
+
+// Éligibilité d'un·e bénévole pour un siège de la structure (voir
+// SEAT_REQUIREMENTS dans autoSchedule.ts) au moment de l'assignation
+// manuelle : un·e responsable/comité est toujours proposé·e, quel que
+// soit son poste (souvent non renseigné) ; sinon la hiérarchie des
+// postes s'applique (canCoverPoste) — sauf à Gland, où la place reste
+// strictement réservée au/à la responsable, sans repli bénévole.
+function isEligibleForSeat(seat: SeatSpec, user: ActiveUser): boolean {
+  if (user.role === "RESPONSABLE" || user.role === "COMITE") return true;
+  if (seat.kind === "open") return true;
+  if (seat.kind === "responsable") {
+    return !!seat.allowBenevoleFallback && user.poste === "SORTIE";
+  }
+  return !!user.poste && isValidPoste(user.poste) && canCoverPoste(user.poste, seat.posteRequired!);
 }
 
 export default function PlanningTable({
@@ -39,7 +58,7 @@ export default function PlanningTable({
   shiftsByKey: ShiftMap;
   closures?: ClosureInfo[];
   editable: boolean;
-  activeUsers: { id: string; name: string }[];
+  activeUsers: ActiveUser[];
   currentUserId: string;
   isOrg: boolean;
 }) {
@@ -109,6 +128,7 @@ export default function PlanningTable({
                 const availableUsers = activeUsers.filter(
                   (u) => !assignees.some((a) => a.userId === u.id)
                 );
+                const seats = SEAT_REQUIREMENTS[slotKey(cell.leaf.groupKey, cell.leaf.site)] ?? [];
                 const closureLabel = closureByDate.get(dateKey(cell.date));
                 if (closureLabel) {
                   return (
@@ -246,15 +266,22 @@ export default function PlanningTable({
                         );
                       })}
                     </ul>
-                    {editable && availableUsers.length > 0 && (
-                      <PlanningAssignSelect
-                        action={assignToShift}
-                        date={dateKey(cell.date)}
-                        site={cell.leaf.site}
-                        periode={cell.leaf.periode}
-                        options={availableUsers}
-                      />
-                    )}
+                    {editable &&
+                      seats.map((seat, si) => {
+                        const seatOptions = availableUsers.filter((u) => isEligibleForSeat(seat, u));
+                        if (seatOptions.length === 0) return null;
+                        return (
+                          <PlanningAssignSelect
+                            key={si}
+                            action={assignToShift}
+                            date={dateKey(cell.date)}
+                            site={cell.leaf.site}
+                            periode={cell.leaf.periode}
+                            options={seatOptions}
+                            placeholder={`+ ${seat.label}…`}
+                          />
+                        );
+                      })}
                   </td>
                 );
               })}

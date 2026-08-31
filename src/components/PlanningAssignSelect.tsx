@@ -8,12 +8,14 @@ export default function PlanningAssignSelect({
   site,
   periode,
   options,
+  placeholder = "+ ajouter…",
 }: {
   action: (formData: FormData) => Promise<void>;
   date: string;
   site: string;
   periode: string;
   options: { id: string; name: string }[];
+  placeholder?: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -29,7 +31,7 @@ export default function PlanningAssignSelect({
         className="w-full rounded border border-stone-200 bg-white px-1 py-0.5 text-xs text-stone-500"
       >
         <option value="" disabled>
-          + ajouter…
+          {placeholder}
         </option>
         {options.map((u) => (
           <option key={u.id} value={u.id}>
