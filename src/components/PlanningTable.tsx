@@ -48,6 +48,14 @@ function isEligibleForSeat(seat: SeatSpec, user: ActiveUser): boolean {
   return !!user.poste && isValidPoste(user.poste) && canCoverPoste(user.poste, seat.posteRequired!);
 }
 
+// Une fois pourvu, le siège Responsable/Sortie et le siège Retour
+// disparaissent (une seule personne suffit) — mais pas le siège Accueil,
+// car certaines ouvertures ont besoin de 2 personnes en accueil (ni la
+// place Anim./accueil, ouverte à tou·te·s sans limite).
+function seatHidesWhenFilled(seat: SeatSpec): boolean {
+  return seat.kind === "responsable" || (seat.kind === "poste" && seat.posteRequired === "RETOUR");
+}
+
 export default function PlanningTable({
   weeks,
   shiftsByKey,
@@ -271,6 +279,12 @@ export default function PlanningTable({
                     </ul>
                     {editable &&
                       seats.map((seat, si) => {
+                        if (
+                          seatHidesWhenFilled(seat) &&
+                          assignees.some((a) => a.fonction === seat.label)
+                        ) {
+                          return null;
+                        }
                         const seatOptions = availableUsers.filter((u) => isEligibleForSeat(seat, u));
                         if (seatOptions.length === 0) return null;
                         return (
