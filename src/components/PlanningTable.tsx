@@ -282,6 +282,7 @@ export default function PlanningTable({
                             periode={cell.leaf.periode}
                             options={seatOptions}
                             placeholder={`+ ${seat.label}…`}
+                            fonction={seat.label}
                           />
                         );
                       })}

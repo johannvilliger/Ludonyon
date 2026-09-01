@@ -9,6 +9,7 @@ export default function PlanningAssignSelect({
   periode,
   options,
   placeholder = "+ ajouter…",
+  fonction,
 }: {
   action: (formData: FormData) => Promise<void>;
   date: string;
@@ -16,6 +17,11 @@ export default function PlanningAssignSelect({
   periode: string;
   options: { id: string; name: string }[];
   placeholder?: string;
+  // Renseigné quand cette liste correspond à un siège précis de la
+  // structure (Responsable/Retour/Accueil/Anim. — voir SEAT_REQUIREMENTS
+  // dans autoSchedule.ts) : affiché ensuite à côté du nom sur le
+  // calendrier, à la place du poste générique du profil.
+  fonction?: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -24,6 +30,7 @@ export default function PlanningAssignSelect({
       <input type="hidden" name="date" value={date} />
       <input type="hidden" name="site" value={site} />
       <input type="hidden" name="periode" value={periode} />
+      {fonction && <input type="hidden" name="fonction" value={fonction} />}
       <select
         name="userId"
         defaultValue=""

@@ -57,6 +57,14 @@ export async function assignToShift(formData: FormData) {
     throw new Error("Bénévole introuvable ou archivé");
   }
 
+  // Renseigné quand l'assignation vient d'une des listes déroulantes par
+  // poste (voir SEAT_REQUIREMENTS dans autoSchedule.ts et PlanningTable.tsx)
+  // — absent pour un usage générique de cette action (ex. override de la
+  // répartition automatique), auquel cas le poste du profil sert de repli
+  // à l'affichage (voir ShiftAssignee dans lib/planningData.ts).
+  const fonctionRaw = formData.get("fonction");
+  const fonction = fonctionRaw ? String(fonctionRaw) : null;
+
   const shift = await prisma.openingShift.upsert({
     where: {
       date_site_periode: {
@@ -75,8 +83,8 @@ export async function assignToShift(formData: FormData) {
 
   await prisma.openingShiftAssignee.upsert({
     where: { shiftId_userId: { shiftId: shift.id, userId } },
-    create: { shiftId: shift.id, userId },
-    update: {},
+    create: { shiftId: shift.id, userId, fonction },
+    update: { fonction },
   });
 
   revalidatePath("/planning");
