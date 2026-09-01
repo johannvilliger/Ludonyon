@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { ArticleListEditor } from "@/components/ArticleListEditor";
 import { CONDITIONS_TROC } from "@/lib/conditions";
+import { emailValide } from "@/lib/email-format";
 import { formaterTelephone, telephoneValide } from "@/lib/telephone";
 import { soumettreListe, type FormState } from "./actions";
 
@@ -23,6 +24,8 @@ export default function NouvelleListePage() {
   const telephoneInvalide = telephoneRempli && !telephoneValide(telephone);
   const nomRempli = nom.trim().length > 0;
   const nomInvalide = nomRempli && nom.trim().length < 3;
+  const emailRempli = email.trim().length > 0;
+  const emailInvalide = emailRempli && !emailValide(email);
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-12">
@@ -101,8 +104,16 @@ export default function NouvelleListePage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2"
+              required
+              className={
+                emailInvalide
+                  ? "mt-1 w-full rounded-md border border-red-400 px-3 py-2"
+                  : "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2"
+              }
             />
+            {emailInvalide && (
+              <span className="mt-1 block text-xs text-red-600">Adresse email invalide.</span>
+            )}
           </label>
         </div>
 
@@ -121,7 +132,14 @@ export default function NouvelleListePage() {
         <div className="flex justify-end">
           <button
             type="submit"
-            disabled={pending || !articlesValides || telephoneInvalide || nomInvalide || !conditionsAcceptees}
+            disabled={
+              pending ||
+              !articlesValides ||
+              telephoneInvalide ||
+              nomInvalide ||
+              emailInvalide ||
+              !conditionsAcceptees
+            }
             className="shrink-0 rounded-md bg-zinc-900 px-6 py-3 font-medium text-white hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
           >
             {pending ? "Envoi…" : "Soumettre ma liste"}

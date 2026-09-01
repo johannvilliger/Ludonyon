@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { assignerNumeroVendeur, nouveauCode, nouvelId, queryOne, withTransaction } from "@/lib/db";
 import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
 import { envoyerEmailConfirmationListe } from "@/lib/email";
+import { emailValide } from "@/lib/email-format";
 import { accueilEstConnecte } from "@/lib/gestion";
 import { formaterTelephone, telephoneValide } from "@/lib/telephone";
 import { urlAbsolue } from "@/lib/url";
@@ -42,6 +43,8 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
   if (!telephoneValide(telephone)) {
     return { error: "Merci d'indiquer un numéro de portable valide (suisse 07x ou français +33 6/7)." };
   }
+  if (!email) return { error: "L'email est obligatoire." };
+  if (!emailValide(email)) return { error: "Merci d'indiquer une adresse email valide." };
   if (!conditionsAcceptees) return { error: "Vous devez accepter les conditions pour continuer." };
   if (articles.length === 0) return { error: "Ajoutez au moins un article." };
   if (articles.length > 30) return { error: "30 articles maximum par liste." };
@@ -69,8 +72,8 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
       await conn.query("INSERT INTO vendeurs (id, nom, telephone, email) VALUES (?, ?, ?, ?)", [
         vendeurId,
         nom,
-        telephone || null,
-        email || null,
+        telephone,
+        email,
       ]);
 
       numeroVendeurAttribue = await assignerNumeroVendeur(conn, edition.id);
@@ -93,18 +96,16 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
     return { error: "Impossible d'enregistrer la liste, réessayez." };
   }
 
-  if (email) {
-    await envoyerEmailConfirmationListe({
-      destinataire: email,
-      nomVendeur: nom,
-      numeroVendeur: numeroVendeurAttribue,
-      codeConfirmation,
-      lienConfirmation: await urlAbsolue(`/vendeur/confirmation/${codeConfirmation}`),
-      lienModifier: await urlAbsolue(`/vendeur/modifier/${codeConfirmation}`),
-      tauxAchat: Number(edition.taux_achat),
-      tauxVendeur: Number(edition.taux_vendeur),
-    });
-  }
+  await envoyerEmailConfirmationListe({
+    destinataire: email,
+    nomVendeur: nom,
+    numeroVendeur: numeroVendeurAttribue,
+    codeConfirmation,
+    lienConfirmation: await urlAbsolue(`/vendeur/confirmation/${codeConfirmation}`),
+    lienModifier: await urlAbsolue(`/vendeur/modifier/${codeConfirmation}`),
+    tauxAchat: Number(edition.taux_achat),
+    tauxVendeur: Number(edition.taux_vendeur),
+  });
 
   redirect(`/accueil/vendeur/${codeConfirmation}`);
 }
