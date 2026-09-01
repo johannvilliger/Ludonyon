@@ -19,6 +19,8 @@ import {
   deleteVolunteer,
   resetVolunteerPassword,
   updateVolunteerPhoto,
+  addVacationForUser,
+  deleteVacationForUser,
 } from "@/lib/actions/organisation";
 
 export default async function OrganisationBenevolesPage({
@@ -458,21 +460,78 @@ export default async function OrganisationBenevolesPage({
                   </form>
                 </details>
 
-                {u.vacations.length > 0 && (
-                  <details className="mt-2" open>
-                    <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
-                      Vacances / indisponibilités déclarées
-                    </summary>
+                <details className="mt-2" open={u.vacations.length > 0}>
+                  <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
+                    Vacances / indisponibilités
+                  </summary>
+                  {u.vacations.length > 0 && (
                     <ul className="mt-2 space-y-1 text-sm text-stone-600">
                       {u.vacations.map((v) => (
-                        <li key={v.id}>
-                          {formatDateOnly(v.startDate)} –{" "}
-                          {formatDateOnly(v.endDate)}
+                        <li key={v.id} className="flex items-center justify-between gap-2">
+                          <span>
+                            {formatDateOnly(v.startDate)} – {formatDateOnly(v.endDate)}
+                            {v.note && <span className="text-stone-400"> ({v.note})</span>}
+                          </span>
+                          <form action={deleteVacationForUser}>
+                            <input type="hidden" name="id" value={v.id} />
+                            <button
+                              type="submit"
+                              className="text-stone-400 hover:text-red-600"
+                              aria-label="Supprimer cette période"
+                            >
+                              ×
+                            </button>
+                          </form>
                         </li>
                       ))}
                     </ul>
-                  </details>
-                )}
+                  )}
+                  <form
+                    action={addVacationForUser}
+                    className="mt-2 grid gap-2 rounded-lg border border-stone-200 bg-stone-50 p-2 sm:grid-cols-2"
+                  >
+                    <input type="hidden" name="userId" value={u.id} />
+                    <div>
+                      <label className="mb-0.5 block text-xs font-medium text-stone-600">
+                        Début
+                      </label>
+                      <input
+                        type="date"
+                        name="startDate"
+                        required
+                        className="w-full rounded-lg border border-stone-300 px-2 py-1 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-0.5 block text-xs font-medium text-stone-600">
+                        Fin
+                      </label>
+                      <input
+                        type="date"
+                        name="endDate"
+                        required
+                        className="w-full rounded-lg border border-stone-300 px-2 py-1 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="mb-0.5 block text-xs font-medium text-stone-600">
+                        Note (facultatif)
+                      </label>
+                      <input
+                        type="text"
+                        name="note"
+                        maxLength={200}
+                        placeholder="Ex. Arrêt maladie"
+                        className="w-full rounded-lg border border-stone-300 px-2 py-1 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <SaveButton className="rounded-lg border-2 border-black bg-brand-yellow px-2 py-1 text-xs font-semibold text-black hover:bg-brand-yellow-dark disabled:opacity-60">
+                        Ajouter la période
+                      </SaveButton>
+                    </div>
+                  </form>
+                </details>
 
                 <details className="mt-2">
                   <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">

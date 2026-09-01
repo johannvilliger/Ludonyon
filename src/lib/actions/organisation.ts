@@ -957,6 +957,60 @@ export async function updateVolunteerPhoto(formData: FormData) {
   revalidatePath("/organisation/benevoles");
 }
 
+// Déclaration de vacances/indisponibilité pour un·e bénévole par un·e
+// responsable/comité (ex. arrêt maladie prolongé, personne ne pouvant pas
+// mettre à jour son propre compte) — mêmes dates que la déclaration en
+// libre-service (voir addVacation dans actions/profile.ts), utilisées par
+// les mêmes automatismes (répartition automatique, filtrage des
+// disponibilités).
+const vacationForUserSchema = z
+  .object({
+    userId: z.string().min(1),
+    startDate: z.string().min(1, "Date de début requise"),
+    endDate: z.string().min(1, "Date de fin requise"),
+    note: z.string().trim().max(200).optional(),
+  })
+  .refine((data) => data.endDate >= data.startDate, {
+    message: "La date de fin doit être après la date de début",
+    path: ["endDate"],
+  });
+
+export async function addVacationForUser(formData: FormData) {
+  await requireOrganisationUser();
+
+  const parsed = vacationForUserSchema.safeParse({
+    userId: formData.get("userId"),
+    startDate: formData.get("startDate"),
+    endDate: formData.get("endDate"),
+    note: formData.get("note") || undefined,
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Dates invalides");
+  }
+
+  await prisma.vacation.create({
+    data: {
+      userId: parsed.data.userId,
+      startDate: new Date(parsed.data.startDate),
+      endDate: new Date(parsed.data.endDate),
+      note: parsed.data.note ?? null,
+    },
+  });
+
+  revalidatePath("/profil");
+  revalidatePath("/organisation/benevoles");
+}
+
+export async function deleteVacationForUser(formData: FormData) {
+  await requireOrganisationUser();
+  const id = String(formData.get("id") ?? "");
+
+  await prisma.vacation.deleteMany({ where: { id } });
+
+  revalidatePath("/profil");
+  revalidatePath("/organisation/benevoles");
+}
+
 // ---------- Tâches ----------
 
 const taskSchema = z.object({
