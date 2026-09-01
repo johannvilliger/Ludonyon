@@ -29,11 +29,31 @@ model User {
   // dans auth.ts). Visible dans Espace organisation > Bénévoles.
   lastSeenAt             DateTime?
   // Poste du bénévole pour le planning des ouvertures — "ACCUEIL" |
-  // "RETOUR" | "SORTIE" | null. Fixé uniquement par un responsable/comité
-  // (jamais par le bénévole lui-même), sert à filtrer qui est notifié
-  // lors d'une recherche de remplaçant (hiérarchie : sortie > retour >
-  // accueil, un poste supérieur peut couvrir les postes inférieurs).
+  // "RETOUR" | "SORTIE" | null ("En formation" à l'affichage). Fixé
+  // uniquement par un responsable/comité (jamais par le bénévole
+  // lui-même), sert à filtrer qui est notifié lors d'une recherche de
+  // remplaçant (hiérarchie : sortie > retour > accueil, un poste
+  // supérieur peut couvrir les postes inférieurs).
   poste                  String?
+  // Fixé uniquement par un responsable/comité (voir poste ci-dessus) :
+  // exclut complètement le/la bénévole du planning des ouvertures
+  // (répartition automatique, sièges manuels, recherche de remplaçant) et
+  // masque ses champs de disponibilité d'ouvertures sur son profil et sa
+  // fiche — seule la disponibilité aux animations reste pertinente.
+  unavailableForOpenings Boolean  @default(false)
+  // Fréquence de disponibilité pour le planning des ouvertures — voir
+  // OPENING_FREQUENCIES dans src/lib/frequencies.ts. Éditable par le/la
+  // bénévole et par un responsable/comité ; utilisée par la répartition
+  // automatique (src/lib/autoSchedule.ts) comme plafond mensuel indicatif
+  // (repli sur tout le monde si personne d'autre n'est éligible, pour ne
+  // jamais laisser un siège vide faute de candidat·e).
+  openingFrequency       String?
+  // Disponibilité aux animations (weekend / semaine) — voir
+  // ANIM_FREQUENCIES dans src/lib/frequencies.ts. Purement informatif,
+  // n'influence pas la répartition automatique. Éditable par le/la
+  // bénévole et par un responsable/comité.
+  animWeekendFrequency   String?
+  animWeekFrequency      String?
   // Habits remis par la ludothèque — géré uniquement par les
   // responsables/comité (voir Espace organisation > Bénévoles). Taille et
   // coupe restent modifiables même sans l'avoir reçu : ça permet de savoir

@@ -23,7 +23,7 @@ export default async function OrganisationPlanningPage({
   const [{ weeks, shiftsByKey, closures }, activeUsers, upcomingClosures] = await Promise.all([
     loadPlanningWeeksAndShifts(year, month),
     prisma.user.findMany({
-      where: { active: true },
+      where: { active: true, unavailableForOpenings: false },
       orderBy: { name: "asc" },
       select: { id: true, name: true, role: true, poste: true },
     }),

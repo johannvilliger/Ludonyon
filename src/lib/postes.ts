@@ -10,6 +10,10 @@ export const POSTE_LABELS: Record<Poste, string> = {
   SORTIE: "Poste sortie",
 };
 
+// Libellé affiché pour un poste non renseigné (bénévole pas encore formé
+// aux ouvertures).
+export const POSTE_UNSET_LABEL = "En formation";
+
 // Hiérarchie croissante : un poste peut couvrir tous les postes de
 // niveau inférieur ou égal (ex. Sortie remplace Accueil, Retour ou
 // Sortie ; Accueil ne remplace qu'Accueil).

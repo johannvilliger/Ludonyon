@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { savePhoto, deletePhoto } from "@/lib/photoStorage";
 import { getAvailabilityOptions } from "@/lib/planning";
+import { isValidOpeningFrequency, isValidAnimFrequency } from "@/lib/frequencies";
 
 const schema = z
   .object({
@@ -194,6 +195,31 @@ export async function updateMyAvailability(formData: FormData) {
       data: selected.map((slotKey) => ({ userId: authUser.id, slotKey })),
     }),
   ]);
+
+  revalidatePath("/profil");
+  revalidatePath("/organisation/benevoles");
+}
+
+export async function updateMyFrequencies(formData: FormData) {
+  const authUser = await requireUser();
+
+  function readFrequency<T extends string>(
+    field: string,
+    isValid: (v: string) => v is T
+  ): T | null {
+    const raw = formData.get(field);
+    const str = raw === null ? "" : String(raw);
+    return str && isValid(str) ? str : null;
+  }
+
+  await prisma.user.update({
+    where: { id: authUser.id },
+    data: {
+      openingFrequency: readFrequency("openingFrequency", isValidOpeningFrequency),
+      animWeekendFrequency: readFrequency("animWeekendFrequency", isValidAnimFrequency),
+      animWeekFrequency: readFrequency("animWeekFrequency", isValidAnimFrequency),
+    },
+  });
 
   revalidatePath("/profil");
   revalidatePath("/organisation/benevoles");

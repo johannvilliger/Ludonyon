@@ -14,6 +14,7 @@ import { guideAttachmentPath, guideExists, saveGuide, deleteGuide } from "@/lib/
 import { getAvailabilityOptions } from "@/lib/planning";
 import { isValidPoste } from "@/lib/postes";
 import { isValidClothingSize, isValidClothingCut } from "@/lib/clothing";
+import { isValidOpeningFrequency, isValidAnimFrequency } from "@/lib/frequencies";
 import { saveRecording, deleteRecording } from "@/lib/recordingStorage";
 
 // ---------- Annonces ----------
@@ -831,6 +832,27 @@ export async function updateVolunteerProfile(formData: FormData) {
     await prisma.user.update({ where: { id }, data: { poste } });
   }
 
+  const unavailableForOpenings = formData.get("unavailableForOpenings") === "on";
+
+  function readFrequency<T extends string>(
+    field: string,
+    isValid: (v: string) => v is T
+  ): T | null {
+    const raw = formData.get(field);
+    const str = raw === null ? "" : String(raw);
+    return str && isValid(str) ? str : null;
+  }
+
+  await prisma.user.update({
+    where: { id },
+    data: {
+      unavailableForOpenings,
+      openingFrequency: readFrequency("openingFrequency", isValidOpeningFrequency),
+      animWeekendFrequency: readFrequency("animWeekendFrequency", isValidAnimFrequency),
+      animWeekFrequency: readFrequency("animWeekFrequency", isValidAnimFrequency),
+    },
+  });
+
   function readSize(field: string): string | null {
     const raw = formData.get(field);
     const str = raw === null ? "" : String(raw);
@@ -853,6 +875,23 @@ export async function updateVolunteerProfile(formData: FormData) {
       pullCut: readCut("pullCut"),
     },
   });
+
+  // Le bloc de disponibilités d'ouvertures n'est rendu (et donc soumis,
+  // marqueur "availabilityFieldsRendered" présent — voir AvailabilityFields
+  // dans benevoles/page.tsx) que si le/la bénévole n'était pas déjà
+  // marqué·e "Pas d'ouvertures" au moment de l'affichage du formulaire. On
+  // se base sur ce marqueur plutôt que sur la valeur venant d'être
+  // soumise pour "unavailableForOpenings" : si le bloc n'était pas
+  // affiché, on ne touche pas aux disponibilités déjà enregistrées, pour
+  // ne pas les effacer via un champ "slots" absent du formulaire (ex. cas
+  // où l'on décoche "Pas d'ouvertures" et enregistre en un seul clic, sans
+  // avoir encore vu réapparaître les cases à cocher).
+  if (formData.get("availabilityFieldsRendered") === null) {
+    revalidatePath("/annuaire");
+    revalidatePath("/organisation/benevoles");
+    revalidatePath("/profil");
+    return;
+  }
 
   const validKeys = new Set(getAvailabilityOptions().map((o) => o.slotKey));
   const selectedSlots = formData.getAll("slots").map(String).filter((k) => validKeys.has(k));

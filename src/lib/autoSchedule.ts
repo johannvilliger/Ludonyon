@@ -10,6 +10,24 @@ import {
 } from "@/lib/planning";
 import { canCoverPoste, isValidPoste, POSTE_LABELS, type Poste } from "@/lib/postes";
 import { ROLE_LABELS, type Role } from "@/lib/roles";
+import { isValidOpeningFrequency, type OpeningFrequency } from "@/lib/frequencies";
+
+// Plafond mensuel indicatif tiré de la fréquence de disponibilité déclarée
+// (voir OPENING_FREQUENCIES dans frequencies.ts) — un mois compte ~4,3
+// semaines. N'est qu'une préférence : si personne d'autre n'est éligible
+// pour un siège, une personne déjà à son plafond reste proposée plutôt que
+// de laisser le siège vide (voir generateAutoSchedule).
+const OPENING_FREQUENCY_MONTHLY_CAP: Record<OpeningFrequency, number> = {
+  "1X_MOIS": 1,
+  "2X_MOIS": 2,
+  "1X_SEMAINE": 4,
+  "2X_SEMAINE": 8,
+};
+
+function monthlyCapFor(frequency: string | null): number | null {
+  if (!frequency || !isValidOpeningFrequency(frequency)) return null;
+  return OPENING_FREQUENCY_MONTHLY_CAP[frequency];
+}
 
 // Composition des ouvertures par créneau, fixée avec le comité le
 // 28.08.2026 (voir aussi Espace organisation > Bénévoles > Import groupé,
@@ -64,6 +82,7 @@ export interface AutoScheduleCandidate {
   name: string;
   role: string;
   poste: string | null;
+  openingFrequency: string | null;
   availabilitySlotKeys: Set<string>;
   vacationDateKeys: Set<string>;
 }
@@ -219,7 +238,15 @@ export function generateAutoSchedule(
 
     for (const seat of seatDefs) {
       const pool = eligibleBase.filter((c) => !usedIds.has(c.id));
-      const chosen = pickForSeat(seat, pool, countByUser);
+      // Respecte le plafond mensuel indicatif de chacun·e (voir
+      // monthlyCapFor) quand c'est possible, mais retombe sur tout le
+      // vivier éligible plutôt que de laisser le siège vide si tout le
+      // monde est déjà à son plafond.
+      const withinCap = pool.filter((c) => {
+        const cap = monthlyCapFor(c.openingFrequency);
+        return cap === null || (countByUser.get(c.id) ?? 0) < cap;
+      });
+      const chosen = pickForSeat(seat, withinCap.length > 0 ? withinCap : pool, countByUser);
       if (!chosen) continue;
       selected.push({
         userId: chosen.id,
@@ -335,12 +362,13 @@ export async function computeAutoScheduleForMonth(
 
   const [users, closures, overrides] = await Promise.all([
     prisma.user.findMany({
-      where: { active: true },
+      where: { active: true, unavailableForOpenings: false },
       select: {
         id: true,
         name: true,
         role: true,
         poste: true,
+        openingFrequency: true,
         availabilities: { select: { slotKey: true } },
         vacations: { select: { startDate: true, endDate: true } },
       },
@@ -363,6 +391,7 @@ export async function computeAutoScheduleForMonth(
       name: u.name,
       role: u.role,
       poste: u.poste,
+      openingFrequency: u.openingFrequency,
       availabilitySlotKeys: new Set(u.availabilities.map((a) => a.slotKey)),
       vacationDateKeys,
     };

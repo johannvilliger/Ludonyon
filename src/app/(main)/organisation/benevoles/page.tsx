@@ -2,7 +2,15 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireOrganisationUser } from "@/lib/session";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/roles";
-import { POSTES, POSTE_LABELS, type Poste } from "@/lib/postes";
+import { POSTES, POSTE_LABELS, POSTE_UNSET_LABEL, type Poste } from "@/lib/postes";
+import {
+  OPENING_FREQUENCIES,
+  OPENING_FREQUENCY_LABELS,
+  ANIM_FREQUENCIES,
+  ANIM_FREQUENCY_LABELS,
+  type OpeningFrequency,
+  type AnimFrequency,
+} from "@/lib/frequencies";
 import { CLOTHING_SIZES, CLOTHING_CUTS, CLOTHING_CUT_LABELS, type ClothingCut } from "@/lib/clothing";
 import { formatDateOnly, formatDateTime } from "@/lib/format";
 import { mailConfigured } from "@/lib/mail";
@@ -296,7 +304,7 @@ export default async function OrganisationBenevolesPage({
                           defaultValue={u.poste ?? ""}
                           className="rounded-lg border border-stone-300 px-2 py-1 text-sm"
                         >
-                          <option value="">Poste : non défini</option>
+                          <option value="">Poste : {POSTE_UNSET_LABEL}</option>
                           {POSTES.map((poste) => (
                             <option key={poste} value={poste}>
                               {POSTE_LABELS[poste as Poste]}
@@ -305,17 +313,90 @@ export default async function OrganisationBenevolesPage({
                         </select>
                       )}
 
+                      {u.role === "BENEVOLE" && (
+                        <label className="flex items-center gap-1.5 text-xs text-stone-600">
+                          <input
+                            key={String(u.unavailableForOpenings)}
+                            type="checkbox"
+                            name="unavailableForOpenings"
+                            defaultChecked={u.unavailableForOpenings}
+                            className="h-4 w-4 rounded border-stone-300 text-brand-blue focus:ring-brand-blue"
+                          />
+                          Pas d&rsquo;ouvertures
+                        </label>
+                      )}
+
                       <SaveButton className="rounded-lg border-2 border-black bg-brand-yellow px-2 py-1 text-xs font-semibold text-black hover:bg-brand-yellow-dark disabled:opacity-60" />
                   </div>
 
-                  <details className="mt-2">
-                    <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
-                      Disponibilités pour le planning des ouvertures
-                    </summary>
-                    <div className="mt-2">
-                      <AvailabilityFields selectedKeys={u.availabilities.map((a) => a.slotKey)} />
+                  {!u.unavailableForOpenings && (
+                    <>
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">
+                          Disponibilités pour le planning des ouvertures
+                        </summary>
+                        <div className="mt-2">
+                          <input type="hidden" name="availabilityFieldsRendered" value="1" />
+                          <AvailabilityFields selectedKeys={u.availabilities.map((a) => a.slotKey)} />
+                        </div>
+                      </details>
+
+                      <div className="mt-2 flex items-center gap-2 text-xs text-stone-500">
+                        <label htmlFor={`openingFrequency-${u.id}`}>Fréquence :</label>
+                        <select
+                          id={`openingFrequency-${u.id}`}
+                          key={u.openingFrequency ?? "none"}
+                          name="openingFrequency"
+                          defaultValue={u.openingFrequency ?? ""}
+                          className="rounded-lg border border-stone-300 px-2 py-1 text-xs"
+                        >
+                          <option value="">Non renseignée</option>
+                          {OPENING_FREQUENCIES.map((freq) => (
+                            <option key={freq} value={freq}>
+                              {OPENING_FREQUENCY_LABELS[freq as OpeningFrequency]}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="mt-2 grid gap-2 text-xs text-stone-500 sm:grid-cols-2">
+                    <div className="flex items-center gap-2">
+                      <label htmlFor={`animWeekendFrequency-${u.id}`}>Anim. weekend :</label>
+                      <select
+                        id={`animWeekendFrequency-${u.id}`}
+                        key={u.animWeekendFrequency ?? "none"}
+                        name="animWeekendFrequency"
+                        defaultValue={u.animWeekendFrequency ?? ""}
+                        className="rounded-lg border border-stone-300 px-2 py-1 text-xs"
+                      >
+                        <option value="">Non renseignée</option>
+                        {ANIM_FREQUENCIES.map((freq) => (
+                          <option key={freq} value={freq}>
+                            {ANIM_FREQUENCY_LABELS[freq as AnimFrequency]}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  </details>
+                    <div className="flex items-center gap-2">
+                      <label htmlFor={`animWeekFrequency-${u.id}`}>Anim. semaine :</label>
+                      <select
+                        id={`animWeekFrequency-${u.id}`}
+                        key={u.animWeekFrequency ?? "none"}
+                        name="animWeekFrequency"
+                        defaultValue={u.animWeekFrequency ?? ""}
+                        className="rounded-lg border border-stone-300 px-2 py-1 text-xs"
+                      >
+                        <option value="">Non renseignée</option>
+                        {ANIM_FREQUENCIES.map((freq) => (
+                          <option key={freq} value={freq}>
+                            {ANIM_FREQUENCY_LABELS[freq as AnimFrequency]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
                   <details className="mt-2">
                     <summary className="cursor-pointer text-xs text-stone-400 hover:text-stone-600">

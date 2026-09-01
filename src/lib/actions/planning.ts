@@ -177,6 +177,7 @@ export async function requestReplacement(formData: FormData) {
       const candidates = await prisma.user.findMany({
         where: {
           active: true,
+          unavailableForOpenings: false,
           id: { not: user.id },
           availabilities: { some: { slotKey: key } },
           // Exclut les bénévoles en vacances déclarées ce jour-là.

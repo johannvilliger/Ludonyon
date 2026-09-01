@@ -34,7 +34,7 @@ export default async function AutoPlanningPage({
   const [{ shifts, assignmentCountByUser }, activeUsers] = await Promise.all([
     computeAutoScheduleForMonth(year, month),
     prisma.user.findMany({
-      where: { active: true },
+      where: { active: true, unavailableForOpenings: false },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),

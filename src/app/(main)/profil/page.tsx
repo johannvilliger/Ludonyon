@@ -4,7 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { ROLE_LABELS, type Role } from "@/lib/roles";
 import { formatEventDate, formatDateOnly } from "@/lib/format";
 import Avatar from "@/components/Avatar";
-import { toggleOpeningReminders, updateMyAvailability } from "@/lib/actions/profile";
+import { toggleOpeningReminders, updateMyAvailability, updateMyFrequencies } from "@/lib/actions/profile";
+import {
+  OPENING_FREQUENCIES,
+  OPENING_FREQUENCY_LABELS,
+  ANIM_FREQUENCIES,
+  ANIM_FREQUENCY_LABELS,
+  type OpeningFrequency,
+  type AnimFrequency,
+} from "@/lib/frequencies";
 import { toggleTaskDone, sendGroupNotification } from "@/lib/actions/organisation";
 import ChangePasswordForm from "./ChangePasswordForm";
 import PhotoForm from "./PhotoForm";
@@ -225,19 +233,111 @@ export default async function ProfilPage() {
         <SaveButton className="shrink-0 rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 disabled:opacity-60" />
       </form>
 
+      {user.unavailableForOpenings ? (
+        <>
+          <h2 className="mt-8 text-lg font-medium text-stone-900">
+            Disponibilités pour le planning des ouvertures
+          </h2>
+          <p className="mt-1 text-sm text-stone-500">
+            Vous êtes actuellement marqué·e « Pas d&rsquo;ouvertures » par un·e
+            responsable : vous n&rsquo;apparaissez pas dans le planning des
+            ouvertures. Seule votre disponibilité aux animations ci-dessous
+            reste pertinente.
+          </p>
+        </>
+      ) : (
+        <>
+          <h2 className="mt-8 text-lg font-medium text-stone-900">
+            Mes disponibilités pour le planning des ouvertures
+          </h2>
+          <p className="mt-1 text-sm text-stone-500">
+            Utilisées pour vous proposer comme remplaçant·e quand un·e autre
+            bénévole signale un empêchement sur l&rsquo;un de ces créneaux.
+          </p>
+          <div className="mt-3 rounded-xl border border-stone-200 bg-white p-4">
+            <AvailabilityForm
+              action={updateMyAvailability}
+              selectedKeys={myAvailability.map((a) => a.slotKey)}
+            />
+          </div>
+
+          <h3 className="mt-4 text-sm font-medium text-stone-700">
+            Ma fréquence de disponibilité
+          </h3>
+          <form
+            key={user.openingFrequency ?? "none"}
+            action={updateMyFrequencies}
+            className="mt-2 flex items-center gap-2"
+          >
+            <input type="hidden" name="animWeekendFrequency" value={user.animWeekendFrequency ?? ""} />
+            <input type="hidden" name="animWeekFrequency" value={user.animWeekFrequency ?? ""} />
+            <select
+              name="openingFrequency"
+              defaultValue={user.openingFrequency ?? ""}
+              className="rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+            >
+              <option value="">Non renseignée</option>
+              {OPENING_FREQUENCIES.map((freq) => (
+                <option key={freq} value={freq}>
+                  {OPENING_FREQUENCY_LABELS[freq as OpeningFrequency]}
+                </option>
+              ))}
+            </select>
+            <SaveButton className="rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 disabled:opacity-60" />
+          </form>
+        </>
+      )}
+
       <h2 className="mt-8 text-lg font-medium text-stone-900">
-        Mes disponibilités pour le planning des ouvertures
+        Ma disponibilité pour les animations
       </h2>
       <p className="mt-1 text-sm text-stone-500">
-        Utilisées pour vous proposer comme remplaçant·e quand un·e autre
-        bénévole signale un empêchement sur l&rsquo;un de ces créneaux.
+        Purement indicatif, pour aider à l&rsquo;organisation des animations.
       </p>
-      <div className="mt-3 rounded-xl border border-stone-200 bg-white p-4">
-        <AvailabilityForm
-          action={updateMyAvailability}
-          selectedKeys={myAvailability.map((a) => a.slotKey)}
-        />
-      </div>
+      <form
+        key={`${user.animWeekendFrequency ?? "none"}-${user.animWeekFrequency ?? "none"}`}
+        action={updateMyFrequencies}
+        className="mt-2 space-y-2"
+      >
+        <input type="hidden" name="openingFrequency" value={user.openingFrequency ?? ""} />
+        <div className="flex items-center gap-2">
+          <label htmlFor="animWeekendFrequency" className="w-32 text-sm text-stone-700">
+            Weekend
+          </label>
+          <select
+            id="animWeekendFrequency"
+            name="animWeekendFrequency"
+            defaultValue={user.animWeekendFrequency ?? ""}
+            className="rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+          >
+            <option value="">Non renseignée</option>
+            {ANIM_FREQUENCIES.map((freq) => (
+              <option key={freq} value={freq}>
+                {ANIM_FREQUENCY_LABELS[freq as AnimFrequency]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="animWeekFrequency" className="w-32 text-sm text-stone-700">
+            Semaine
+          </label>
+          <select
+            id="animWeekFrequency"
+            name="animWeekFrequency"
+            defaultValue={user.animWeekFrequency ?? ""}
+            className="rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+          >
+            <option value="">Non renseignée</option>
+            {ANIM_FREQUENCIES.map((freq) => (
+              <option key={freq} value={freq}>
+                {ANIM_FREQUENCY_LABELS[freq as AnimFrequency]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <SaveButton className="rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 disabled:opacity-60" />
+      </form>
 
       <h2 className="mt-8 text-lg font-medium text-stone-900">
         Mes indisponibilités / vacances
