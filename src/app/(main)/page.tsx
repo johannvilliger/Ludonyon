@@ -5,6 +5,8 @@ import { formatEventDate, formatDateTime } from "@/lib/format";
 import { isOrganisationRole } from "@/lib/roles";
 import {
   SITE_LABELS,
+  buildClosureLabelByDate,
+  dateKey,
   findSlotDef,
   formatDayLabel,
   formatHoursRange,
@@ -17,12 +19,19 @@ export default async function HomePage() {
   const now = new Date();
   const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 
-  const [myShifts, events, announcements] = await Promise.all([
+  const [candidateShifts, closures, events, announcements] = await Promise.all([
     prisma.openingShiftAssignee.findMany({
       where: { userId: user.id, shift: { date: { gte: todayUTC } } },
       include: { shift: true },
       orderBy: { shift: { date: "asc" } },
-      take: 5,
+      // On sur-récupère avant de filtrer les créneaux tombant sur une
+      // fermeture globale (vacances de la ludothèque), pour garder 5
+      // ouvertures valides même si certaines proches sont fermées.
+      take: 20,
+    }),
+    prisma.planningClosure.findMany({
+      where: { endDate: { gte: todayUTC } },
+      orderBy: { startDate: "asc" },
     }),
     prisma.event.findMany({
       where: { active: true, audience: "ALL", startsAt: { gte: now } },
@@ -45,6 +54,11 @@ export default async function HomePage() {
       include: { author: { select: { name: true } }, group: { select: { name: true } } },
     }),
   ]);
+
+  const closureByDate = buildClosureLabelByDate(closures);
+  const myShifts = candidateShifts
+    .filter((a) => !closureByDate.has(dateKey(a.shift.date)))
+    .slice(0, 5);
 
   const firstName = (user.name ?? user.email ?? "").split(" ")[0];
 
