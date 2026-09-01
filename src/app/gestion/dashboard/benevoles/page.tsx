@@ -38,12 +38,6 @@ export default async function BenevolesPage() {
       </Link>
 
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">Vendeurs bénévoles</h1>
-      <p className="mt-2 text-sm text-zinc-600">
-        Base fixe : chaque bénévole garde son numéro d&apos;une édition à l&apos;autre. Créé ici, il sera
-        automatiquement présent (même sans article) à chaque nouvelle édition. Avec son numéro et son
-        mot de passe, il peut aussi gérer sa liste lui-même sur{" "}
-        <span className="font-mono">/benevole</span>.
-      </p>
       {!edition && (
         <p className="mt-2 text-sm text-amber-700">
           Aucune édition active — les listes d&apos;articles ne sont accessibles qu&apos;une fois une édition lancée.

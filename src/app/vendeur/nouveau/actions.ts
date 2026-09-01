@@ -2,11 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { assignerNumeroVendeur, nouveauCode, nouvelId, queryOne, withTransaction } from "@/lib/db";
-import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
 import { envoyerEmailConfirmationListe } from "@/lib/email";
 import { emailValide } from "@/lib/email-format";
 import { formaterTelephone, telephoneValide } from "@/lib/telephone";
 import { urlAbsolue } from "@/lib/url";
+import { erreurArticles } from "@/lib/validation-articles";
 
 export type FormState = { error: string | null };
 
@@ -53,12 +53,8 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
   if (articles.length === 0) return { error: "Ajoutez au moins un article." };
   if (articles.length > 30) return { error: "30 articles maximum par liste." };
 
-  for (const a of articles) {
-    if (a.nom.length < 3) return { error: `Le nom « ${a.nom} » doit contenir au moins 3 caractères.` };
-    const mot = motInterdit(a.nom);
-    if (mot) return { error: messageMotInterdit(mot) };
-    if (a.prix <= 0) return { error: `Indiquez un prix supérieur à 0.– pour « ${a.nom} ».` };
-  }
+  const erreurArticle = erreurArticles(articles);
+  if (erreurArticle) return { error: erreurArticle };
 
   const edition = await queryOne<{ id: string; taux_achat: number; taux_vendeur: number }>(
     "SELECT id, taux_achat, taux_vendeur FROM editions WHERE phase = 'depot' LIMIT 1",

@@ -137,7 +137,9 @@ export async function envoyerEmailConfirmationListe(params: {
 // physiquement vérifiés à la réception) — distinct de l'email de dépôt
 // (envoyerEmailConfirmationListe), qui confirme juste l'enregistrement de la
 // liste en ligne avant tout contrôle. Redonne le même code/QR (le vendeur
-// n'en a qu'un seul pour toute l'édition) pour venir récupérer les invendus.
+// n'en a qu'un seul pour toute l'édition) pour l'après-vente : surtout venir
+// récupérer l'enveloppe avec la recette de ses ventes, et ses éventuels
+// invendus.
 export async function envoyerEmailReceptionConfirmee(params: {
   destinataire: string;
   nomVendeur: string;
@@ -158,8 +160,8 @@ export async function envoyerEmailReceptionConfirmee(params: {
   // (voir parametres_gestion.date_recuperation_invendus) — pas encore fixée
   // au moment de l'envoi, on prévient sans donner de fausse date.
   const paragrapheRecuperation = params.dateRecuperation
-    ? `<p>Vous pourrez venir récupérer vos éventuels invendus le <strong>${params.dateRecuperation.toLocaleString("fr-CH", { dateStyle: "full", timeStyle: "short" })}</strong>. Présentez ce même code (ou le QR ci-dessous).</p>`
-    : `<p>La date et l'heure pour venir récupérer vos éventuels invendus vous seront communiquées prochainement.</p>`;
+    ? `<p>Rendez-vous le <strong>${params.dateRecuperation.toLocaleString("fr-CH", { dateStyle: "full", timeStyle: "short" })}</strong> pour récupérer votre enveloppe avec la recette de vos ventes, ainsi que vos éventuels invendus. Présentez ce même code (ou le QR ci-dessous).</p>`
+    : `<p>La date et l'heure pour venir récupérer votre enveloppe avec la recette de vos ventes (et vos éventuels invendus) vous seront communiquées prochainement.</p>`;
 
   try {
     await transport.sendMail({

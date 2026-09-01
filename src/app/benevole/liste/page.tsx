@@ -2,8 +2,7 @@ import { redirect } from "next/navigation";
 import { query, queryOne } from "@/lib/db";
 import { benevoleConnecte } from "@/lib/benevole-session";
 import { deconnexionBenevole } from "../actions";
-import { AjouterArticleBenevoleForm } from "./ajouter-article-form";
-import { ArticleEditableRowBenevole } from "./article-editable-row";
+import { BenevoleArticlesEditor } from "./benevole-articles-editor";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +40,11 @@ export default async function BenevoleListePage() {
       )
     : [];
   const total = articles.reduce((sum, a) => sum + a.prix, 0);
+  // Une fois réceptionné (ou vendu/invendu/refusé), seul le staff corrige
+  // encore quelque chose, depuis l'accueil — seuls les articles "non_recu"
+  // passent dans l'éditeur en masse ci-dessous.
+  const articlesVerrouilles = articles.filter((a) => a.statut !== "non_recu");
+  const articlesModifiables = articles.filter((a) => a.statut === "non_recu");
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-12">
@@ -67,34 +71,30 @@ export default async function BenevoleListePage() {
           <h2 className="mt-8 text-lg font-medium">
             {articles.length} article{articles.length > 1 ? "s" : ""} · {total} CHF
           </h2>
-          <ul className="mt-3 divide-y divide-zinc-200">
-            {articles.map((a) => {
-              // Une fois réceptionné (ou vendu/invendu/refusé), seul le
-              // staff corrige encore quelque chose, depuis l'accueil.
-              const modifiable = a.statut === "non_recu";
-              return (
+
+          {articlesVerrouilles.length > 0 && (
+            <ul className="mt-3 divide-y divide-zinc-200">
+              {articlesVerrouilles.map((a) => (
                 <li key={a.id} className="flex items-center gap-3 py-2 text-sm">
                   <span className="w-6 shrink-0 text-zinc-400">
                     {String(a.numero_article).padStart(2, "0")}
                   </span>
-                  {modifiable ? (
-                    <ArticleEditableRowBenevole articleId={a.id} nomInitial={a.nom} prixInitial={a.prix} />
-                  ) : (
-                    <span className="flex-1">
-                      {a.nom} <span className="font-mono text-zinc-500">{a.prix}.–</span>
-                    </span>
-                  )}
+                  <span className="flex-1">
+                    {a.nom} <span className="font-mono text-zinc-500">{a.prix}.–</span>
+                  </span>
                   <span
                     className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_STYLES[a.statut] ?? "bg-zinc-100 text-zinc-600"}`}
                   >
                     {STATUT_LABELS[a.statut] ?? a.statut}
                   </span>
                 </li>
-              );
-            })}
-          </ul>
+              ))}
+            </ul>
+          )}
 
-          <AjouterArticleBenevoleForm />
+          <BenevoleArticlesEditor
+            initialArticles={articlesModifiables.map((a) => ({ nom: a.nom, prix: a.prix }))}
+          />
         </>
       )}
     </main>

@@ -19,6 +19,7 @@ import {
   type Phase,
 } from "./actions";
 import { AutoRefresh } from "./auto-refresh";
+import { ClotureCaisseVideButton } from "./cloture-caisse-vide-button";
 import { ClotureVenteButton } from "./cloture-vente-button";
 import { CodeEditor } from "./code-editor";
 import { DateOuvertureEditor } from "./date-ouverture-editor";
@@ -169,6 +170,18 @@ export default async function DashboardGestionPage() {
   const postesActifs = postesVente.filter((p) => !p.cloturee);
   const postesClotures = postesVente.filter((p) => p.cloturee);
 
+  // Signal fiable d'une clôture déjà lancée : lancerClotureVente est le seul
+  // endroit qui bascule des articles en "invendu" (voir actions.ts) — permet
+  // de proposer un lien permanent vers les étiquettes/PDF sans devoir
+  // relancer la clôture juste pour les revoir.
+  const clotureDejaLancee = edition
+    ? await queryOne<{ id: string }>(
+        `SELECT a.id FROM articles a JOIN participations p ON p.id = a.participation_id
+         WHERE p.edition_id = ? AND a.statut = 'invendu' LIMIT 1`,
+        [edition.id],
+      )
+    : null;
+
   return (
     <RefreshPauseProvider>
     <main className="mx-auto w-full max-w-[1600px] px-6 py-12">
@@ -188,9 +201,6 @@ export default async function DashboardGestionPage() {
           </Link>
           <Link href="/gestion/dashboard/articles" className="text-sm text-zinc-500 hover:underline">
             Articles →
-          </Link>
-          <Link href="/gestion/dashboard/quittances" className="text-sm text-zinc-500 hover:underline">
-            Quittances →
           </Link>
         </div>
       </div>
@@ -245,12 +255,25 @@ export default async function DashboardGestionPage() {
                         ? `${nbControlesManquants} vendeur${nbControlesManquants > 1 ? "s" : ""} sans contrôle. Vous pourrez faire les contrôles manquants plus tard depuis la liste des vendeurs.`
                         : undefined
                     }
+                    bloque={
+                      phase === "post_vente" && postesActifs.length > 0
+                        ? `Impossible de passer en post-vente : ${postesActifs.length} caisse${postesActifs.length > 1 ? "s" : ""} de vente encore ouverte${postesActifs.length > 1 ? "s" : ""} (n° ${postesActifs.map((p) => p.numero).join(", ")}). Clôturez-les d'abord depuis la caisse, ou depuis ce dashboard si elles sont restées à zéro.`
+                        : undefined
+                    }
                   />
                 ))}
               </div>
               {edition.phase === "post_vente" && (
                 <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-zinc-200 pt-4">
                   <ClotureVenteButton />
+                  {clotureDejaLancee && (
+                    <Link
+                      href="/gestion/dashboard/cloture-vente"
+                      className="rounded-md border border-zinc-300 px-4 py-2 text-sm hover:border-zinc-400"
+                    >
+                      Documents de clôture →
+                    </Link>
+                  )}
                   <TerminerEditionButton />
                 </div>
               )}
@@ -326,6 +349,9 @@ export default async function DashboardGestionPage() {
                       <div className="mt-2">
                         <VidageForm caisseId={p.caisse_id} nbArticlesVendus={Number(p.nb_articles_vendus)} />
                       </div>
+                      {ventes === 0 && vidages === 0 && (
+                        <ClotureCaisseVideButton caisseId={p.caisse_id} numero={p.numero} />
+                      )}
                     </>
                   ) : (
                     <p className="mt-2 text-sm text-zinc-400">Pas encore de caisse pour cette édition.</p>

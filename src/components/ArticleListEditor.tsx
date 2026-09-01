@@ -6,6 +6,7 @@ import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
 type ArticleRow = { nom: string; prix: string };
 
 const MAX_ARTICLES = 30;
+const LIGNES_SUPPLEMENTAIRES = 10;
 
 function lignesVides(n: number): ArticleRow[] {
   return Array.from({ length: n }, () => ({ nom: "", prix: "" }));
@@ -36,10 +37,14 @@ export function ArticleListEditor({
   fieldName = "articles",
   initialArticles,
   onValiditeChange,
+  illimite = false,
 }: {
   fieldName?: string;
   initialArticles?: { nom: string; prix: number }[];
   onValiditeChange?: (valide: boolean) => void;
+  // Pas de plafond de 30 (comptes bénévoles 9xx) : les 30 premières lignes
+  // restent affichées d'emblée, mais un bouton permet d'en ajouter au-delà.
+  illimite?: boolean;
 }) {
   // Complète toujours jusqu'à MAX_ARTICLES lignes vides après les articles
   // déjà présents : sur le formulaire de modification, initialArticles ne
@@ -51,8 +56,18 @@ export function ArticleListEditor({
   });
 
   useEffect(() => {
-    const invalide = articles.some(
-      (a) => a.nom.trim().length > 0 && (motInterdit(a.nom) || prixEstInvalide(a.prix) || nomTropCourt(a.nom)),
+    const remplis = articles.filter((a) => a.nom.trim().length > 0);
+    const comptage = new Map<string, number>();
+    for (const a of remplis) {
+      const nom = a.nom.trim().toLowerCase();
+      comptage.set(nom, (comptage.get(nom) ?? 0) + 1);
+    }
+    const invalide = remplis.some(
+      (a) =>
+        motInterdit(a.nom) ||
+        prixEstInvalide(a.prix) ||
+        nomTropCourt(a.nom) ||
+        (comptage.get(a.nom.trim().toLowerCase()) ?? 0) > 1,
     );
     onValiditeChange?.(!invalide);
   }, [articles, onValiditeChange]);
@@ -69,14 +84,17 @@ export function ArticleListEditor({
     setArticles((prev) => prev.map((article, i) => (i === index ? { nom: "", prix: "" } : article)));
   }
 
+  function ajouterLignes() {
+    setArticles((prev) => [...prev, ...lignesVides(LIGNES_SUPPLEMENTAIRES)]);
+  }
+
   const articlesRemplis = articles.filter((a) => a.nom.trim().length > 0);
   const articlesJson = JSON.stringify(
     articlesRemplis.map((a) => ({ nom: a.nom, prix: Number(a.prix) || 0 })),
   );
 
   // Deux articles au même nom (même vendeur) sont indistinguables une fois
-  // étiquetés — juste un avertissement, pas bloquant : ça peut être
-  // volontaire (deux exemplaires identiques d'un même objet).
+  // étiquetés — bloquant, comme les autres erreurs ci-dessous (voir useEffect).
   const comptageNoms = new Map<string, number>();
   for (const a of articlesRemplis) {
     const nom = a.nom.trim().toLowerCase();
@@ -88,7 +106,7 @@ export function ArticleListEditor({
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-medium">Articles</h2>
         <span className="text-sm text-zinc-500">
-          {articlesRemplis.length} / {MAX_ARTICLES}
+          {illimite ? `${articlesRemplis.length} article${articlesRemplis.length > 1 ? "s" : ""}` : `${articlesRemplis.length} / ${MAX_ARTICLES}`}
         </span>
       </div>
 
@@ -112,11 +130,9 @@ export function ArticleListEditor({
                   onChange={(e) => updateArticle(i, "nom", e.target.value)}
                   placeholder="Nom de l'objet"
                   className={
-                    mot || courtInvalide
+                    mot || courtInvalide || nomDuplique
                       ? "flex-1 rounded-md border border-red-400 px-3 py-2"
-                      : nomDuplique
-                        ? "flex-1 rounded-md border border-amber-400 px-3 py-2"
-                        : "flex-1 rounded-md border border-zinc-300 px-3 py-2"
+                      : "flex-1 rounded-md border border-zinc-300 px-3 py-2"
                   }
                 />
                 <input
@@ -155,7 +171,7 @@ export function ArticleListEditor({
                 </p>
               )}
               {!mot && !prixInvalide && !courtInvalide && nomDuplique && (
-                <p className="ml-8 mt-1 text-sm text-amber-700">
+                <p className="ml-8 mt-1 text-sm text-red-600">
                   Vous avez déjà un article « {article.nom.trim()} » dans la liste — si c&apos;est un
                   objet différent, ajoutez un détail pour le distinguer (ex. couleur, taille, édition).
                 </p>
@@ -164,6 +180,16 @@ export function ArticleListEditor({
           );
         })}
       </div>
+
+      {illimite && (
+        <button
+          type="button"
+          onClick={ajouterLignes}
+          className="mt-3 rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:border-zinc-400"
+        >
+          + Ajouter {LIGNES_SUPPLEMENTAIRES} lignes
+        </button>
+      )}
 
       <input type="hidden" name={fieldName} value={articlesJson} />
     </div>

@@ -1,77 +1,46 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { query, queryOne } from "@/lib/db";
-import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
+import type { RowDataPacket } from "mysql2/promise";
+import { nouvelId, queryOne, withTransaction } from "@/lib/db";
 import { benevoleConnecte } from "@/lib/benevole-session";
+import { erreurArticles } from "@/lib/validation-articles";
 
-async function participationActive(vendeurId: string) {
-  return queryOne<{ id: string }>(
-    `SELECT p.id FROM participations p JOIN editions e ON e.id = p.edition_id WHERE p.vendeur_id = ? AND e.active_flag = 1`,
-    [vendeurId],
-  );
-}
+type ArticleInput = { nom: string; prix: number };
 
 // Pas de plafond de 30 articles ici, comme pour les comptes 9xx gérés
-// depuis l'accueil — c'est la même règle, juste en self-service.
-export async function ajouterArticleBenevole(nom: string, prix: number) {
+// depuis l'accueil — c'est la même règle, juste en self-service. Remplace
+// entièrement les articles encore "non_recu" (les seuls modifiables ici) —
+// ceux déjà reçus/vendus/invendus/refusés ne sont jamais touchés.
+export async function enregistrerArticlesBenevole(articles: ArticleInput[]) {
   const session = await benevoleConnecte();
   if (!session) throw new Error("Session expirée, reconnectez-vous.");
 
-  const participation = await participationActive(session.vendeurId);
+  const participation = await queryOne<{ id: string }>(
+    `SELECT p.id FROM participations p JOIN editions e ON e.id = p.edition_id WHERE p.vendeur_id = ? AND e.active_flag = 1`,
+    [session.vendeurId],
+  );
   if (!participation) throw new Error("Aucune édition active pour le moment.");
 
-  const nomTrim = nom.trim();
-  if (!nomTrim) throw new Error("Le nom est obligatoire.");
+  const erreurArticle = erreurArticles(articles);
+  if (erreurArticle) throw new Error(erreurArticle);
 
-  const mot = motInterdit(nomTrim);
-  if (mot) throw new Error(messageMotInterdit(mot));
-
-  const prixArrondi = Math.round(prix);
-  if (!Number.isFinite(prixArrondi) || prixArrondi <= 0) {
-    throw new Error("Le prix doit être supérieur à 0.–.");
-  }
-
-  const dernier = await queryOne<{ suivant: number }>(
-    "SELECT COALESCE(MAX(numero_article), 0) + 1 AS suivant FROM articles WHERE participation_id = ?",
-    [participation.id],
-  );
-
-  await query("INSERT INTO articles (id, participation_id, numero_article, nom, prix) VALUES (UUID(), ?, ?, ?, ?)", [
-    participation.id,
-    dernier?.suivant ?? 1,
-    nomTrim,
-    prixArrondi,
-  ]);
-
-  revalidatePath("/benevole/liste");
-}
-
-export async function modifierArticleBenevole(articleId: string, nom: string, prix: number) {
-  const session = await benevoleConnecte();
-  if (!session) throw new Error("Session expirée, reconnectez-vous.");
-
-  const participation = await participationActive(session.vendeurId);
-  if (!participation) throw new Error("Aucune édition active pour le moment.");
-
-  const nomTrim = nom.trim();
-  if (!nomTrim) throw new Error("Le nom est obligatoire.");
-
-  const mot = motInterdit(nomTrim);
-  if (mot) throw new Error(messageMotInterdit(mot));
-
-  const prixArrondi = Math.round(prix);
-  if (!Number.isFinite(prixArrondi) || prixArrondi <= 0) {
-    throw new Error("Le prix doit être supérieur à 0.–.");
-  }
-
-  // participation_id vérifie que l'article appartient bien au bénévole
-  // connecté, et statut = 'non_recu' qu'il n'a pas déjà été réceptionné —
-  // au-delà, seul le staff corrige depuis l'accueil.
-  await query(
-    "UPDATE articles SET nom = ?, prix = ? WHERE id = ? AND participation_id = ? AND statut = 'non_recu'",
-    [nomTrim, prixArrondi, articleId, participation.id],
-  );
+  await withTransaction(async (conn) => {
+    await conn.query("DELETE FROM articles WHERE participation_id = ? AND statut = 'non_recu'", [
+      participation.id,
+    ]);
+    const [rows] = await conn.query<RowDataPacket[]>(
+      "SELECT COALESCE(MAX(numero_article), 0) + 1 AS suivant FROM articles WHERE participation_id = ?",
+      [participation.id],
+    );
+    let numero = (rows[0]?.suivant as number) ?? 1;
+    for (const a of articles) {
+      await conn.query(
+        "INSERT INTO articles (id, participation_id, numero_article, nom, prix) VALUES (?, ?, ?, ?, ?)",
+        [nouvelId(), participation.id, numero++, a.nom.trim(), Math.round(a.prix)],
+      );
+    }
+  });
 
   revalidatePath("/benevole/liste");
 }

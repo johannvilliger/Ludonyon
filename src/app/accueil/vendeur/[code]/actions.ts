@@ -18,10 +18,11 @@ export async function definirBenevole(code: string, estBenevole: boolean) {
 }
 
 // Envoie un email de confirmation de réception au vendeur, avec son code/QR
-// (le même que celui du dépôt) pour venir récupérer ses invendus — jamais si
-// le statut était déjà "contrôlée" (reclic accidentel) ni s'il n'a pas
-// d'email en base (voir /accueil/nouveau : le téléphone est obligatoire,
-// l'email non).
+// (le même que celui du dépôt) pour l'après-vente : venir récupérer son
+// enveloppe avec la recette de ses ventes, et ses éventuels invendus —
+// jamais si le statut était déjà "contrôlée" (reclic accidentel) ni s'il n'a
+// pas d'email en base (l'email est obligatoire au dépôt depuis peu, mais pas
+// forcément pour un vendeur enregistré avant, ou corrigé depuis l'accueil).
 export async function marquerControlee(code: string) {
   if (!(await accueilEstConnecte())) throw new Error("Non autorisé.");
 

@@ -121,7 +121,65 @@ export type Phase = (typeof PHASES)[number];
 
 export async function changerPhase(nouvellePhase: Phase) {
   if (!PHASES.includes(nouvellePhase)) throw new Error("Phase inconnue.");
+
+  // Doublon volontaire du blocage côté client (bouton "Post-vente", voir
+  // page.tsx) : la vraie protection est ici, pour ne jamais dépendre d'un
+  // caissier qui aurait échappé au JS. Une caisse jamais utilisée peut être
+  // clôturée à zéro depuis le dashboard (voir cloturerCaisseVide) plutôt que
+  // de bloquer indéfiniment le passage en post-vente.
+  if (nouvellePhase === "post_vente") {
+    const ouvertes = await queryOne<{ nb: number }>(
+      `SELECT COUNT(*) AS nb
+       FROM postes_caisse pc
+       JOIN caisses c ON c.poste_caisse_id = pc.id
+       JOIN editions e ON e.id = c.edition_id
+       WHERE e.active_flag = 1 AND pc.type = 'vente' AND c.cloturee = 0`,
+    );
+    if (Number(ouvertes?.nb ?? 0) > 0) {
+      throw new Error("Clôturez d'abord toutes les caisses de vente avant de passer en post-vente.");
+    }
+  }
+
   await query("UPDATE editions SET phase = ? WHERE active_flag = 1", [nouvellePhase]);
+  revalidatePath("/gestion/dashboard");
+}
+
+// Clôture depuis le dashboard une caisse restée à zéro (jamais connectée, ou
+// connectée sans aucune vente ni vidage) — sert à débloquer le passage en
+// post-vente (voir le garde-fou ci-dessus) quand un poste n'a simplement pas
+// été utilisé pendant l'édition. Toute caisse ayant eu du mouvement doit
+// être clôturée depuis son propre poste (voir cloturerCaisse, identique en
+// substance mais réservée au caissier lui-même).
+export async function cloturerCaisseVide(caisseId: string) {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+
+  const caisse = await queryOne<{ poste_caisse_id: string | null; fond_initial: number | null; cloturee: number }>(
+    "SELECT poste_caisse_id, fond_initial, cloturee FROM caisses WHERE id = ?",
+    [caisseId],
+  );
+  if (!caisse) throw new Error("Caisse introuvable.");
+  if (caisse.cloturee) return;
+
+  const activite = await queryOne<{ ventes: number; vidages: number }>(
+    `SELECT
+       COALESCE((SELECT SUM(va.prix_encaisse) FROM vente_articles va JOIN ventes v ON v.id = va.vente_id WHERE v.caisse_id = ?), 0) AS ventes,
+       COALESCE((SELECT SUM(mc.montant) FROM mouvements_caisse mc WHERE mc.caisse_id = ?), 0) AS vidages`,
+    [caisseId, caisseId],
+  );
+  if (Number(activite?.ventes ?? 0) !== 0 || Number(activite?.vidages ?? 0) !== 0) {
+    throw new Error("Cette caisse a eu du mouvement — elle doit être clôturée depuis son propre poste.");
+  }
+
+  await query("UPDATE caisses SET cloturee = 1, montant_cloture = ? WHERE id = ?", [
+    arrondiCentimes(caisse.fond_initial ?? 0),
+    caisseId,
+  ]);
+  if (caisse.poste_caisse_id) {
+    await query("UPDATE postes_caisse SET connecte = 0, session_token = NULL, demande_en_attente = 0 WHERE id = ?", [
+      caisse.poste_caisse_id,
+    ]);
+  }
+
   revalidatePath("/gestion/dashboard");
 }
 

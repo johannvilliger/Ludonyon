@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { nouvelId, queryOne, withTransaction } from "@/lib/db";
-import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
+import { erreurArticles } from "@/lib/validation-articles";
 
 export type FormState = { error: string | null; success?: boolean };
 
@@ -30,12 +30,8 @@ export async function modifierListeVendeur(
   if (articles.length === 0) return { error: "Ajoutez au moins un article." };
   if (articles.length > 30) return { error: "30 articles maximum par liste." };
 
-  for (const a of articles) {
-    if (a.nom.length < 3) return { error: `Le nom « ${a.nom} » doit contenir au moins 3 caractères.` };
-    const mot = motInterdit(a.nom);
-    if (mot) return { error: messageMotInterdit(mot) };
-    if (a.prix <= 0) return { error: `Indiquez un prix supérieur à 0.– pour « ${a.nom} ».` };
-  }
+  const erreurArticle = erreurArticles(articles);
+  if (erreurArticle) return { error: erreurArticle };
 
   const participation = await queryOne<{ id: string; phase: string }>(
     `SELECT p.id, e.phase
