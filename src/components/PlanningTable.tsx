@@ -34,13 +34,16 @@ function roleLabel(fonction: string | null, poste: string | null): string | null
 // SEAT_REQUIREMENTS dans autoSchedule.ts) au moment de l'assignation
 // manuelle : un·e responsable/comité est toujours proposé·e, quel que
 // soit son poste (souvent non renseigné) ; sinon la hiérarchie des
-// postes s'applique (canCoverPoste) — sauf à Gland, où la place reste
-// strictement réservée au/à la responsable, sans repli bénévole.
+// postes s'applique (canCoverPoste). Pour un siège "responsable" — y
+// compris à Gland — un·e bénévole de niveau Sortie est toujours
+// proposé·e en repli manuel (utile p. ex. pendant l'absence prolongée
+// d'une responsable) : contrairement à la répartition automatique
+// (SEAT_REQUIREMENTS), Gland n'est pas restreint ici.
 function isEligibleForSeat(seat: SeatSpec, user: ActiveUser): boolean {
   if (user.role === "RESPONSABLE" || user.role === "COMITE") return true;
   if (seat.kind === "open") return true;
   if (seat.kind === "responsable") {
-    return !!seat.allowBenevoleFallback && user.poste === "SORTIE";
+    return user.poste === "SORTIE";
   }
   return !!user.poste && isValidPoste(user.poste) && canCoverPoste(user.poste, seat.posteRequired!);
 }
