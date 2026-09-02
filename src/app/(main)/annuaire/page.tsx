@@ -44,11 +44,13 @@ export default async function AnnuairePage() {
                     {ROLE_LABELS[u.role as Role] ?? u.role}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-stone-600">
-                  <a href={`mailto:${u.email}`} className="hover:underline">
-                    {u.email}
-                  </a>
-                </p>
+                {u.email && (
+                  <p className="mt-1 text-sm text-stone-600">
+                    <a href={`mailto:${u.email}`} className="hover:underline">
+                      {u.email}
+                    </a>
+                  </p>
+                )}
                 {u.phone && <p className="text-sm text-stone-600">{u.phone}</p>}
                 {u.skills && (
                   <p className="mt-2 text-sm text-stone-500">{u.skills}</p>

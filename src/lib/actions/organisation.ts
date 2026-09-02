@@ -647,14 +647,25 @@ export async function addManualTime(formData: FormData) {
 
 // ---------- Bénévoles ----------
 
-const volunteerSchema = z.object({
-  name: z.string().trim().min(1, "Le nom est requis").max(200),
-  email: z.string().trim().toLowerCase().email("Email invalide"),
-  phone: z.string().trim().max(50).optional(),
-  skills: z.string().trim().max(1000).optional(),
-  role: z.enum(ROLES),
-  password: z.string().min(8, "8 caractères minimum"),
-});
+// Email et mot de passe facultatifs : un·e bénévole peut être ajouté·e
+// juste pour figurer dans les plannings, sans compte de connexion. Un mot
+// de passe reste requis si un email est renseigné (le compte doit alors
+// pouvoir se connecter).
+const volunteerSchema = z
+  .object({
+    name: z.string().trim().min(1, "Le nom est requis").max(200),
+    email: z
+      .union([z.string().trim().toLowerCase().email("Email invalide"), z.literal("")])
+      .optional(),
+    phone: z.string().trim().max(50).optional(),
+    skills: z.string().trim().max(1000).optional(),
+    role: z.enum(ROLES),
+    password: z.union([z.string().min(8, "8 caractères minimum"), z.literal("")]).optional(),
+  })
+  .refine((data) => !data.email || data.password, {
+    message: "Mot de passe requis (8 caractères minimum) si un email est renseigné",
+    path: ["password"],
+  });
 
 export async function createVolunteer(formData: FormData) {
   await requireOrganisationUser();
@@ -671,19 +682,21 @@ export async function createVolunteer(formData: FormData) {
     throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
   }
 
-  const existing = await prisma.user.findUnique({
-    where: { email: parsed.data.email },
-  });
-  if (existing) {
-    throw new Error("Un compte existe déjà avec cet email");
+  const email = parsed.data.email || null;
+
+  if (email) {
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new Error("Un compte existe déjà avec cet email");
+    }
   }
 
-  const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+  const passwordHash = email ? await bcrypt.hash(parsed.data.password!, 10) : null;
 
   await prisma.user.create({
     data: {
       name: parsed.data.name,
-      email: parsed.data.email,
+      email,
       phone: parsed.data.phone ?? null,
       skills: parsed.data.skills ?? null,
       role: parsed.data.role,
@@ -691,9 +704,9 @@ export async function createVolunteer(formData: FormData) {
     },
   });
 
-  if (mailConfigured()) {
+  if (email && mailConfigured()) {
     try {
-      await sendWelcomeEmail(parsed.data.name, parsed.data.email, parsed.data.password);
+      await sendWelcomeEmail(parsed.data.name, email, parsed.data.password!);
     } catch (err) {
       // La création du compte ne doit pas échouer si l'email ne part pas :
       // les identifiants restent transmissibles manuellement.
@@ -757,14 +770,19 @@ export async function sendWelcomeEmail(
 const volunteerContactInfoSchema = z.object({
   id: z.string().min(1),
   name: z.string().trim().min(1, "Le nom est requis").max(200),
-  email: z.string().trim().toLowerCase().email("Email invalide"),
+  email: z
+    .union([z.string().trim().toLowerCase().email("Email invalide"), z.literal("")])
+    .optional(),
   phone: z.string().trim().max(50).optional(),
 });
 
 // Édition du nom, téléphone et email d'un·e bénévole — séparée de
 // updateVolunteerProfile (rôle/poste/disponibilités/habits) pour rester un
 // petit formulaire autonome ("✏️ Éditer" replié par défaut sur la fiche),
-// utilisable même sur son propre compte.
+// utilisable même sur son propre compte. Email facultatif : un compte
+// ajouté sans email (juste pour les plannings) peut le rester, ou en
+// recevoir un pour devenir un compte de connexion (utiliser ensuite
+// "Réinitialiser le mot de passe" pour lui donner un accès).
 export async function updateVolunteerContactInfo(formData: FormData) {
   await requireOrganisationUser();
 
@@ -777,13 +795,16 @@ export async function updateVolunteerContactInfo(formData: FormData) {
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Champs invalides");
   }
-  const { id, name, email, phone } = parsed.data;
+  const { id, name, phone } = parsed.data;
+  const email = parsed.data.email || null;
 
-  const existing = await prisma.user.findFirst({
-    where: { email, NOT: { id } },
-  });
-  if (existing) {
-    throw new Error("Un compte existe déjà avec cet email");
+  if (email) {
+    const existing = await prisma.user.findFirst({
+      where: { email, NOT: { id } },
+    });
+    if (existing) {
+      throw new Error("Un compte existe déjà avec cet email");
+    }
   }
 
   await prisma.user.update({

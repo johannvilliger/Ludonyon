@@ -155,7 +155,7 @@ async function applyRow(
 
   if (sendEmails && mailConfigured()) {
     try {
-      await sendWelcomeEmail(created.name, created.email, password);
+      await sendWelcomeEmail(created.name, row.email, password);
       return "emailSent";
     } catch (err) {
       console.error("Échec de l'envoi de l'email de bienvenue (import groupé) :", err);

@@ -27,7 +27,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const user = await prisma.user.findUnique({
           where: { email: email.toLowerCase().trim() },
         });
-        if (!user || !user.active) return null;
+        // passwordHash absent : bénévole ajouté·e sans compte de connexion
+        // (juste pour figurer dans les plannings) — voir createVolunteer.
+        if (!user || !user.active || !user.passwordHash) return null;
 
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) return null;

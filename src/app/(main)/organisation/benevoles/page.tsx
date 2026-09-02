@@ -68,6 +68,9 @@ export default async function OrganisationBenevolesPage({
           {mailConfigured()
             ? "Un email avec les identifiants sera envoyé automatiquement à la personne."
             : "Serveur d'envoi d'emails non configuré (voir Paramètres) : communiquez les identifiants manuellement."}
+          {" "}Email et mot de passe facultatifs : laissez-les vides pour
+          ajouter un nom qui ne figure que dans les plannings, sans compte
+          de connexion.
         </p>
         <form
           action={createVolunteer}
@@ -87,12 +90,11 @@ export default async function OrganisationBenevolesPage({
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700">
-              Email
+              Email <span className="font-normal text-stone-400">(facultatif)</span>
             </label>
             <input
               type="email"
               name="email"
-              required
               className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
             />
           </div>
@@ -137,12 +139,14 @@ export default async function OrganisationBenevolesPage({
           </div>
           <div className="sm:col-span-2">
             <label className="mb-1 block text-sm font-medium text-stone-700">
-              Mot de passe provisoire
+              Mot de passe provisoire{" "}
+              <span className="font-normal text-stone-400">
+                (facultatif si aucun email — requis sinon)
+              </span>
             </label>
             <input
               type="text"
               name="password"
-              required
               minLength={8}
               placeholder="À transmettre au/à la bénévole, à changer ensuite"
               className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
@@ -153,7 +157,7 @@ export default async function OrganisationBenevolesPage({
               type="submit"
               className="rounded-lg border-2 border-black bg-brand-yellow px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand-yellow-dark"
             >
-              Créer le compte
+              Ajouter
             </button>
           </div>
         </form>
@@ -204,7 +208,13 @@ export default async function OrganisationBenevolesPage({
                     <Avatar name={u.name} photoPath={u.photoPath} />
                     <div>
                       <p className="font-medium text-stone-900">{u.name}</p>
-                      <p className="text-sm text-stone-600">{u.email}</p>
+                      {u.email ? (
+                        <p className="text-sm text-stone-600">{u.email}</p>
+                      ) : (
+                        <p className="text-sm italic text-stone-400">
+                          Sans compte de connexion (planning uniquement)
+                        </p>
+                      )}
                       {u.phone && <p className="text-sm text-stone-600">📞 {u.phone}</p>}
                       <span
                         className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs ${
@@ -250,13 +260,12 @@ export default async function OrganisationBenevolesPage({
                           </div>
                           <div>
                             <label className="mb-0.5 block text-xs font-medium text-stone-600">
-                              Email
+                              Email <span className="font-normal text-stone-400">(facultatif)</span>
                             </label>
                             <input
                               type="email"
                               name="email"
-                              defaultValue={u.email}
-                              required
+                              defaultValue={u.email ?? ""}
                               className="w-full rounded-lg border border-stone-300 px-2 py-1 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
                             />
                           </div>

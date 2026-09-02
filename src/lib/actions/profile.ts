@@ -40,6 +40,9 @@ export async function changePassword(
   const dbUser = await prisma.user.findUniqueOrThrow({
     where: { id: authUser.id },
   });
+  if (!dbUser.passwordHash) {
+    return { error: "Ce compte n'a pas de mot de passe" };
+  }
 
   const valid = await bcrypt.compare(
     parsed.data.currentPassword,

@@ -4,7 +4,7 @@ function escapeVCard(value: string): string {
 
 export function buildVCard(user: {
   name: string;
-  email: string;
+  email: string | null;
   phone: string | null;
 }): string {
   const lines = [
@@ -12,8 +12,10 @@ export function buildVCard(user: {
     "VERSION:3.0",
     `FN:${escapeVCard(user.name)}`,
     `N:${escapeVCard(user.name)};;;;`,
-    `EMAIL;TYPE=INTERNET:${escapeVCard(user.email)}`,
   ];
+  if (user.email) {
+    lines.push(`EMAIL;TYPE=INTERNET:${escapeVCard(user.email)}`);
+  }
   if (user.phone) {
     lines.push(`TEL;TYPE=CELL:${escapeVCard(user.phone)}`);
   }

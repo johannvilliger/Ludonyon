@@ -15,8 +15,11 @@ datasource db {
 model User {
   id                     String   @id @default(cuid())
   name                   String
-  email                  String   @unique
-  passwordHash           String
+  // Facultatif : un·e bénévole ajouté·e juste pour figurer dans les
+  // plannings (sans compte de connexion) n'a ni email ni mot de passe —
+  // voir createVolunteer dans actions/organisation.ts.
+  email                  String?  @unique
+  passwordHash           String?
   role                   String   @default("BENEVOLE")
   active                 Boolean  @default(true)
   phone                  String?

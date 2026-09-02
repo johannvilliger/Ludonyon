@@ -44,7 +44,7 @@ export async function GET(
     );
     rows.push([
       signup.user.name,
-      signup.user.email,
+      signup.user.email ?? "",
       isPresent ? "Présent" : "Absent",
       String(signup.attendanceSessions.length),
       Math.round(totalMinutes).toString(),
