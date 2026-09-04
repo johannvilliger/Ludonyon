@@ -120,7 +120,7 @@ export default async function AutoPlanningPage({
       <section>
         <ul className="space-y-3">
           {shifts.map((shift) => {
-            const slot = findSlotDef(shift.site, shift.periode);
+            const slot = findSlotDef(shift.date, shift.site, shift.periode);
             const alert = shift.missingResponsable || shift.understaffed;
             const availableUsers = activeUsers.filter(
               (u) => !shift.assignees.some((a) => a.userId === u.id)

@@ -100,21 +100,23 @@ export function formatHoursRange(start: string, end: string): string {
   return `${formatHourLabel(start)}–${formatHourLabel(end)}`;
 }
 
-export function findSlotDef(site: Site, periode: Periode): SlotDef | undefined {
-  for (const column of PLANNING_COLUMNS) {
-    const slot = column.slots.find((s) => s.site === site && s.periode === periode);
-    if (slot) return slot;
-  }
-  return undefined;
+// Colonne de la grille (jour de semaine) correspondant à une date donnée —
+// lundi = offset 0, ... dimanche = offset 6, comme dans PLANNING_COLUMNS.
+// Le jour LOCAL de `date` fait foi (cohérent avec dateKey ci-dessous et le
+// TZ serveur Europe/Zurich).
+function findColumnForDate(date: Date): ColumnDef | undefined {
+  const mondayBasedOffset = (date.getDay() + 6) % 7;
+  return PLANNING_COLUMNS.find((c) => c.offset === mondayBasedOffset);
 }
 
-function findColumnKeyFor(site: Site, periode: Periode): string | undefined {
-  for (const column of PLANNING_COLUMNS) {
-    if (column.slots.some((s) => s.site === site && s.periode === periode)) {
-      return column.key;
-    }
-  }
-  return undefined;
+// Créneau exact (horaires) d'un site/période à une DATE précise — la date
+// est indispensable pour lever l'ambiguïté : plusieurs jours de la
+// semaine partagent la même valeur de `periode` pour Nyon (mardi,
+// vendredi, samedi ont tous "JOURNEE" mais des horaires différents), donc
+// (site, periode) seul ne permet pas de retrouver le bon créneau.
+export function findSlotDef(date: Date, site: Site, periode: Periode): SlotDef | undefined {
+  const column = findColumnForDate(date);
+  return column?.slots.find((s) => s.site === site && s.periode === periode);
 }
 
 // Clé stable identifiant un créneau de la grille (groupe de jour + site),
@@ -124,9 +126,14 @@ export function slotKey(groupKey: string, site: Site): string {
   return `${groupKey}:${site}`;
 }
 
-export function shiftSlotKey(site: Site, periode: Periode): string | null {
-  const groupKey = findColumnKeyFor(site, periode);
-  return groupKey ? slotKey(groupKey, site) : null;
+// Reconstruit la clé de disponibilité d'un OpeningShift existant à partir
+// de sa date/site/période — voir la note sur l'ambiguïté de `periode` dans
+// findSlotDef ci-dessus, qui s'applique de la même façon ici.
+export function shiftSlotKey(date: Date, site: Site, periode: Periode): string | null {
+  const column = findColumnForDate(date);
+  if (!column) return null;
+  const hasSlot = column.slots.some((s) => s.site === site && s.periode === periode);
+  return hasSlot ? slotKey(column.key, site) : null;
 }
 
 export interface AvailabilityOption {
@@ -161,7 +168,7 @@ export function getShiftDateTimeRange(
   site: Site,
   periode: Periode
 ): { start: Date; end: Date } | null {
-  const slot = findSlotDef(site, periode);
+  const slot = findSlotDef(date, site, periode);
   if (!slot) return null;
   const [startH, startM] = slot.start.split(":").map(Number);
   const [endH, endM] = slot.end.split(":").map(Number);

@@ -94,7 +94,7 @@ export default async function HomePage() {
             {myShifts.map((a) => {
               const site = a.shift.site as Site;
               const periode = a.shift.periode as Periode;
-              const slot = findSlotDef(site, periode);
+              const slot = findSlotDef(a.shift.date, site, periode);
               return (
                 <li
                   key={a.id}

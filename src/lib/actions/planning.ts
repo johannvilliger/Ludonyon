@@ -149,7 +149,7 @@ export async function requestReplacement(formData: FormData) {
   if (sendNotification) {
     const site = assignee.shift.site as Site;
     const periode = assignee.shift.periode as Periode;
-    const key = shiftSlotKey(site, periode);
+    const key = shiftSlotKey(assignee.shift.date, site, periode);
     if (key) {
       const requester = await prisma.user.findUniqueOrThrow({
         where: { id: user.id },

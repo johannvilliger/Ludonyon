@@ -97,7 +97,7 @@ export async function checkAndSendReplacementProblemAlerts() {
     const lines = atRisk.map((assignee) => {
       const site = assignee.shift.site as Site;
       const periode = assignee.shift.periode as Periode;
-      const slot = findSlotDef(site, periode);
+      const slot = findSlotDef(assignee.shift.date, site, periode);
       const hours = slot ? ` (${formatHoursRange(slot.start, slot.end)})` : "";
       return `${formatDayLabel(assignee.shift.date)} à ${SITE_LABELS[site]}${hours} — ${assignee.user.name}`;
     });
@@ -154,7 +154,7 @@ export async function checkAndSendOpeningShiftReminders() {
 
     const site = shift.site as Site;
     const periode = shift.periode as Periode;
-    const slot = findSlotDef(site, periode);
+    const slot = findSlotDef(shift.date, site, periode);
     if (!slot) continue;
 
     const title = "Rappel ouverture";
