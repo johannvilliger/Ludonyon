@@ -20,7 +20,13 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(data.title || "Ludonyon", {
       body: data.body || "",
       icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
+      // Contrairement à icon (couleur, affiché en grand), badge doit être
+      // un vrai monochrome à fond transparent : Android en extrait un
+      // masque pour l'icône réduite de la barre de statut/notification.
+      // Les icônes app existantes ont toutes un fond blanc opaque (pas de
+      // transparence), donc Android les rejetait et affichait à la place
+      // un avatar généré (cercle gris avec l'initiale du site).
+      badge: "/icons/badge-192.png",
       data: { url: data.url || "/" },
     })
   );
