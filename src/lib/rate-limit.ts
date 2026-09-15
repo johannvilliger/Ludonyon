@@ -1,5 +1,6 @@
 import "server-only";
 import { headers } from "next/headers";
+import { nouvelId, query } from "./db";
 import { envoyerAlerteBruteForce } from "./email";
 
 const FENETRE_MS = 60_000; // 1 minute
@@ -61,6 +62,13 @@ export async function enregistrerEchec(cle: string, ip: string, formulaire: stri
     etats.set(cle, etat);
     envoyerAlerteBruteForce({ ip, formulaire, dureeMinutes: duree / 60_000 }).catch((err) =>
       console.error("Échec de l'envoi de l'alerte brute-force :", err),
+    );
+    // Historique persistant (voir /secu) : le blocage lui-même reste en
+    // mémoire (etats ci-dessus, volontairement non partagé entre process),
+    // mais chaque déclenchement doit rester consultable même après un
+    // redémarrage — un raté ici ne doit jamais empêcher le blocage réel.
+    query("INSERT INTO blocages_ip (id, ip, formulaire) VALUES (?, ?, ?)", [nouvelId(), ip, formulaire]).catch(
+      (err) => console.error("Échec de l'enregistrement du blocage IP :", err),
     );
     return;
   }

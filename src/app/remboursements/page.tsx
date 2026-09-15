@@ -31,11 +31,12 @@ export default async function RemboursementsPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-12">
-      <h1 className="text-3xl font-semibold tracking-tight">Remboursements</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">SàV</h1>
       <p className="mt-2 text-sm text-zinc-600">
         Un acheteur ramène un article ? Recherchez sa vente ci-dessous et remboursez-la. L&apos;article redevient
         vendable, et la vente est retirée des bilans — sans jamais toucher aux comptes de la caisse qui l&apos;a
-        encaissée à l&apos;origine.
+        encaissée à l&apos;origine. Vous pouvez aussi, sans rembourser, renvoyer une quittance par email pour
+        n&apos;importe quelle vente retrouvée ici.
       </p>
 
       {!caisse && <p className="mt-6 text-sm text-red-600">Aucune édition active pour le moment.</p>}

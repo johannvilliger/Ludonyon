@@ -3,7 +3,6 @@ import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
 import { arrondiCentimes, formaterMontant } from "@/lib/argent";
 import { dashboardEstConnecte } from "@/lib/gestion";
-import { PRIX_ARTICLES_TEST } from "@/lib/test-data";
 import {
   basculerVerrouillageSite,
   changerPhase,
@@ -25,11 +24,9 @@ import { CodeEditor } from "./code-editor";
 import { DateOuvertureEditor } from "./date-ouverture-editor";
 import { EditionForm } from "./edition-form";
 import { EditionPanel } from "./edition-panel";
-import { Import2025Button } from "./import-2025-button";
 import { PhaseButton } from "./phase-button";
 import { RefreshPauseProvider } from "./refresh-pause-context";
 import { ReouvrirCaisseButton } from "./reouvrir-caisse-button";
-import { ResetTestDataButton } from "./reset-test-data-button";
 import { SauvegardeButton } from "./sauvegarde-button";
 import { SupprimerEditionButton } from "./supprimer-edition-button";
 import { TerminerEditionButton } from "./terminer-edition-button";
@@ -95,8 +92,6 @@ export default async function DashboardGestionPage() {
   const parametres = await queryOne<Parametres>(
     "SELECT code_dashboard, code_accueil, mode_verrouillage, date_ouverture_troc, date_recuperation_invendus, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
   );
-  const edition2025 = await queryOne<{ id: string }>("SELECT id FROM editions WHERE annee = 2025");
-
   const postes = await query<PosteLigne>(
     `SELECT
        pc.id AS poste_id,
@@ -404,15 +399,16 @@ export default async function DashboardGestionPage() {
         </section>
       )}
 
-      {/* Poste de remboursement : à part de la grille des caisses de vente,
-          car ses chiffres (argent qui SORT plutôt qu'entre) n'ont pas le
-          même sens — voir theoriqueCaisseRemboursement. */}
+      {/* Poste SàV (service après-vente) : remboursements + quittances par
+          recherche, à part de la grille des caisses de vente, car ses
+          chiffres (argent qui SORT plutôt qu'entre) n'ont pas le même sens —
+          voir theoriqueCaisseRemboursement. */}
       {edition && posteRemboursement && (
         <section className="mt-8">
-          <h2 className="text-lg font-medium">Poste de remboursement</h2>
+          <h2 className="text-lg font-medium">Poste SàV</h2>
           <div className="mt-3 max-w-xs rounded-lg border border-zinc-200 bg-white p-4">
             <div className="flex items-center justify-between">
-              <span className="text-lg font-semibold">Remboursements</span>
+              <span className="text-lg font-semibold">SàV</span>
               {posteRemboursement.caisse_id && Boolean(posteRemboursement.cloturee) && (
                 <ReouvrirCaisseButton
                   caisseId={posteRemboursement.caisse_id}
@@ -509,7 +505,7 @@ export default async function DashboardGestionPage() {
             postes.map((p) => (
               <CodeEditor
                 key={p.poste_id}
-                label={p.type === "remboursement" ? "Remboursements" : `Caisse ${p.numero}`}
+                label={p.type === "remboursement" ? "SàV" : `Caisse ${p.numero}`}
                 valeurInitiale={p.code_acces}
                 onSave={modifierCodeCaisse.bind(null, p.poste_id)}
               />
@@ -551,62 +547,6 @@ export default async function DashboardGestionPage() {
         </div>
       </section>
 
-      {/* Import démo 2025 : indépendant de l'édition active, se fait une
-          seule fois — bouton retiré dès que l'édition 2025 existe. */}
-      {!edition2025 && (
-        <section className="mt-8 rounded-md border border-blue-200 bg-blue-50/40 p-4">
-          <h2 className="text-lg font-medium text-blue-900">Import démo — édition 2025</h2>
-          <p className="mt-1 text-xs text-blue-800">
-            Importe les données du cahier vendeur papier 2025 (156 vendeurs) comme édition terminée, pour
-            tester les bilans et impressions sans attendre le prochain vrai troc.
-          </p>
-          <div className="mt-3">
-            <Import2025Button />
-          </div>
-        </section>
-      )}
-
-      {/* Zone de test : à retirer avant le vrai troc */}
-      {edition && (
-        <section className="mt-8 rounded-md border border-red-200 bg-red-50/40 p-4">
-          <h2 className="text-lg font-medium text-red-800">Zone de test</h2>
-          <p className="mt-1 text-xs text-red-700">
-            À utiliser uniquement pendant les essais — efface toutes les données de l&apos;édition active.
-          </p>
-          <div className="mt-3">
-            <ResetTestDataButton />
-          </div>
-          <p className="mt-4 text-sm font-medium text-zinc-700">
-            Codes de scan générés (vendeur-article-prix) :
-          </p>
-          <div className="mt-2 overflow-x-auto">
-            <table className="text-xs">
-              <thead>
-                <tr>
-                  <th className="pr-3 text-left font-medium text-zinc-500">Vendeur</th>
-                  {PRIX_ARTICLES_TEST.map((_, i) => (
-                    <th key={i} className="px-2 text-left font-medium text-zinc-500">
-                      Art. {String(i + 1).padStart(2, "0")}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {Array.from({ length: 10 }, (_, vi) => vi + 1).map((numeroVendeur) => (
-                  <tr key={numeroVendeur} className="border-t border-red-100">
-                    <td className="pr-3 py-1 font-medium">#{numeroVendeur}</td>
-                    {PRIX_ARTICLES_TEST.map((prix, ai) => (
-                      <td key={ai} className="px-2 py-1 font-mono">
-                        {numeroVendeur}-{String(ai + 1).padStart(2, "0")}-{prix}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
         </div>
 
         {/* Sidebar : demandes de connexion + caisses connectées */}
@@ -621,7 +561,7 @@ export default async function DashboardGestionPage() {
                     className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3"
                   >
                     <p className="text-sm font-medium">
-                      {p.type === "remboursement" ? "Remboursements" : `Caisse ${p.numero}`} veut se connecter
+                      {p.type === "remboursement" ? "SàV" : `Caisse ${p.numero}`} veut se connecter
                     </p>
                     <div className="mt-2 flex gap-2">
                       <form action={validerConnexionCaisse.bind(null, p.poste_id)}>
@@ -654,7 +594,7 @@ export default async function DashboardGestionPage() {
                 {connectees.map((p) => (
                   <li key={p.poste_id} className="rounded-md border border-zinc-200 px-4 py-3">
                     <p className="text-sm font-medium">
-                      {p.type === "remboursement" ? "Remboursements" : `Caisse ${p.numero}`}
+                      {p.type === "remboursement" ? "SàV" : `Caisse ${p.numero}`}
                     </p>
                     <form action={deconnecterCaisse.bind(null, p.poste_id)}>
                       <button

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CameraScanner } from "@/app/caisse/[numero]/camera-scanner";
 import { formaterMontant } from "@/lib/argent";
 import {
+  envoyerQuittancePourVente,
   rechercherVentesPourRemboursement,
   rembourserArticles,
   type LigneRemboursable,
@@ -12,6 +13,65 @@ import {
 
 function formaterHeure(iso: string): string {
   return new Date(iso.replace(" ", "T")).toLocaleString("fr-CH");
+}
+
+// Envoi de quittance ligne par ligne (indépendant de la sélection multiple
+// utilisée pour le remboursement) : la quittance porte sur toute la
+// transaction de cette ligne (retrouvée côté serveur), pas seulement sur
+// l'article affiché ici.
+function EnvoyerQuittanceLigne({ venteArticleId }: { venteArticleId: string }) {
+  const [ouvert, setOuvert] = useState(false);
+  const [email, setEmail] = useState("");
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [envoyee, setEnvoyee] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  if (envoyee) {
+    return <span className="text-xs font-medium text-emerald-700">Quittance envoyée ✓</span>;
+  }
+
+  if (!ouvert) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOuvert(true)}
+        className="shrink-0 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-zinc-400"
+      >
+        Envoyer une quittance
+      </button>
+    );
+  }
+
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="email@exemple.ch"
+        className="w-40 rounded-md border border-zinc-300 px-2 py-1 text-xs"
+      />
+      <button
+        type="button"
+        disabled={pending || !email.trim()}
+        onClick={() => {
+          setErreur(null);
+          startTransition(async () => {
+            const resultat = await envoyerQuittancePourVente(venteArticleId, email);
+            if (!resultat.ok) {
+              setErreur(resultat.error);
+              return;
+            }
+            setEnvoyee(true);
+          });
+        }}
+        className="rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+      >
+        {pending ? "…" : "Envoyer"}
+      </button>
+      {erreur && <span className="text-xs text-red-600">{erreur}</span>}
+    </span>
+  );
 }
 
 // navigator.userAgent est statique le temps de la session : pas besoin de
@@ -211,7 +271,7 @@ export function RechercheRemboursement({ caisseId, editionId }: { caisseId: stri
           ) : (
             <ul className="divide-y divide-zinc-200 rounded-md border border-zinc-200">
               {resultats.map((l) => (
-                <li key={l.venteArticleId} className="flex items-center gap-3 px-3 py-2 text-sm">
+                <li key={l.venteArticleId} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm">
                   <input
                     type="checkbox"
                     checked={selection.has(l.venteArticleId)}
@@ -226,6 +286,7 @@ export function RechercheRemboursement({ caisseId, editionId }: { caisseId: stri
                     </span>
                   </span>
                   <span className="font-medium">{formaterMontant(l.prixEncaisse)}</span>
+                  <EnvoyerQuittanceLigne venteArticleId={l.venteArticleId} />
                 </li>
               ))}
             </ul>

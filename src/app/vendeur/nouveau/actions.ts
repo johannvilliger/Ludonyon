@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { assignerNumeroVendeur, nouveauCode, nouvelId, queryOne, withTransaction } from "@/lib/db";
-import { envoyerEmailConfirmationListe } from "@/lib/email";
+import { envoyerCopieListeAdmin, envoyerEmailConfirmationListe } from "@/lib/email";
 import { emailValide } from "@/lib/email-format";
 import { formaterTelephone, telephoneValide } from "@/lib/telephone";
 import { urlAbsolue } from "@/lib/url";
@@ -105,6 +105,16 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
     lienModifier: await urlAbsolue(`/vendeur/modifier/${codeConfirmation}`),
     tauxAchat: Number(edition.taux_achat),
     tauxVendeur: Number(edition.taux_vendeur),
+  });
+
+  await envoyerCopieListeAdmin({
+    nomVendeur: nom,
+    numeroVendeur: numeroVendeurAttribue,
+    telephone,
+    email,
+    codeConfirmation,
+    modification: false,
+    articles,
   });
 
   redirect(`/vendeur/confirmation/${codeConfirmation}`);

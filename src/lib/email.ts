@@ -193,6 +193,69 @@ export async function envoyerEmailReceptionConfirmee(params: {
   }
 }
 
+// Copie de sauvegarde envoyée à l'admin à chaque dépôt/modification de liste
+// vendeur (voir vendeur/nouveau et vendeur/modifier/[code]) : permet de
+// réinsérer une liste à la main en cas de bug ou d'imprévu sur le site, sans
+// dépendre uniquement de ce qui est (ou n'est plus) en base.
+export async function envoyerCopieListeAdmin(params: {
+  nomVendeur: string;
+  numeroVendeur: number;
+  telephone: string;
+  email: string;
+  codeConfirmation: string;
+  modification: boolean;
+  articles: { nom: string; prix: number }[];
+}): Promise<void> {
+  const transport = getTransporteur();
+  if (!transport) {
+    console.warn("SMTP non configuré (voir .env.local.example) — copie admin de la liste non envoyée.");
+    return;
+  }
+
+  const lignes = params.articles
+    .map(
+      (a, i) =>
+        `<tr>
+           <td style="padding: 4px 8px; border-bottom: 1px solid #eee;">${i + 1}</td>
+           <td style="padding: 4px 8px; border-bottom: 1px solid #eee;">${echapperHtml(a.nom)}</td>
+           <td style="padding: 4px 8px; border-bottom: 1px solid #eee; text-align: right;">${formaterMontant(a.prix)}</td>
+         </tr>`,
+    )
+    .join("");
+
+  try {
+    await transport.sendMail({
+      from: {
+        name: "Troc - Ludothèque Nyon Région",
+        address: process.env.SMTP_FROM || process.env.SMTP_USER || "",
+      },
+      to: EMAIL_ADMIN,
+      subject: `Copie liste ${params.modification ? "modifiée" : "déposée"} — vendeur n° ${params.numeroVendeur}`,
+      html: `
+        <p>Copie de sauvegarde — liste ${params.modification ? "modifiée" : "déposée"} par un vendeur.</p>
+        <ul>
+          <li><strong>Vendeur n° ${params.numeroVendeur}</strong> — ${echapperHtml(params.nomVendeur)}</li>
+          <li>Téléphone : ${echapperHtml(params.telephone)}</li>
+          <li>Email : ${echapperHtml(params.email)}</li>
+          <li>Code de confirmation : ${echapperHtml(params.codeConfirmation)}</li>
+        </ul>
+        <table style="border-collapse: collapse; width: 100%; max-width: 480px;">
+          <thead>
+            <tr>
+              <th style="padding: 4px 8px; text-align: left; border-bottom: 2px solid #333;">N°</th>
+              <th style="padding: 4px 8px; text-align: left; border-bottom: 2px solid #333;">Article</th>
+              <th style="padding: 4px 8px; text-align: right; border-bottom: 2px solid #333;">Prix</th>
+            </tr>
+          </thead>
+          <tbody>${lignes}</tbody>
+        </table>
+      `,
+    });
+  } catch (err) {
+    console.error("Échec de l'envoi de la copie admin de la liste :", err);
+  }
+}
+
 export async function envoyerQuittanceAchat(params: {
   destinataire: string;
   numeroCaisse: number;

@@ -36,7 +36,7 @@ export function ClotureCaisseRemboursement({
         }}
         className="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:border-red-400 hover:bg-red-50"
       >
-        Clôturer ce poste de remboursement
+        Clôturer ce poste SàV
       </button>
     );
   }
@@ -44,7 +44,7 @@ export function ClotureCaisseRemboursement({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold">Clôture du poste de remboursement</h2>
+        <h2 className="text-lg font-semibold">Clôture du poste SàV</h2>
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-zinc-700">
           <li>Comptez tout l&apos;argent physiquement dans le tiroir.</li>
           <li>
@@ -84,7 +84,7 @@ export function ClotureCaisseRemboursement({
             onClick={() => {
               if (
                 !window.confirm(
-                  "Clôturer définitivement ce poste de remboursement pour cette édition ? Vous ne pourrez plus vous y reconnecter ensuite.",
+                  "Clôturer définitivement ce poste SàV pour cette édition ? Vous ne pourrez plus vous y reconnecter ensuite.",
                 )
               )
                 return;

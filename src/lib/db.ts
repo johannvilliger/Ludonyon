@@ -1,33 +1,65 @@
 import "server-only";
 import mysql from "mysql2/promise";
+import { headers } from "next/headers";
 import { randomUUID, randomBytes } from "node:crypto";
 
-let pool: mysql.Pool | null = null;
+const pools = new Map<string, mysql.Pool>();
 
-function getPool() {
+function configDepuisEnv(suffixe: "" | "_TEST") {
+  const host = process.env[`DB_HOST${suffixe}`];
+  const user = process.env[`DB_USER${suffixe}`];
+  const name = process.env[`DB_NAME${suffixe}`];
+  if (!host || !user || !name) return null;
+  return {
+    host,
+    port: process.env[`DB_PORT${suffixe}`] ? Number(process.env[`DB_PORT${suffixe}`]) : 3306,
+    user,
+    password: process.env[`DB_PASSWORD${suffixe}`] ?? "",
+    database: name,
+  };
+}
+
+// Instance de test : même site Infomaniak, même process Node, mais un
+// sous-domaine dédié (TEST_HOSTNAME) qui bascule sur une base séparée
+// (DB_*_TEST) — pour tester listes/accueil/caisses sans jamais toucher à
+// l'édition réelle. Si TEST_HOSTNAME n'est pas défini (déploiement normal,
+// et tout l'environnement de dev), ce chemin n'est jamais emprunté : aucun
+// changement de comportement par rapport à avant, et surtout jamais d'appel
+// à headers() en dehors d'une requête.
+async function cleInstance(): Promise<"test" | "prod"> {
+  const hoteTest = process.env.TEST_HOSTNAME?.toLowerCase().trim();
+  if (!hoteTest) return "prod";
+  const jar = await headers();
+  const hote = (jar.get("host") ?? "").split(":")[0].toLowerCase();
+  return hote === hoteTest ? "test" : "prod";
+}
+
+async function getPool(): Promise<mysql.Pool> {
+  const cle = await cleInstance();
+  let pool = pools.get(cle);
   if (!pool) {
-    const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = process.env;
-    if (!DB_HOST || !DB_USER || !DB_NAME) {
+    const config = configDepuisEnv(cle === "test" ? "_TEST" : "");
+    if (!config) {
       throw new Error(
-        "DB_HOST, DB_USER, DB_PASSWORD et DB_NAME doivent être définis (voir .env.local.example).",
+        cle === "test"
+          ? "DB_HOST_TEST, DB_USER_TEST et DB_NAME_TEST doivent être définis pour l'instance de test (voir .env.local.example)."
+          : "DB_HOST, DB_USER, DB_PASSWORD et DB_NAME doivent être définis (voir .env.local.example).",
       );
     }
     pool = mysql.createPool({
-      host: DB_HOST,
-      port: DB_PORT ? Number(DB_PORT) : 3306,
-      user: DB_USER,
-      password: DB_PASSWORD ?? "",
-      database: DB_NAME,
+      ...config,
       waitForConnections: true,
       connectionLimit: 10,
       dateStrings: true,
     });
+    pools.set(cle, pool);
   }
   return pool;
 }
 
 export async function query<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
-  const [rows] = await getPool().query(sql, params);
+  const pool = await getPool();
+  const [rows] = await pool.query(sql, params);
   return rows as T[];
 }
 
@@ -37,7 +69,8 @@ export async function queryOne<T = unknown>(sql: string, params: unknown[] = [])
 }
 
 export async function withTransaction<T>(fn: (conn: mysql.PoolConnection) => Promise<T>): Promise<T> {
-  const conn = await getPool().getConnection();
+  const pool = await getPool();
+  const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const result = await fn(conn);

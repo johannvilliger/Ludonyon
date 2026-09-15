@@ -16,7 +16,7 @@ export default async function AttentePage({ params }: { params: Promise<{ numero
   if (!poste) notFound();
 
   const redirectTo = poste.type === "remboursement" ? "/remboursements" : `/caisse/${numeroInt}`;
-  const titre = poste.type === "remboursement" ? "Remboursements" : `Caisse ${numeroInt}`;
+  const titre = poste.type === "remboursement" ? "SàV" : `Caisse ${numeroInt}`;
 
   return (
     <main className="mx-auto w-full flex max-w-sm flex-1 flex-col justify-center px-6 py-12 text-center">

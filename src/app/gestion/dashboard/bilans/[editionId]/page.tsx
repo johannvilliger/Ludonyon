@@ -251,7 +251,7 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
             })}
             {posteRemboursement && (
               <li className="flex items-center justify-between px-4 py-3 text-sm">
-                <span className="font-medium">Remboursements</span>
+                <span className="font-medium">SàV</span>
                 <span className="text-zinc-500">
                   {posteRemboursement.cloturee ? "Clôturé" : "Non clôturé"} ·{" "}
                   {formaterMontant(Number(posteRemboursement.total_rembourse))} remboursé · Théorique{" "}

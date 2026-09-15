@@ -1,5 +1,6 @@
 "use server";
 
+import { envoyerUneQuittance } from "@/app/caisse/[numero]/actions";
 import { arrondiCentimes } from "@/lib/argent";
 import { nouvelId, query, queryOne, withTransaction } from "@/lib/db";
 
@@ -170,6 +171,45 @@ export async function remboursementsEffectues(caisseId: string): Promise<Rembour
     montant: Number(l.prix_encaisse),
     createdAt: l.created_at,
   }));
+}
+
+export type EnvoiQuittanceResult = { ok: true } | { ok: false; error: string };
+
+// Envoi de quittance "à la demande" depuis le poste SàV, pour un acheteur qui
+// n'en avait pas demandé à l'encaissement (ou dont l'email a échoué) et qui
+// revient plus tard — retrouve sa transaction avec la même recherche que
+// pour un remboursement (rechercherVentesPourRemboursement), sans la
+// rembourser. Contrairement à encaisserPanier, la vente est déjà
+// définitivement actée : pas de délai à la vente suivante (voir
+// flusherQuittancesEnAttente), on envoie tout de suite via le même mécanisme
+// que le renvoi manuel depuis /gestion/dashboard/quittances.
+export async function envoyerQuittancePourVente(venteArticleId: string, email: string): Promise<EnvoiQuittanceResult> {
+  const emailTrim = email.trim();
+  if (!emailTrim) return { ok: false, error: "Indiquez une adresse email." };
+
+  const ligne = await queryOne<{ vente_id: string; caisse_id: string }>(
+    `SELECT va.vente_id, v.caisse_id FROM vente_articles va JOIN ventes v ON v.id = va.vente_id WHERE va.id = ?`,
+    [venteArticleId],
+  );
+  if (!ligne) return { ok: false, error: "Vente introuvable — rechargez la recherche." };
+
+  const quittanceId = nouvelId();
+  await query("INSERT INTO quittances (id, vente_id, caisse_id, email) VALUES (?, ?, ?, ?)", [
+    quittanceId,
+    ligne.vente_id,
+    ligne.caisse_id,
+    emailTrim,
+  ]);
+  await envoyerUneQuittance(quittanceId);
+
+  const resultat = await queryOne<{ statut: string }>("SELECT statut FROM quittances WHERE id = ?", [quittanceId]);
+  if (resultat?.statut === "echec") {
+    return {
+      ok: false,
+      error: "L'envoi a échoué (email invalide ou SMTP indisponible) — réessayable depuis /gestion/dashboard/quittances.",
+    };
+  }
+  return { ok: true };
 }
 
 // Symétrique de theoriqueCaisse (caisse/[numero]/actions.ts) mais en sens
