@@ -37,6 +37,13 @@ export async function supprimerEdition(editionId: string) {
       "DELETE cl FROM clotures cl JOIN participations p ON p.id = cl.participation_id WHERE p.edition_id = ?",
       [editionId],
     );
+    // remboursements (migration 0020) référence vente_articles sans
+    // ON DELETE CASCADE — doit être effacé avant, sinon la suppression de
+    // vente_articles juste après échoue avec une contrainte FK.
+    await conn.query(
+      "DELETE r FROM remboursements r JOIN caisses c ON c.id = r.caisse_id WHERE c.edition_id = ?",
+      [editionId],
+    );
     await conn.query(
       "DELETE va FROM vente_articles va JOIN ventes v ON v.id = va.vente_id WHERE v.edition_id = ?",
       [editionId],
