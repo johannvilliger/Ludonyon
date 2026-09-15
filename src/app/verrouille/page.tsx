@@ -14,7 +14,8 @@ export default async function SiteVerrouillePage() {
 
       {parametres?.date_ouverture_troc ? (
         <div className="mt-8">
-          <p className="text-sm font-medium text-zinc-600">Début de notre troc annuel dans :</p>
+          <p className="text-zinc-600">Le dépôt de votre liste de jeu sera bientôt ouvert...</p>
+          <p className="mt-4 text-sm font-medium text-zinc-600">Début de notre troc annuel dans :</p>
           <div className="mt-4">
             <CompteARebours dateCibleIso={parametres.date_ouverture_troc.replace(" ", "T")} />
           </div>
