@@ -173,7 +173,7 @@ export function ArticleListEditor({
               {!mot && !prixInvalide && !courtInvalide && nomDuplique && (
                 <p className="ml-8 mt-1 text-sm text-red-600">
                   Vous avez déjà un article « {article.nom.trim()} » dans la liste — si c&apos;est un
-                  objet différent, ajoutez un détail pour le distinguer (ex. couleur, taille, édition).
+                  objet similaire, ajoutez un détail pour le distinguer (ex. couleur, taille, édition).
                 </p>
               )}
             </div>
