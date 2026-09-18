@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { arrondiCentimes } from "@/lib/argent";
 import { nouvelId, query, queryOne, withTransaction } from "@/lib/db";
 import { envoyerQuittanceAchat } from "@/lib/email";
+import type { ContenuTicket } from "@/lib/etiquettes-impression";
 import { COOKIE_CAISSE } from "@/lib/gestion";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 
@@ -314,6 +315,47 @@ export async function encaisserPanier(
 
   const total = arrondiCentimes(lignes.reduce((sum, l) => sum + l.prix_encaisse, 0));
   return { ok: true, total, quittanceEnregistree };
+}
+
+// Empile un ticket papier dans la file de print-agent (voir migration 0024
+// et /api/etiquettes) pour la vente la plus récente de cette caisse — comme
+// obtenirDerniereVente juste en dessous, jamais les prix envoyés par le
+// client : toujours recalculés depuis ce qui a réellement été encaissé.
+export async function queuerTicketPapier(caisseId: string, numeroCaisse: number): Promise<void> {
+  const vente = await queryOne<{ id: string; created_at: string; taux_achat: number }>(
+    `SELECT v.id, v.created_at, e.taux_achat
+     FROM ventes v JOIN editions e ON e.id = v.edition_id
+     WHERE v.caisse_id = ? ORDER BY v.created_at DESC LIMIT 1`,
+    [caisseId],
+  );
+  if (!vente) throw new Error("Vente introuvable pour cette caisse.");
+
+  const lignes = await query<{ nom: string; numero_vendeur: number; prix_encaisse: number }>(
+    `SELECT a.nom, p.numero_vendeur, va.prix_encaisse
+     FROM vente_articles va
+     JOIN articles a ON a.id = va.article_id
+     JOIN participations p ON p.id = a.participation_id
+     WHERE va.vente_id = ?`,
+    [vente.id],
+  );
+
+  const contenu: ContenuTicket = {
+    numeroCaisse,
+    dateVente: new Date(vente.created_at.replace(" ", "T")).toISOString(),
+    articles: lignes.map((l) => ({
+      nom: l.nom,
+      numeroVendeur: l.numero_vendeur,
+      prixEncaisse: Number(l.prix_encaisse),
+    })),
+    total: arrondiCentimes(lignes.reduce((sum, l) => sum + Number(l.prix_encaisse), 0)),
+    tauxAchat: Number(vente.taux_achat),
+  };
+
+  await query("INSERT INTO etiquettes_impression (id, numero_caisse, contenu_json) VALUES (?, ?, ?)", [
+    nouvelId(),
+    numeroCaisse,
+    JSON.stringify(contenu),
+  ]);
 }
 
 export type DerniereVente = {

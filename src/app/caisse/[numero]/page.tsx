@@ -52,7 +52,12 @@ export default async function CaisseDetailPage({ params }: { params: Promise<{ n
         <div className="mt-8">
           <InstructionsCaisse posteId={autorisation.posteId} dejaVues={Boolean(caisse.instructions_vues)} />
           <div className="mt-4">
-            <CaisseScanner caisseId={caisse.id} editionId={caisse.edition_id} tauxAchat={Number(caisse.taux_achat)} />
+            <CaisseScanner
+              caisseId={caisse.id}
+              editionId={caisse.edition_id}
+              numero={numeroInt}
+              tauxAchat={Number(caisse.taux_achat)}
+            />
           </div>
           <div className="mt-8 border-t border-zinc-200 pt-4">
             <ClotureCaisse caisseId={caisse.id} posteId={autorisation.posteId} montantTheorique={montantTheorique} />

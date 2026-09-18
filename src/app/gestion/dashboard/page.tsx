@@ -10,6 +10,7 @@ import {
   modifierCodeAccueil,
   modifierCodeCaisse,
   modifierCodeDashboard,
+  modifierCodeImpression,
   modifierDateOuverture,
   modifierDateRecuperation,
   refuserConnexionCaisse,
@@ -41,6 +42,7 @@ type Edition = { id: string; annee: number; phase: Phase };
 type Parametres = {
   code_dashboard: string;
   code_accueil: string;
+  code_impression: string;
   mode_verrouillage: ModeVerrouillage;
   date_ouverture_troc: string | null;
   date_recuperation_invendus: string | null;
@@ -90,7 +92,7 @@ export default async function DashboardGestionPage() {
         "SELECT id, annee FROM editions WHERE active_flag IS NULL ORDER BY annee DESC",
       );
   const parametres = await queryOne<Parametres>(
-    "SELECT code_dashboard, code_accueil, mode_verrouillage, date_ouverture_troc, date_recuperation_invendus, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
+    "SELECT code_dashboard, code_accueil, code_impression, mode_verrouillage, date_ouverture_troc, date_recuperation_invendus, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
   );
   const postes = await query<PosteLigne>(
     `SELECT
@@ -176,6 +178,16 @@ export default async function DashboardGestionPage() {
         [edition.id],
       )
     : null;
+
+  // File d'attente de print-agent (voir migration 0024) : pas de filtre par
+  // édition, une étiquette non récupérée reste un problème même après la
+  // fin de l'édition qui l'a produite.
+  const etiquettesImpression = await queryOne<{ en_attente: number; echec: number }>(
+    `SELECT
+       COALESCE(SUM(statut = 'en_attente'), 0) AS en_attente,
+       COALESCE(SUM(statut = 'echec'), 0) AS echec
+     FROM etiquettes_impression`,
+  );
 
   return (
     <RefreshPauseProvider>
@@ -523,6 +535,37 @@ export default async function DashboardGestionPage() {
           )}
         </div>
       </section>
+
+      {/* Impression des tickets papier : file d'attente lue par print-agent
+          (programme externe à ce dépôt, jamais déployé avec le site) — voir
+          migration 0024 et src/lib/print-agent-auth.ts. Le code ci-dessous
+          n'est jamais tapé par quelqu'un, juste copié une fois dans la
+          config du programme. */}
+      {parametres && (
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Impression des tickets (print-agent)</h2>
+          <div className="mt-3 space-y-3 rounded-md border border-zinc-200 p-4">
+            <CodeEditor
+              label="Code print-agent"
+              valeurInitiale={parametres.code_impression}
+              onSave={modifierCodeImpression}
+            />
+            {etiquettesImpression && (
+              <p className="text-sm text-zinc-600">
+                {Number(etiquettesImpression.en_attente)} ticket
+                {Number(etiquettesImpression.en_attente) > 1 ? "s" : ""} en attente d&apos;impression
+                {Number(etiquettesImpression.echec) > 0 && (
+                  <span className="font-medium text-red-600">
+                    {" "}
+                    · {Number(etiquettesImpression.echec)} en échec
+                  </span>
+                )}
+                .
+              </p>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Sauvegarde : instantané complet à garder de côté en cas de pépin */}
       <section className="mt-8">

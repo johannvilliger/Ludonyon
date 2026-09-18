@@ -20,8 +20,10 @@ export default async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Exclut /gestion, /caisse, /remboursements, /accueil, /verrouille
-    // elle-même, les internes Next.js et tout fichier statique (nom
-    // contenant un point, ex. favicon.ico, reglement.pdf, icon.png).
-    "/((?!gestion|caisse|remboursements|accueil|verrouille|_next/static|_next/image|.*\\..*).*)",
+    // elle-même, /api (points d'entrée machine-à-machine, ex. print-agent —
+    // jamais soumis au verrouillage public), les internes Next.js et tout
+    // fichier statique (nom contenant un point, ex. favicon.ico,
+    // reglement.pdf, icon.png).
+    "/((?!gestion|caisse|remboursements|accueil|verrouille|api|_next/static|_next/image|.*\\..*).*)",
   ],
 };

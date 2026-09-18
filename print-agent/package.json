@@ -1,0 +1,29 @@
+{
+  "name": "ludotheque-print-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agent d'impression des tickets papier (file d'attente etiquettes_impression + Brother QL-820NWB).",
+  "main": "src/index.js",
+  "bin": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "build:exe": "pkg . --targets node18-win-x64 --output dist/print-agent.exe"
+  },
+  "dependencies": {
+    "pdf-to-printer": "^5.0.2",
+    "pdfkit": "^0.15.1"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^5.16.1"
+  },
+  "pkg": {
+    "assets": [
+      "assets/**/*",
+      "node_modules/pdf-to-printer/dist/**/*"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ],
+    "outputPath": "dist"
+  }
+}

@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // print-agent/ est un projet Node CommonJS séparé (voir son propre
+    // README), jamais buildé/déployé avec le site — pas les conventions
+    // TypeScript/ESM du reste du dépôt.
+    "print-agent/**",
   ]),
 ]);
 

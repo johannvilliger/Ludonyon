@@ -9,6 +9,7 @@ import {
   encaisserPanier,
   libererArticle,
   obtenirDerniereVente,
+  queuerTicketPapier,
   rechercherArticle,
   type ArticleTrouve,
   type DerniereVente,
@@ -132,16 +133,19 @@ function emailValide(valeur: string): boolean {
 export function CaisseScanner({
   caisseId,
   editionId,
+  numero,
   tauxAchat,
 }: {
   caisseId: string;
   editionId: string;
+  numero: number;
   tauxAchat: number;
 }) {
   const [panier, setPanier] = useState<ArticleTrouve[]>([]);
   const [acheteurBenevole, setAcheteurBenevole] = useState(false);
   const [quittanceDemandee, setQuittanceDemandee] = useState(false);
   const [emailQuittance, setEmailQuittance] = useState("");
+  const [ticketPapierDemande, setTicketPapierDemande] = useState(false);
   const [montantRecu, setMontantRecu] = useState("");
   const [code, setCode] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
@@ -292,11 +296,22 @@ export function CaisseScanner({
     }
 
     retourScan(true);
+
+    let ticketEchec = false;
+    if (ticketPapierDemande) {
+      try {
+        await queuerTicketPapier(caisseId, numero);
+      } catch {
+        ticketEchec = true;
+      }
+    }
+
     setConfirmation(
       `Encaissé : ${formaterMontant(resultat.total)}` +
         (emailPourQuittance && !resultat.quittanceEnregistree
           ? " — la quittance n'a pas pu être enregistrée, redemandez-la si besoin."
-          : ""),
+          : "") +
+        (ticketEchec ? " — le ticket papier n'a pas pu être mis en file d'impression." : ""),
     );
     setDerniereVente({
       total: resultat.total,
@@ -307,6 +322,7 @@ export function CaisseScanner({
     setAcheteurBenevole(false);
     setQuittanceDemandee(false);
     setEmailQuittance("");
+    setTicketPapierDemande(false);
     setMontantRecu("");
     inputRef.current?.focus();
   }
@@ -434,6 +450,16 @@ export function CaisseScanner({
           className="mt-2 w-full rounded-md border border-zinc-300 px-3 py-2"
         />
       )}
+
+      <label className="mt-2 flex items-center gap-2 text-sm font-medium text-zinc-700">
+        <input
+          type="checkbox"
+          checked={ticketPapierDemande}
+          onChange={(e) => setTicketPapierDemande(e.target.checked)}
+          className="h-4 w-4 rounded border-zinc-300"
+        />
+        Ticket papier
+      </label>
 
       <p className="mt-4 text-sm font-medium text-zinc-700">
         Panier — {panier.length} article{panier.length > 1 ? "s" : ""}
