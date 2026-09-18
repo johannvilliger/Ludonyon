@@ -19,7 +19,7 @@
   "pkg": {
     "assets": [
       "assets/**/*",
-      "node_modules/pdf-to-printer/dist/**/*"
+      "node_modules/**/*"
     ],
     "targets": [
       "node18-win-x64"
