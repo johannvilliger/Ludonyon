@@ -2,7 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { genererTicketPdf } = require("./ticket-pdf");
+const { genererTicketsPdf, LONGUEUR_MAX_MM_DEFAUT } = require("./ticket-pdf");
 const { imprimer } = require("./print");
 const { getPrinters } = require("pdf-to-printer");
 
@@ -75,20 +75,25 @@ async function traiterUnTour(config) {
 
   for (const ticket of tickets) {
     console.log(`Ticket ${ticket.id} (caisse ${ticket.contenu.numeroCaisse}) — impression…`);
-    let cheminPdf = null;
+    let cheminsPdf = [];
     try {
-      cheminPdf = await genererTicketPdf(ticket.contenu, ticket.id);
-      const cheminArchive = path.join(dossierTickets(), `ticket-${ticket.id}.pdf`);
-      fs.copyFileSync(cheminPdf, cheminArchive);
-      console.log(`  -> PDF enregistré : ${cheminArchive}`);
-      await imprimer(cheminPdf, config.printerName);
+      cheminsPdf = await genererTicketsPdf(ticket.contenu, ticket.id, config.longueurMaxMm);
+      if (cheminsPdf.length > 1) {
+        console.log(`  -> ticket découpé en ${cheminsPdf.length} bandes (trop long pour longueurMaxMm).`);
+      }
+      for (const [i, cheminPdf] of cheminsPdf.entries()) {
+        const cheminArchive = path.join(dossierTickets(), `ticket-${ticket.id}-${i + 1}.pdf`);
+        fs.copyFileSync(cheminPdf, cheminArchive);
+        console.log(`  -> PDF enregistré : ${cheminArchive}`);
+        await imprimer(cheminPdf, config.printerName);
+      }
       await marquerStatut(config, ticket.id, "imprimee");
       console.log("  -> imprimé.");
     } catch (err) {
       console.error("  -> échec :", err && err.message ? err.message : String(err));
       await marquerStatut(config, ticket.id, "echec").catch(() => {});
     } finally {
-      if (cheminPdf) fs.unlink(cheminPdf, () => {});
+      for (const cheminPdf of cheminsPdf) fs.unlink(cheminPdf, () => {});
     }
   }
 }
@@ -125,7 +130,11 @@ async function main() {
     return;
   }
   const config = chargerConfig();
-  console.log(`print-agent démarré — site : ${config.siteUrl} — imprimante : ${config.printerName}`);
+  console.log(
+    `print-agent démarré — site : ${config.siteUrl} — imprimante : ${config.printerName} — ` +
+      `longueur max : ${config.longueurMaxMm || LONGUEUR_MAX_MM_DEFAUT}mm ` +
+      "(doit correspondre à \"Longueur\" dans les préférences d'impression Windows)",
+  );
   await boucle(config);
 }
 

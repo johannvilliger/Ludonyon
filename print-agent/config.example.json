@@ -2,5 +2,6 @@
   "siteUrl": "https://troc.ludonyonregion.ch",
   "codeImpression": "COLLER_ICI_LE_CODE_DEPUIS_LE_DASHBOARD",
   "printerName": "Brother QL-820NWB",
-  "pollIntervalMs": 5000
+  "pollIntervalMs": 5000,
+  "longueurMaxMm": 150
 }

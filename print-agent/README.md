@@ -36,6 +36,14 @@ programme qui va chercher le travail, comme un navigateur.
    - `printerName` : le nom exact noté à l'étape 1.
    - `pollIntervalMs` : fréquence de vérification en millisecondes
      (5000 = 5 secondes, largement suffisant).
+   - `longueurMaxMm` : DOIT être identique à "Longueur" dans les
+     préférences d'impression Windows de l'imprimante (onglet "De base",
+     format du papier). Le pilote imprime toujours à cette longueur fixe
+     (il ne l'ajuste jamais au contenu, ni ne rogne l'excédent en dehors
+     de P-touch Editor) — un ticket plus long est donc découpé par
+     print-agent lui-même en plusieurs bandes successives ("suite 2/3"…)
+     plutôt que d'être tronqué de façon incontrôlée par le pilote. 150mm
+     par défaut si absent.
 3. Double-cliquer sur `print-agent.exe`. Une fenêtre de console reste
    ouverte et affiche chaque ticket imprimé — la laisser tourner pendant
    tout le troc.
