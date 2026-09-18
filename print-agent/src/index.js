@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { genererTicketPdf } = require("./ticket-pdf");
 const { imprimer } = require("./print");
+const { getPrinters } = require("pdf-to-printer");
 
 // Dans un .exe empaqueté (voir pkg dans package.json), __dirname pointe
 // dans le système de fichiers virtuel du snapshot — config.json doit être
@@ -88,7 +89,28 @@ async function boucle(config) {
   }
 }
 
+// Diagnostic (lancer avec --imprimantes) : liste les imprimantes vues par
+// Windows et les formats de support ("PrinterPaperNames") que leur pilote
+// annonce — utile pour repérer le nom exact du format "bande continue" à
+// sélectionner dans les préférences d'impression, plutôt qu'un format
+// découpé à longueur fixe qui tronquerait les tickets longs.
+async function listerImprimantes() {
+  const imprimantes = await getPrinters();
+  if (imprimantes.length === 0) {
+    console.log("Aucune imprimante trouvée par Windows.");
+    return;
+  }
+  for (const imp of imprimantes) {
+    console.log(`\n${imp.name}`);
+    console.log(`  Formats de support : ${imp.paperSizes.join(", ") || "(aucun renvoyé)"}`);
+  }
+}
+
 async function main() {
+  if (process.argv.includes("--imprimantes")) {
+    await listerImprimantes();
+    return;
+  }
   const config = chargerConfig();
   console.log(`print-agent démarré — site : ${config.siteUrl} — imprimante : ${config.printerName}`);
   await boucle(config);
