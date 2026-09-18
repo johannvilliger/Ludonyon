@@ -91,15 +91,18 @@ async function genererTicketPdf(contenu, ticketId) {
     .stroke();
   doc.moveDown(0.4);
 
-  // Montant affiché par article = ce que le vendeur reçoit (prix encaissé
-  // moins la part de frais de fonctionnement) ; les frais sont ensuite
-  // affichés une seule fois, regroupés, en dessous de la liste — plus lisible
-  // qu'un pourcentage répété ligne par ligne.
+  // Montant affiché par article = le prix fixé par le vendeur (celui qu'il
+  // reçoit). prix_encaisse (ce que paie l'acheteur) est ce prix majoré de
+  // 10% : prix_encaisse = prix_vendeur * (1 + tauxAchat) — voir
+  // caisse/[numero]/actions.ts, encaisserPanier. On retrouve donc le prix
+  // vendeur en divisant par (1 + tauxAchat), pas en soustrayant 10% (piège :
+  // les deux se ressemblent mais ne donnent pas le même résultat). Les frais
+  // sont ensuite affichés une seule fois, regroupés, en dessous de la liste.
   const largeurPrix = 42;
   const largeurNom = LARGEUR_UTILE - largeurPrix;
   const articlesAvecMontantNet = contenu.articles.map((article) => ({
     nom: article.nom,
-    montantNet: arrondi2(article.prixEncaisse * (1 - contenu.tauxAchat)),
+    montantNet: arrondi2(article.prixEncaisse / (1 + contenu.tauxAchat)),
   }));
 
   for (const article of articlesAvecMontantNet) {
