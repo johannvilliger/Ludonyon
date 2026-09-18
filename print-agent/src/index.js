@@ -15,6 +15,16 @@ function dossierExecutable() {
   return process.pkg ? path.dirname(process.execPath) : path.join(__dirname, "..");
 }
 
+// Copie de chaque ticket généré, conservée à côté de l'exécutable (jamais
+// supprimée automatiquement) — permet de rejouer une impression manuellement
+// (double-clic, ou "Imprimer" depuis un lecteur PDF) pour déboguer un
+// problème d'impression sans attendre qu'une nouvelle vente en génère un.
+function dossierTickets() {
+  const dossier = path.join(dossierExecutable(), "tickets");
+  if (!fs.existsSync(dossier)) fs.mkdirSync(dossier, { recursive: true });
+  return dossier;
+}
+
 function chargerConfig() {
   const chemin = path.join(dossierExecutable(), "config.json");
   if (!fs.existsSync(chemin)) {
@@ -68,6 +78,9 @@ async function traiterUnTour(config) {
     let cheminPdf = null;
     try {
       cheminPdf = await genererTicketPdf(ticket.contenu, ticket.id);
+      const cheminArchive = path.join(dossierTickets(), `ticket-${ticket.id}.pdf`);
+      fs.copyFileSync(cheminPdf, cheminArchive);
+      console.log(`  -> PDF enregistré : ${cheminArchive}`);
       await imprimer(cheminPdf, config.printerName);
       await marquerStatut(config, ticket.id, "imprimee");
       console.log("  -> imprimé.");
