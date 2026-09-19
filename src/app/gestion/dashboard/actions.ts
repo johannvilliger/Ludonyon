@@ -251,6 +251,14 @@ export async function modifierDateRecuperation(valeurDatetimeLocal: string) {
   revalidatePath("/gestion/dashboard");
 }
 
+export async function modifierMessageDepotTermine(nouveauMessage: string) {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+  const message = nouveauMessage.trim();
+  await query("UPDATE parametres_gestion SET message_depot_termine = ? WHERE id = 1", [message || null]);
+  revalidatePath("/gestion/dashboard");
+  revalidatePath("/vendeur/nouveau");
+}
+
 export async function modifierCodeCaisse(posteId: string, nouveauCode: string) {
   const code = nouveauCode.trim();
   if (!code) throw new Error("Le code ne peut pas être vide.");

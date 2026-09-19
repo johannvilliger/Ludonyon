@@ -14,6 +14,7 @@ import {
   modifierCodeImpression,
   modifierDateOuverture,
   modifierDateRecuperation,
+  modifierMessageDepotTermine,
   refuserConnexionCaisse,
   validerConnexionCaisse,
   type ModeVerrouillage,
@@ -26,6 +27,7 @@ import { CodeEditor } from "./code-editor";
 import { DateOuvertureEditor } from "./date-ouverture-editor";
 import { EditionForm } from "./edition-form";
 import { EditionPanel } from "./edition-panel";
+import { MessageEditor } from "./message-editor";
 import { PhaseButton } from "./phase-button";
 import { RefreshPauseProvider } from "./refresh-pause-context";
 import { ReouvrirCaisseButton } from "./reouvrir-caisse-button";
@@ -47,6 +49,7 @@ type Parametres = {
   mode_verrouillage: ModeVerrouillage;
   date_ouverture_troc: string | null;
   date_recuperation_invendus: string | null;
+  message_depot_termine: string | null;
   derniere_sauvegarde_le: string | null;
 };
 type PosteLigne = {
@@ -93,7 +96,7 @@ export default async function DashboardGestionPage() {
         "SELECT id, annee FROM editions WHERE active_flag IS NULL ORDER BY annee DESC",
       );
   const parametres = await queryOne<Parametres>(
-    "SELECT code_dashboard, code_accueil, code_impression, mode_verrouillage, date_ouverture_troc, date_recuperation_invendus, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
+    "SELECT code_dashboard, code_accueil, code_impression, mode_verrouillage, date_ouverture_troc, date_recuperation_invendus, message_depot_termine, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
   );
   const postes = await query<PosteLigne>(
     `SELECT
@@ -513,6 +516,26 @@ export default async function DashboardGestionPage() {
                 afficher.
               </p>
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Affiché sur /vendeur/nouveau à la place du formulaire dès que la
+          phase de l'édition active n'est plus "depot" (voir migration
+          0025) — texte libre pour ne jamais avoir besoin de retoucher le
+          code quand la date/l'heure de vente change chaque année. */}
+      {parametres && (
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Message « dépôt terminé »</h2>
+          <div className="mt-3 rounded-md border border-zinc-200 p-4">
+            <MessageEditor
+              valeurInitiale={parametres.message_depot_termine ?? ""}
+              onSave={modifierMessageDepotTermine}
+            />
+            <p className="mt-1 text-xs text-zinc-500">
+              Remplace le formulaire « Déposer ma liste » dès que le dépôt n&apos;est plus ouvert (phase
+              réception, caisse, post-vente ou terminée).
+            </p>
           </div>
         </section>
       )}
