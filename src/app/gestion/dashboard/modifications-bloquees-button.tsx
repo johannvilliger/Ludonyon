@@ -18,7 +18,7 @@ export function ModificationsBloqueesButton({ bloquees }: { bloquees: boolean })
             : "rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:border-zinc-400 disabled:opacity-50"
         }
       >
-        {pending ? "…" : bloquees ? "🔒 Modifications bloquées" : "Bloquer les modifications"}
+        {pending ? "…" : bloquees ? "🔒 Débloquer les modifications" : "Bloquer les modifications"}
       </button>
       <span className="text-xs text-zinc-500">
         {bloquees
