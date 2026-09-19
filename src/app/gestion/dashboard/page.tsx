@@ -521,9 +521,10 @@ export default async function DashboardGestionPage() {
       )}
 
       {/* Affiché sur /vendeur/nouveau à la place du formulaire dès que la
-          phase de l'édition active n'est plus "depot" (voir migration
-          0025) — texte libre pour ne jamais avoir besoin de retoucher le
-          code quand la date/l'heure de vente change chaque année. */}
+          phase de l'édition active passe en caisse (voir migration 0025) —
+          le dépôt en ligne reste actif pendant le dépôt ET la réception.
+          Texte libre pour ne jamais avoir besoin de retoucher le code
+          quand la date/l'heure de vente change chaque année. */}
       {parametres && (
         <section className="mt-8">
           <h2 className="text-lg font-medium">Message « dépôt terminé »</h2>
@@ -533,8 +534,8 @@ export default async function DashboardGestionPage() {
               onSave={modifierMessageDepotTermine}
             />
             <p className="mt-1 text-xs text-zinc-500">
-              Remplace le formulaire « Déposer ma liste » dès que le dépôt n&apos;est plus ouvert (phase
-              réception, caisse, post-vente ou terminée).
+              Remplace le formulaire « Déposer ma liste » dès que la phase passe en caisse (le dépôt en
+              ligne reste actif pendant le dépôt et la réception).
             </p>
           </div>
         </section>
