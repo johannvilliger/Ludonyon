@@ -5,7 +5,6 @@ import { arrondiCentimes, formaterMontant } from "@/lib/argent";
 import { dashboardEstConnecte } from "@/lib/gestion";
 import { listerSessionsActives } from "@/lib/sessions-actives";
 import {
-  basculerVerrouillageSite,
   changerPhase,
   deconnecterCaisse,
   modifierCodeAccueil,
@@ -37,7 +36,6 @@ import { ReouvrirCaisseButton } from "./reouvrir-caisse-button";
 import { SauvegardeButton } from "./sauvegarde-button";
 import { SupprimerEditionButton } from "./supprimer-edition-button";
 import { TerminerEditionButton } from "./terminer-edition-button";
-import { VerrouillageSiteButton } from "./verrouillage-site-button";
 import { VidageForm } from "./vidage-form";
 
 export const dynamic = "force-dynamic";
@@ -496,30 +494,26 @@ export default async function DashboardGestionPage() {
         </section>
       )}
 
-      {/* Verrouillage du site public : 3 modes (voir siteTrocOuvert). Par
-          défaut ("Automatique"), verrouillé sans édition active et
-          déverrouillé avec — les deux modes manuels forcent l'un ou l'autre
-          quelle que soit l'édition (démo sans édition, ou tests en
-          conditions réelles avec édition sans exposer le site). */}
+      {/* Le contrôle manuel du verrouillage (VerrouillageSiteButton, 3 modes
+          — voir siteTrocOuvert) est masqué ici : c'était pour les tests, le
+          mode reste "auto" en pratique (verrouillé sans édition active,
+          déverrouillé avec, sans y penser). Le composant et la colonne
+          mode_verrouillage existent toujours tels quels — il suffit de
+          réafficher <VerrouillageSiteButton .../> ci-dessous pour le
+          remettre. La date d'ouverture reste éditable ici (utilisée pour le
+          compte à rebours). */}
       {parametres && (
         <section className="mt-8">
-          <h2 className="text-lg font-medium">Accès au site public</h2>
+          <h2 className="text-lg font-medium">Date d&apos;ouverture</h2>
           <div className="mt-3 rounded-md border border-zinc-200 p-4">
-            <VerrouillageSiteButton
-              mode={parametres.mode_verrouillage}
-              editionActive={Boolean(edition)}
-              onToggle={basculerVerrouillageSite}
+            <DateOuvertureEditor
+              valeurInitiale={parametres.date_ouverture_troc}
+              onSave={modifierDateOuverture}
             />
-            <div className="mt-4 border-t border-zinc-200 pt-4">
-              <DateOuvertureEditor
-                valeurInitiale={parametres.date_ouverture_troc}
-                onSave={modifierDateOuverture}
-              />
-              <p className="mt-1 text-xs text-zinc-500">
-                Affiche un compte à rebours sur l&apos;écran de verrouillage. Laissez vide pour ne rien
-                afficher.
-              </p>
-            </div>
+            <p className="mt-1 text-xs text-zinc-500">
+              Affiche un compte à rebours sur l&apos;écran de verrouillage et la page d&apos;accueil.
+              Laissez vide pour ne rien afficher.
+            </p>
           </div>
         </section>
       )}
