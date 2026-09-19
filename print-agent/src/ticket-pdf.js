@@ -123,7 +123,11 @@ async function rendreSegment(contenu, lignesSegment, toutesLesLignes, infos, tic
     : MARGE_PT * 2 + HAUTEUR_ENTETE_SUITE;
   const hauteurArticles = lignesSegment.reduce((somme, l) => somme + l.hauteur, 0);
   const hauteurPied = estDernier ? HAUTEUR_PIED : 0;
-  const hauteur = hauteurEntete + hauteurArticles + hauteurPied + MARGE_SECURITE_PT;
+  // Une page plus large que haute (segment de fin très court : juste
+  // frais + total, sans article) se fait pivoter à 90° par le pilote/
+  // SumatraPDF, qui la traite comme une page "paysage" — la hauteur ne
+  // descend donc jamais sous la largeur, quitte à laisser un peu de blanc.
+  const hauteur = Math.max(hauteurEntete + hauteurArticles + hauteurPied + MARGE_SECURITE_PT, LARGEUR_PT + MARGE_SECURITE_PT);
 
   const doc = new PDFDocument({ size: [LARGEUR_PT, hauteur], margin: MARGE_PT });
   const cheminFichier = path.join(os.tmpdir(), `ticket-${ticketId}-${indexSegment + 1}.pdf`);
