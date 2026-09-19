@@ -3,14 +3,17 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArticleListEditor } from "@/components/ArticleListEditor";
+import { SignalerActiviteEnCours } from "@/components/SignalerActiviteEnCours";
 import { enregistrerArticlesBenevole } from "./actions";
 
 export function BenevoleArticlesEditor({
   initialArticles,
   numeroDepart,
+  numeroVendeur,
 }: {
   initialArticles: { nom: string; prix: number }[];
   numeroDepart: number;
+  numeroVendeur: number;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -47,6 +50,7 @@ export function BenevoleArticlesEditor({
         enregistrer();
       }}
     >
+      <SignalerActiviteEnCours label={`Bénévole n° ${numeroVendeur} — ajout d'articles`} />
       <ArticleListEditor
         initialArticles={initialArticles}
         onValiditeChange={setArticlesValides}

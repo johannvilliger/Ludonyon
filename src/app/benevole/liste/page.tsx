@@ -95,6 +95,7 @@ export default async function BenevoleListePage() {
           <BenevoleArticlesEditor
             initialArticles={articlesModifiables.map((a) => ({ nom: a.nom, prix: a.prix }))}
             numeroDepart={articlesVerrouilles.length + 1}
+            numeroVendeur={session.numeroFixe}
           />
         </>
       )}

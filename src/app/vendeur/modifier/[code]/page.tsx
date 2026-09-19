@@ -49,7 +49,7 @@ export default async function ModifierListePage({ params }: { params: Promise<{ 
           devez encore corriger quelque chose.
         </p>
       ) : (
-        <EditForm code={code} initialArticles={articles} />
+        <EditForm code={code} numeroVendeur={participation.numero_vendeur} initialArticles={articles} />
       )}
     </main>
   );

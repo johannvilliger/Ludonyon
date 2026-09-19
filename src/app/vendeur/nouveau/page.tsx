@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { ArticleListEditor } from "@/components/ArticleListEditor";
+import { SignalerActiviteEnCours } from "@/components/SignalerActiviteEnCours";
 import { CONDITIONS_TROC } from "@/lib/conditions";
 import { emailValide } from "@/lib/email-format";
 import { formaterTelephone, telephoneValide } from "@/lib/telephone";
@@ -26,9 +27,14 @@ export default function NouvelleListePage() {
   const nomInvalide = nomRempli && nom.trim().length < 3;
   const emailRempli = email.trim().length > 0;
   const emailInvalide = emailRempli && !emailValide(email);
+  const saisieEnCours = nomRempli || telephoneRempli || emailRempli;
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-12">
+      {/* Uniquement une fois qu'il y a une vraie saisie en cours (pas dès
+          l'ouverture de la page) — sinon /gestion/dashboard afficherait une
+          "session active" pour n'importe quel visiteur qui jette un œil. */}
+      {saisieEnCours && <SignalerActiviteEnCours label={`Dépôt en cours — ${nom || "vendeur non identifié"}`} />}
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">Déposer ma liste</h1>
         <a

@@ -2,15 +2,18 @@
 
 import { useActionState, useState } from "react";
 import { ArticleListEditor } from "@/components/ArticleListEditor";
+import { SignalerActiviteEnCours } from "@/components/SignalerActiviteEnCours";
 import { modifierListeVendeur, type FormState } from "./actions";
 
 const initialState: FormState = { error: null };
 
 export function EditForm({
   code,
+  numeroVendeur,
   initialArticles,
 }: {
   code: string;
+  numeroVendeur: number;
   initialArticles: { nom: string; prix: number }[];
 }) {
   const action = modifierListeVendeur.bind(null, code);
@@ -19,6 +22,7 @@ export function EditForm({
 
   return (
     <form action={formAction} className="mt-8 space-y-6">
+      <SignalerActiviteEnCours label={`Vendeur n° ${numeroVendeur} — modification de liste`} />
       <ArticleListEditor initialArticles={initialArticles} onValiditeChange={setArticlesValides} />
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}

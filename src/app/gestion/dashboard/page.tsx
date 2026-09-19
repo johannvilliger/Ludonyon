@@ -3,6 +3,7 @@ import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
 import { arrondiCentimes, formaterMontant } from "@/lib/argent";
 import { dashboardEstConnecte } from "@/lib/gestion";
+import { listerSessionsActives } from "@/lib/sessions-actives";
 import {
   basculerVerrouillageSite,
   changerPhase,
@@ -189,6 +190,8 @@ export default async function DashboardGestionPage() {
      FROM etiquettes_impression`,
   );
 
+  const sessionsActives = listerSessionsActives();
+
   return (
     <RefreshPauseProvider>
     <main className="mx-auto w-full max-w-[1600px] px-6 py-12">
@@ -211,6 +214,31 @@ export default async function DashboardGestionPage() {
           </Link>
         </div>
       </div>
+
+      {/* Sessions actives : formulaires de dépôt/modification de liste
+          actuellement ouverts (voir sessions-actives.ts) — à vérifier avant
+          tout déploiement ou redémarrage du site, pour ne pas couper un
+          vendeur en plein remplissage. Se met à jour tout seul via
+          AutoRefresh ci-dessus, pas de polling dédié. */}
+      <section className="mt-6">
+        {sessionsActives.length === 0 ? (
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+            Aucune activité en cours — redémarrage sans risque.
+          </div>
+        ) : (
+          <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-medium">
+              ⚠ {sessionsActives.length} session{sessionsActives.length > 1 ? "s" : ""} active
+              {sessionsActives.length > 1 ? "s" : ""} — attendez avant de déployer ou redémarrer.
+            </p>
+            <ul className="mt-1.5 space-y-0.5">
+              {sessionsActives.map((s, i) => (
+                <li key={i}>{s.label}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
 
       {/* Édition */}
       <section className="mt-8">
