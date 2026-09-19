@@ -52,7 +52,7 @@ export default async function ImprimerListeVendeurPage({
         <Link href="/gestion/dashboard/vendeurs" className="text-sm text-zinc-500 hover:underline">
           ← Vendeurs
         </Link>
-        <PrintButton />
+        <PrintButton participationId={participationId} />
       </div>
 
       <h1 className="text-2xl font-semibold tracking-tight">

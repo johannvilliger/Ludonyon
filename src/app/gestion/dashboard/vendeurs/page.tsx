@@ -2,9 +2,19 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
+import { calculerDiffImpression, type ArticleSimple } from "@/lib/articles-diff";
 import { ClasserButton } from "./classer-button";
 
 export const dynamic = "force-dynamic";
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function formaterDateHeure(iso: string): string {
+  const d = new Date(iso);
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)} à ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
 
 type Edition = { id: string; annee: number };
 type VendeurLigne = {
@@ -14,6 +24,8 @@ type VendeurLigne = {
   telephone: string | null;
   email: string | null;
   est_benevole: number;
+  articles_imprimes_json: string | null;
+  imprimee_le: string | null;
 };
 type ArticleLigne = {
   participation_id: string;
@@ -47,7 +59,8 @@ export default async function VendeursDashboardPage() {
 
   const vendeurs = edition
     ? await query<VendeurLigne>(
-        `SELECT p.id AS participation_id, p.numero_vendeur, v.nom AS nom_vendeur, v.telephone, v.email, p.est_benevole
+        `SELECT p.id AS participation_id, p.numero_vendeur, v.nom AS nom_vendeur, v.telephone, v.email,
+                p.est_benevole, p.articles_imprimes_json, p.imprimee_le
          FROM participations p
          JOIN vendeurs v ON v.id = p.vendeur_id
          WHERE p.edition_id = ?
@@ -99,6 +112,23 @@ export default async function VendeursDashboardPage() {
         {vendeurs.map((v) => {
           const liste = articlesParVendeur.get(v.participation_id) ?? [];
           const total = liste.reduce((sum, a) => sum + a.prix, 0);
+
+          const imprimes: ArticleSimple[] | null = v.articles_imprimes_json
+            ? JSON.parse(v.articles_imprimes_json)
+            : null;
+          const diff = calculerDiffImpression(
+            imprimes,
+            liste.map((a) => ({ nom: a.nom, prix: a.prix })),
+          );
+          const diffParNom = new Map((diff?.lignes ?? []).map((l) => [l.nom.trim().toLowerCase(), l]));
+          const lignesSupprimees = diff?.lignes.filter((l) => l.type === "supprime") ?? [];
+
+          const badgeImpression = !v.imprimee_le
+            ? { texte: "Jamais imprimée", style: "bg-zinc-100 text-zinc-500" }
+            : diff?.modifiee
+              ? { texte: "Modifiée depuis impression", style: "bg-red-100 text-red-700" }
+              : { texte: `Imprimée le ${formaterDateHeure(v.imprimee_le)}`, style: "bg-emerald-100 text-emerald-800" };
+
           return (
             <details key={v.participation_id} className="rounded-md border border-zinc-200 p-4">
               <summary className="flex cursor-pointer items-center justify-between text-sm font-medium">
@@ -111,6 +141,9 @@ export default async function VendeursDashboardPage() {
                   </span>
                 </span>
                 <span className="flex items-center gap-3">
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeImpression.style}`}>
+                    {badgeImpression.texte}
+                  </span>
                   <span className="text-zinc-500">
                     {liste.length} article{liste.length > 1 ? "s" : ""} · {total}.–
                   </span>
@@ -123,20 +156,49 @@ export default async function VendeursDashboardPage() {
                 </span>
               </summary>
               <ul className="mt-3 divide-y divide-zinc-200">
-                {liste.map((a) => (
-                  <li key={a.numero_article} className="flex items-center justify-between py-2 text-sm">
-                    <span>
-                      {String(a.numero_article).padStart(2, "0")} — {a.nom}
-                      {a.categorie && (
-                        <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-500">
-                          {a.categorie}
+                {liste.map((a) => {
+                  const ligneDiff = diffParNom.get(a.nom.trim().toLowerCase());
+                  return (
+                    <li key={a.numero_article} className="flex items-center justify-between py-2 text-sm">
+                      <span>
+                        {String(a.numero_article).padStart(2, "0")} — {a.nom}
+                        {a.categorie && (
+                          <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-500">
+                            {a.categorie}
+                          </span>
+                        )}
+                        {ligneDiff?.type === "ajoute" && (
+                          <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800">
+                            ajouté depuis impression
+                          </span>
+                        )}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {ligneDiff?.type === "prix_modifie" ? (
+                          <span className="font-mono">
+                            <span className="text-red-500 line-through">{ligneDiff.prixAvant}.–</span>{" "}
+                            <span className="font-medium text-emerald-700">{ligneDiff.prixApres}.–</span>
+                          </span>
+                        ) : (
+                          <span className="font-mono">{a.prix}.–</span>
+                        )}
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_STYLES[a.statut] ?? "bg-zinc-100 text-zinc-600"}`}>
+                          {STATUT_LABELS[a.statut] ?? a.statut}
                         </span>
-                      )}
-                    </span>
+                      </div>
+                    </li>
+                  );
+                })}
+                {lignesSupprimees.map((l) => (
+                  <li
+                    key={`supprime-${l.nom}`}
+                    className="flex items-center justify-between py-2 text-sm text-red-500 line-through"
+                  >
+                    <span>{l.nom}</span>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono">{a.prix}.–</span>
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_STYLES[a.statut] ?? "bg-zinc-100 text-zinc-600"}`}>
-                        {STATUT_LABELS[a.statut] ?? a.statut}
+                      <span className="font-mono">{l.prix}.–</span>
+                      <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700 no-underline">
+                        retiré depuis impression
                       </span>
                     </div>
                   </li>

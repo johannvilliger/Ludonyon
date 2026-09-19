@@ -28,6 +28,7 @@ import { DateOuvertureEditor } from "./date-ouverture-editor";
 import { EditionForm } from "./edition-form";
 import { EditionPanel } from "./edition-panel";
 import { MessageEditor } from "./message-editor";
+import { ModificationsBloqueesButton } from "./modifications-bloquees-button";
 import { PhaseButton } from "./phase-button";
 import { PurgerFileAttenteButton } from "./purger-file-attente-button";
 import { RelancerEchecsButton } from "./relancer-echecs-button";
@@ -52,6 +53,7 @@ type Parametres = {
   date_ouverture_troc: string | null;
   date_recuperation_invendus: string | null;
   message_depot_termine: string | null;
+  modifications_bloquees: number;
   derniere_sauvegarde_le: string | null;
 };
 type PosteLigne = {
@@ -98,7 +100,7 @@ export default async function DashboardGestionPage() {
         "SELECT id, annee FROM editions WHERE active_flag IS NULL ORDER BY annee DESC",
       );
   const parametres = await queryOne<Parametres>(
-    "SELECT code_dashboard, code_accueil, code_impression, mode_verrouillage, date_ouverture_troc, date_recuperation_invendus, message_depot_termine, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
+    "SELECT code_dashboard, code_accueil, code_impression, mode_verrouillage, date_ouverture_troc, date_recuperation_invendus, message_depot_termine, modifications_bloquees, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
   );
   const postes = await query<PosteLigne>(
     `SELECT
@@ -518,6 +520,21 @@ export default async function DashboardGestionPage() {
                 afficher.
               </p>
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Gel des modifications de liste, indépendant de la phase — pour
+          figer les listes le temps de les imprimer avant l'accueil, sans
+          empêcher un vendeur retardataire de s'inscrire (voir
+          modificationsBloquees dans src/lib/gestion.ts et migration 0026).
+          Les nouvelles soumissions (/vendeur/nouveau) ne sont jamais
+          concernées. */}
+      {parametres && (
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Gel des listes vendeurs</h2>
+          <div className="mt-3 rounded-md border border-zinc-200 p-4">
+            <ModificationsBloqueesButton bloquees={Boolean(parametres.modifications_bloquees)} />
           </div>
         </section>
       )}

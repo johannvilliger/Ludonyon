@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { nouvelId, queryOne, withTransaction } from "@/lib/db";
 import { envoyerCopieListeAdmin } from "@/lib/email";
+import { modificationsBloquees } from "@/lib/gestion";
 import { erreurArticles } from "@/lib/validation-articles";
 
 export type FormState = { error: string | null; success?: boolean };
@@ -50,9 +51,16 @@ export async function modifierListeVendeur(
 
   if (!participation) return { error: "Liste introuvable." };
   // Vérification côté serveur, pas seulement dans la page : le dépôt a pu
-  // se terminer entre le chargement de la page et la soumission.
+  // se terminer (ou être gelé) entre le chargement de la page et la
+  // soumission.
   if (participation.phase !== "depot") {
     return { error: "La modification n'est plus possible : le dépôt est terminé." };
+  }
+  if (await modificationsBloquees()) {
+    return {
+      error:
+        "Les modifications de liste sont temporairement suspendues (préparation de l'accueil) — contactez le comité si besoin.",
+    };
   }
 
   try {

@@ -64,6 +64,16 @@ export async function siteTrocOuvert(): Promise<boolean> {
   return Boolean(edition);
 }
 
+// Bouton dashboard indépendant de la phase de l'édition : permet de figer
+// les listes (le temps de les imprimer pour l'accueil) sans bloquer les
+// nouvelles soumissions, contrairement au blocage lié à la phase "depot".
+export async function modificationsBloquees(): Promise<boolean> {
+  const parametres = await queryOne<{ modifications_bloquees: number }>(
+    "SELECT modifications_bloquees FROM parametres_gestion WHERE id = 1",
+  );
+  return Boolean(parametres?.modifications_bloquees);
+}
+
 export async function posteCaisseAutorise(numero: number): Promise<{ posteId: string } | null> {
   const jar = await cookies();
   const token = jar.get(COOKIE_CAISSE)?.value;

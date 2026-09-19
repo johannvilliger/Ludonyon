@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { query, queryOne } from "@/lib/db";
+import { modificationsBloquees } from "@/lib/gestion";
 import { enregistrerEchec, ipAppelante, reinitialiserEchecs, verifierBlocage } from "@/lib/rate-limit";
 import { BlocageTentatives } from "@/components/BlocageTentatives";
 import { EditForm } from "./edit-form";
@@ -37,6 +38,7 @@ export default async function ModifierListePage({ params }: { params: Promise<{ 
     "SELECT nom, prix FROM articles WHERE participation_id = ? ORDER BY numero_article",
     [participation.id],
   );
+  const bloquees = await modificationsBloquees();
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-12">
@@ -47,6 +49,11 @@ export default async function ModifierListePage({ params }: { params: Promise<{ 
         <p className="mt-6 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
           La modification n&apos;est plus possible : le dépôt est terminé. Contactez le comité si vous
           devez encore corriger quelque chose.
+        </p>
+      ) : bloquees ? (
+        <p className="mt-6 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+          Les modifications de liste sont temporairement suspendues. Contactez le comité si vous devez
+          encore corriger quelque chose.
         </p>
       ) : (
         <EditForm code={code} numeroVendeur={participation.numero_vendeur} initialArticles={articles} />

@@ -251,6 +251,13 @@ export async function modifierDateRecuperation(valeurDatetimeLocal: string) {
   revalidatePath("/gestion/dashboard");
 }
 
+export async function basculerModificationsBloquees(bloquees: boolean) {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+  await query("UPDATE parametres_gestion SET modifications_bloquees = ? WHERE id = 1", [bloquees ? 1 : 0]);
+  revalidatePath("/gestion/dashboard");
+  revalidatePath("/vendeur/modifier");
+}
+
 export async function relancerTicketsEchec() {
   if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
   await query("UPDATE etiquettes_impression SET statut = 'en_attente' WHERE statut = 'echec'");
