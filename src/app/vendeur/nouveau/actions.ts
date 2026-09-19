@@ -56,11 +56,14 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
   const erreurArticle = erreurArticles(articles);
   if (erreurArticle) return { error: erreurArticle };
 
+  // Le dépôt en ligne reste ouvert pendant la réception sur place (un
+  // vendeur peut encore arriver et remplir sa liste depuis son téléphone) —
+  // seule la phase caisse (et au-delà) le ferme, voir page.tsx.
   const edition = await queryOne<{ id: string; taux_achat: number; taux_vendeur: number }>(
-    "SELECT id, taux_achat, taux_vendeur FROM editions WHERE phase = 'depot' LIMIT 1",
+    "SELECT id, taux_achat, taux_vendeur FROM editions WHERE phase IN ('depot', 'reception') LIMIT 1",
   );
   if (!edition) {
-    return { error: "Le dépôt en ligne n'est pas ouvert pour le moment — passez par l'accueil sur place." };
+    return { error: "Le dépôt de listes n'est plus ouvert pour le moment." };
   }
 
   let codeConfirmation = "";
