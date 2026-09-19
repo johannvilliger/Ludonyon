@@ -38,6 +38,7 @@ export function ArticleListEditor({
   initialArticles,
   onValiditeChange,
   illimite = false,
+  numeroDepart = 1,
 }: {
   fieldName?: string;
   initialArticles?: { nom: string; prix: number }[];
@@ -45,6 +46,12 @@ export function ArticleListEditor({
   // Pas de plafond de 30 (comptes bénévoles 9xx) : les 30 premières lignes
   // restent affichées d'emblée, mais un bouton permet d'en ajouter au-delà.
   illimite?: boolean;
+  // Numérotation affichée à côté des lignes : par défaut 1, 2, 3… mais sur
+  // /benevole/liste ces lignes viennent APRÈS des articles déjà reçus
+  // affichés au-dessus (non gérés par ce composant) — sans décalage, la
+  // numérotation visible repartirait de 1 alors que ce sont en réalité les
+  // articles 12, 13, 14…
+  numeroDepart?: number;
 }) {
   // Complète toujours jusqu'à MAX_ARTICLES lignes vides après les articles
   // déjà présents : sur le formulaire de modification, initialArticles ne
@@ -123,7 +130,7 @@ export function ArticleListEditor({
             <div key={i}>
               <div className="flex items-center gap-2">
                 <span className="w-6 shrink-0 text-sm text-zinc-400">
-                  {String(i + 1).padStart(2, "0")}
+                  {String(numeroDepart + i).padStart(2, "0")}
                 </span>
                 <input
                   value={article.nom}

@@ -7,8 +7,10 @@ import { enregistrerArticlesBenevole } from "./actions";
 
 export function BenevoleArticlesEditor({
   initialArticles,
+  numeroDepart,
 }: {
   initialArticles: { nom: string; prix: number }[];
+  numeroDepart: number;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -45,7 +47,12 @@ export function BenevoleArticlesEditor({
         enregistrer();
       }}
     >
-      <ArticleListEditor initialArticles={initialArticles} onValiditeChange={setArticlesValides} illimite />
+      <ArticleListEditor
+        initialArticles={initialArticles}
+        onValiditeChange={setArticlesValides}
+        illimite
+        numeroDepart={numeroDepart}
+      />
       <div className="mt-4 flex items-center gap-3">
         <button
           type="submit"
