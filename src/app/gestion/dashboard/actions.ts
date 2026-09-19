@@ -251,6 +251,22 @@ export async function modifierDateRecuperation(valeurDatetimeLocal: string) {
   revalidatePath("/gestion/dashboard");
 }
 
+export async function relancerTicketsEchec() {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+  await query("UPDATE etiquettes_impression SET statut = 'en_attente' WHERE statut = 'echec'");
+  revalidatePath("/gestion/dashboard");
+}
+
+// Ne touche jamais à la vente/aux articles derrière chaque ticket (seule la
+// file d'impression est purgée) — utile après une config d'imprimante
+// erronée : on repart d'une file vide plutôt que de réimprimer en rafale des
+// tickets accumulés pendant le mauvais réglage.
+export async function purgerTicketsEnAttente() {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+  await query("DELETE FROM etiquettes_impression WHERE statut = 'en_attente'");
+  revalidatePath("/gestion/dashboard");
+}
+
 export async function modifierMessageDepotTermine(nouveauMessage: string) {
   if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
   const message = nouveauMessage.trim();

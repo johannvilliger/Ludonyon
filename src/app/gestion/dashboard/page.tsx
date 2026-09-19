@@ -29,6 +29,8 @@ import { EditionForm } from "./edition-form";
 import { EditionPanel } from "./edition-panel";
 import { MessageEditor } from "./message-editor";
 import { PhaseButton } from "./phase-button";
+import { PurgerFileAttenteButton } from "./purger-file-attente-button";
+import { RelancerEchecsButton } from "./relancer-echecs-button";
 import { RefreshPauseProvider } from "./refresh-pause-context";
 import { ReouvrirCaisseButton } from "./reouvrir-caisse-button";
 import { SauvegardeButton } from "./sauvegarde-button";
@@ -603,17 +605,22 @@ export default async function DashboardGestionPage() {
               onSave={modifierCodeImpression}
             />
             {etiquettesImpression && (
-              <p className="text-sm text-zinc-600">
-                {Number(etiquettesImpression.en_attente)} ticket
-                {Number(etiquettesImpression.en_attente) > 1 ? "s" : ""} en attente d&apos;impression
-                {Number(etiquettesImpression.echec) > 0 && (
-                  <span className="font-medium text-red-600">
-                    {" "}
-                    · {Number(etiquettesImpression.echec)} en échec
-                  </span>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-zinc-600">
+                  {Number(etiquettesImpression.en_attente)} ticket
+                  {Number(etiquettesImpression.en_attente) > 1 ? "s" : ""} en attente d&apos;impression
+                  {Number(etiquettesImpression.echec) > 0 && (
+                    <>
+                      {" "}
+                      · <RelancerEchecsButton nb={Number(etiquettesImpression.echec)} />
+                    </>
+                  )}
+                  .
+                </p>
+                {Number(etiquettesImpression.en_attente) > 0 && (
+                  <PurgerFileAttenteButton nb={Number(etiquettesImpression.en_attente)} />
                 )}
-                .
-              </p>
+              </div>
             )}
           </div>
         </section>
