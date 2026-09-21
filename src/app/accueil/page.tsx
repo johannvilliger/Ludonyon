@@ -73,6 +73,9 @@ export default async function AccueilPage({
           <Link href="/accueil/etiquette-manuelle" className="text-sm text-zinc-500 hover:underline">
             Réimprimer une étiquette →
           </Link>
+          <Link href="/accueil/enveloppes" className="text-sm text-zinc-500 hover:underline">
+            Récupération des enveloppes →
+          </Link>
         </div>
       </div>
 
