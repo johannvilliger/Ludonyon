@@ -60,7 +60,7 @@ export function ArticlesVerrouilles({ articles }: { articles: ArticleVerrouille[
           return (
             <li
               key={a.id}
-              className="flex items-center gap-2 border-b border-zinc-100 py-2 text-sm last:border-b-0"
+              className="flex min-w-0 items-center gap-2 border-b border-zinc-100 py-2 text-sm last:border-b-0"
             >
               <span className="w-6 shrink-0 text-zinc-400">{String(a.numero_article).padStart(2, "0")}</span>
               <span className="min-w-0 flex-1 truncate">

@@ -155,8 +155,8 @@ export function ArticleListEditor({
             ? statutsEtiquetteParNom?.[article.nom.trim().toLowerCase()]
             : undefined;
           return (
-            <div key={i}>
-              <div className="flex items-center gap-2">
+            <div key={i} className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
                 <span className="w-6 shrink-0 text-sm text-zinc-400">
                   {String(numeroDepart + i).padStart(2, "0")}
                 </span>
@@ -166,8 +166,8 @@ export function ArticleListEditor({
                   placeholder="Nom de l'objet"
                   className={
                     mot || courtInvalide || nomDuplique
-                      ? "flex-1 rounded-md border border-red-400 px-3 py-2"
-                      : "flex-1 rounded-md border border-zinc-300 px-3 py-2"
+                      ? "min-w-0 flex-1 rounded-md border border-red-400 px-3 py-2"
+                      : "min-w-0 flex-1 rounded-md border border-zinc-300 px-3 py-2"
                   }
                 />
                 <input
