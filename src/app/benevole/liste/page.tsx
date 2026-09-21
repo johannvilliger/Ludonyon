@@ -1,12 +1,23 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
 import { benevoleConnecte } from "@/lib/benevole-session";
+import { statutEtiquetteArticle } from "@/lib/etiquette-article-statut";
 import { deconnexionBenevole } from "../actions";
 import { BenevoleArticlesEditor } from "./benevole-articles-editor";
 
 export const dynamic = "force-dynamic";
 
-type Article = { id: string; numero_article: number; nom: string; prix: number; statut: string };
+type Article = {
+  id: string;
+  numero_article: number;
+  nom: string;
+  prix: number;
+  statut: string;
+  etiquette_nom_imprime: string | null;
+  etiquette_prix_imprime: number | null;
+  etiquette_imprimee_le: string | null;
+};
 
 const STATUT_LABELS: Record<string, string> = {
   non_recu: "Non reçu",
@@ -24,6 +35,18 @@ const STATUT_STYLES: Record<string, string> = {
   refuse: "bg-red-100 text-red-800",
 };
 
+const ETIQUETTE_LABELS = {
+  jamais_imprimee: "Étiquette : à imprimer",
+  imprimee: "Étiquette : imprimée",
+  modifiee: "Étiquette : modifiée depuis impression",
+};
+
+const ETIQUETTE_STYLES = {
+  jamais_imprimee: "bg-zinc-100 text-zinc-500",
+  imprimee: "bg-emerald-100 text-emerald-800",
+  modifiee: "bg-red-100 text-red-700",
+};
+
 export default async function BenevoleListePage() {
   const session = await benevoleConnecte();
   if (!session) redirect("/benevole");
@@ -35,7 +58,8 @@ export default async function BenevoleListePage() {
 
   const articles = participation
     ? await query<Article>(
-        "SELECT id, numero_article, nom, prix, statut FROM articles WHERE participation_id = ? ORDER BY numero_article",
+        `SELECT id, numero_article, nom, prix, statut, etiquette_nom_imprime, etiquette_prix_imprime, etiquette_imprimee_le
+         FROM articles WHERE participation_id = ? ORDER BY numero_article`,
         [participation.id],
       )
     : [];
@@ -68,27 +92,45 @@ export default async function BenevoleListePage() {
 
       {participation && (
         <>
-          <h2 className="mt-8 text-lg font-medium">
-            {articles.length} article{articles.length > 1 ? "s" : ""} · {total} CHF
-          </h2>
+          <div className="mt-8 flex items-center justify-between">
+            <h2 className="text-lg font-medium">
+              {articles.length} article{articles.length > 1 ? "s" : ""} · {total} CHF
+            </h2>
+            {articles.length > 0 && (
+              <Link
+                href="/benevole/etiquettes"
+                className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:border-zinc-400"
+              >
+                Imprimer mes étiquettes →
+              </Link>
+            )}
+          </div>
 
           {articlesVerrouilles.length > 0 && (
             <ul className="mt-3 divide-y divide-zinc-200">
-              {articlesVerrouilles.map((a) => (
-                <li key={a.id} className="flex items-center gap-3 py-2 text-sm">
-                  <span className="w-6 shrink-0 text-zinc-400">
-                    {String(a.numero_article).padStart(2, "0")}
-                  </span>
-                  <span className="flex-1">
-                    {a.nom} <span className="font-mono text-zinc-500">{a.prix}.–</span>
-                  </span>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_STYLES[a.statut] ?? "bg-zinc-100 text-zinc-600"}`}
-                  >
-                    {STATUT_LABELS[a.statut] ?? a.statut}
-                  </span>
-                </li>
-              ))}
+              {articlesVerrouilles.map((a) => {
+                const statutEtiquette = statutEtiquetteArticle(a);
+                return (
+                  <li key={a.id} className="flex items-center gap-3 py-2 text-sm">
+                    <span className="w-6 shrink-0 text-zinc-400">
+                      {String(a.numero_article).padStart(2, "0")}
+                    </span>
+                    <span className="flex-1">
+                      {a.nom} <span className="font-mono text-zinc-500">{a.prix}.–</span>
+                    </span>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${ETIQUETTE_STYLES[statutEtiquette]}`}
+                    >
+                      {ETIQUETTE_LABELS[statutEtiquette]}
+                    </span>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_STYLES[a.statut] ?? "bg-zinc-100 text-zinc-600"}`}
+                    >
+                      {STATUT_LABELS[a.statut] ?? a.statut}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
 

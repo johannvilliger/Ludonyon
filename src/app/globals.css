@@ -51,6 +51,16 @@ body {
   margin: 21.5mm 0 0 8mm;
 }
 
+/* Génération d'étiquettes par plage (901/902, jusqu'à ~250 articles) : une
+   feuille .label-sheet par feuille A4 physique, chacune avec sa propre
+   marge (ci-dessus) — sans ce saut de page forcé, une grille CSS qui
+   déborde d'une page ne réappliquerait pas la marge sur les pages
+   suivantes, et les étiquettes ne s'aligneraient plus avec la planche
+   physique à partir de la 2e feuille. */
+.label-sheet--nouvelle-page {
+  break-before: page;
+}
+
 .label {
   position: relative;
   box-sizing: border-box;
@@ -98,6 +108,14 @@ body {
 
 .label__vendor {
   font: 900 3.6mm/1 Arial, sans-serif;
+}
+
+/* Numéro de vendeur en "bleu ludo" sur les étiquettes des vendeurs système
+   901/902 (Ludothèque, Dons Ludothèque) — pour les repérer d'un coup d'œil
+   parmi les étiquettes des vrais vendeurs. Couleur provisoire (générique),
+   à remplacer par le vrai code couleur de la charte dès qu'il est fourni. */
+.label__vendor--special {
+  color: #1d4ed8;
 }
 
 .label__item {
