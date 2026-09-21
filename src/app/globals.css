@@ -112,10 +112,9 @@ body {
 
 /* Numéro de vendeur en "bleu ludo" sur les étiquettes des vendeurs système
    901/902 (Ludothèque, Dons Ludothèque) — pour les repérer d'un coup d'œil
-   parmi les étiquettes des vrais vendeurs. Couleur provisoire (générique),
-   à remplacer par le vrai code couleur de la charte dès qu'il est fourni. */
+   parmi les étiquettes des vrais vendeurs. */
 .label__vendor--special {
-  color: #1d4ed8;
+  color: #2e9fd6;
 }
 
 .label__item {
