@@ -48,6 +48,9 @@ export function InstructionsCaisse({ posteId, dejaVues }: { posteId: string; dej
                 <li key={etape}>{etape}</li>
               ))}
             </ol>
+            <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+              {INSTRUCTIONS_CAISSE.rappel}
+            </p>
             <button
               type="button"
               onClick={fermer}

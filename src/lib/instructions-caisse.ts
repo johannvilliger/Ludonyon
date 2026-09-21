@@ -22,6 +22,7 @@ export const INSTRUCTIONS_CAISSE = {
     "Indiquer le montant payé, rendre le montant indiqué",
     "Encaisser",
   ],
+  rappel: "Les cintres sont à garder en caisse.",
 };
 
 export const INSTRUCTIONS_CLOTURE = {
