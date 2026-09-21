@@ -4,6 +4,7 @@ import { query, queryOne } from "@/lib/db";
 import { benevoleConnecte } from "@/lib/benevole-session";
 import { statutEtiquetteArticle } from "@/lib/etiquette-article-statut";
 import { deconnexionBenevole } from "../actions";
+import { ArticlesVerrouilles } from "./articles-verrouilles";
 import { BenevoleArticlesEditor } from "./benevole-articles-editor";
 
 export const dynamic = "force-dynamic";
@@ -17,34 +18,6 @@ type Article = {
   etiquette_nom_imprime: string | null;
   etiquette_prix_imprime: number | null;
   etiquette_imprimee_le: string | null;
-};
-
-const STATUT_LABELS: Record<string, string> = {
-  non_recu: "Non reçu",
-  recu: "Reçu",
-  vendu: "Vendu",
-  invendu: "Invendu",
-  refuse: "Refusé",
-};
-
-const STATUT_STYLES: Record<string, string> = {
-  non_recu: "bg-zinc-100 text-zinc-600",
-  recu: "bg-emerald-100 text-emerald-800",
-  vendu: "bg-blue-100 text-blue-800",
-  invendu: "bg-amber-100 text-amber-800",
-  refuse: "bg-red-100 text-red-800",
-};
-
-const ETIQUETTE_LABELS = {
-  jamais_imprimee: "Étiquette : à imprimer",
-  imprimee: "Étiquette : imprimée",
-  modifiee: "Étiquette : modifiée depuis impression",
-};
-
-const ETIQUETTE_STYLES = {
-  jamais_imprimee: "bg-zinc-100 text-zinc-500",
-  imprimee: "bg-emerald-100 text-emerald-800",
-  modifiee: "bg-red-100 text-red-700",
 };
 
 export default async function BenevoleListePage() {
@@ -106,36 +79,13 @@ export default async function BenevoleListePage() {
             )}
           </div>
 
-          {articlesVerrouilles.length > 0 && (
-            <ul className="mt-3 divide-y divide-zinc-200">
-              {articlesVerrouilles.map((a) => {
-                const statutEtiquette = statutEtiquetteArticle(a);
-                return (
-                  <li key={a.id} className="flex items-center gap-3 py-2 text-sm">
-                    <span className="w-6 shrink-0 text-zinc-400">
-                      {String(a.numero_article).padStart(2, "0")}
-                    </span>
-                    <span className="flex-1">
-                      {a.nom} <span className="font-mono text-zinc-500">{a.prix}.–</span>
-                    </span>
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${ETIQUETTE_STYLES[statutEtiquette]}`}
-                    >
-                      {ETIQUETTE_LABELS[statutEtiquette]}
-                    </span>
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_STYLES[a.statut] ?? "bg-zinc-100 text-zinc-600"}`}
-                    >
-                      {STATUT_LABELS[a.statut] ?? a.statut}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          {articlesVerrouilles.length > 0 && <ArticlesVerrouilles articles={articlesVerrouilles} />}
 
           <BenevoleArticlesEditor
             initialArticles={articlesModifiables.map((a) => ({ nom: a.nom, prix: a.prix }))}
+            statutsEtiquetteParNom={Object.fromEntries(
+              articlesModifiables.map((a) => [a.nom.trim().toLowerCase(), statutEtiquetteArticle(a)]),
+            )}
             numeroDepart={articlesVerrouilles.length + 1}
             numeroVendeur={session.numeroFixe}
           />

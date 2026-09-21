@@ -4,14 +4,17 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArticleListEditor } from "@/components/ArticleListEditor";
 import { SignalerActiviteEnCours } from "@/components/SignalerActiviteEnCours";
+import type { StatutEtiquette } from "@/lib/etiquette-article-statut";
 import { enregistrerArticlesBenevole } from "./actions";
 
 export function BenevoleArticlesEditor({
   initialArticles,
+  statutsEtiquetteParNom,
   numeroDepart,
   numeroVendeur,
 }: {
   initialArticles: { nom: string; prix: number }[];
+  statutsEtiquetteParNom: Record<string, StatutEtiquette>;
   numeroDepart: number;
   numeroVendeur: number;
 }) {
@@ -56,6 +59,7 @@ export function BenevoleArticlesEditor({
         onValiditeChange={setArticlesValides}
         illimite
         numeroDepart={numeroDepart}
+        statutsEtiquetteParNom={statutsEtiquetteParNom}
       />
       <div className="mt-4 flex items-center gap-3">
         <button

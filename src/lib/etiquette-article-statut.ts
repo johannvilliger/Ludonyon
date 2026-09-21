@@ -18,3 +18,17 @@ export function statutEtiquetteArticle(article: {
   }
   return "modifiee";
 }
+
+// Libellés courts : pensés pour une grille compacte à 2 colonnes (901/902),
+// pas la place pour "Étiquette : modifiée depuis impression".
+export const ETIQUETTE_LABELS: Record<StatutEtiquette, string> = {
+  jamais_imprimee: "À imprimer",
+  imprimee: "Imprimée",
+  modifiee: "Modifiée",
+};
+
+export const ETIQUETTE_STYLES: Record<StatutEtiquette, string> = {
+  jamais_imprimee: "bg-zinc-100 text-zinc-500",
+  imprimee: "bg-emerald-100 text-emerald-800",
+  modifiee: "bg-red-100 text-red-700",
+};

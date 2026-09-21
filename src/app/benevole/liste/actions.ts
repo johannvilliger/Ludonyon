@@ -26,6 +26,30 @@ export async function enregistrerArticlesBenevole(articles: ArticleInput[]) {
   if (erreurArticle) throw new Error(erreurArticle);
 
   await withTransaction(async (conn) => {
+    // Un remplacement complet (delete + insert) perdrait le suivi
+    // d'impression d'étiquette (voir migration 0027) même pour un article
+    // resté identique — on le fait donc correspondre à l'ancien par nom
+    // (normalisé) avant de le supprimer, et on reporte son instantané
+    // d'étiquette sur la nouvelle ligne. Un nom changé perd le suivi (il
+    // s'agit alors d'un article différent) ; un prix changé le garde,
+    // affiché ensuite comme "modifiée depuis impression" — comportement
+    // voulu.
+    const [ancienRows] = await conn.query<RowDataPacket[]>(
+      `SELECT nom, etiquette_nom_imprime, etiquette_prix_imprime, etiquette_imprimee_le
+       FROM articles WHERE participation_id = ? AND statut = 'non_recu'`,
+      [participation.id],
+    );
+    const etiquettesParNom = new Map(
+      ancienRows.map((r) => [
+        String(r.nom).trim().toLowerCase(),
+        {
+          etiquette_nom_imprime: r.etiquette_nom_imprime as string | null,
+          etiquette_prix_imprime: r.etiquette_prix_imprime as number | null,
+          etiquette_imprimee_le: r.etiquette_imprimee_le as Date | null,
+        },
+      ]),
+    );
+
     await conn.query("DELETE FROM articles WHERE participation_id = ? AND statut = 'non_recu'", [
       participation.id,
     ]);
@@ -35,9 +59,22 @@ export async function enregistrerArticlesBenevole(articles: ArticleInput[]) {
     );
     let numero = (rows[0]?.suivant as number) ?? 1;
     for (const a of articles) {
+      const nom = a.nom.trim();
+      const ancienneEtiquette = etiquettesParNom.get(nom.toLowerCase());
       await conn.query(
-        "INSERT INTO articles (id, participation_id, numero_article, nom, prix) VALUES (?, ?, ?, ?, ?)",
-        [nouvelId(), participation.id, numero++, a.nom.trim(), Math.round(a.prix)],
+        `INSERT INTO articles
+           (id, participation_id, numero_article, nom, prix, etiquette_nom_imprime, etiquette_prix_imprime, etiquette_imprimee_le)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          nouvelId(),
+          participation.id,
+          numero++,
+          nom,
+          Math.round(a.prix),
+          ancienneEtiquette?.etiquette_nom_imprime ?? null,
+          ancienneEtiquette?.etiquette_prix_imprime ?? null,
+          ancienneEtiquette?.etiquette_imprimee_le ?? null,
+        ],
       );
     }
   });
