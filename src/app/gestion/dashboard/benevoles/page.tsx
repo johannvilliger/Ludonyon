@@ -5,6 +5,7 @@ import { dashboardEstConnecte } from "@/lib/gestion";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 import { BenevoleEditRow } from "./benevole-edit-row";
 import { BenevoleForm } from "./benevole-form";
+import { MotDePasseVendeurSpecialRow } from "./mot-de-passe-vendeur-special-row";
 import { SupprimerBenevoleButton } from "./supprimer-benevole-button";
 
 export const dynamic = "force-dynamic";
@@ -59,13 +60,14 @@ export default async function BenevolesPage() {
                 {special && (
                   <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-500">système</span>
                 )}
-                {!special && !b.mot_de_passe_hash && (
+                {!b.mot_de_passe_hash && (
                   <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
                     pas de mot de passe
                   </span>
                 )}
               </span>
               <span className="flex items-center gap-3">
+                {special && <MotDePasseVendeurSpecialRow benevoleId={b.id} />}
                 {!special && <BenevoleEditRow benevoleId={b.id} numeroFixe={b.numero_fixe} nom={b.nom} />}
                 {!special && <SupprimerBenevoleButton benevoleId={b.id} nom={b.nom} />}
                 {b.code_confirmation && (

@@ -8,6 +8,40 @@ import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 
 export type FormState = { error: string | null };
 
+// Pour 901/902 (Ludothèque, Dons Ludothèque) : uniquement le mot de passe,
+// jamais le nom ni le numéro (verrouillés, voir vendeurs-speciaux.ts) —
+// modifierBenevole rejette tout numéro < 903, donc inutilisable tel quel
+// pour ces deux lignes "système".
+export async function modifierMotDePasseVendeurSpecial(
+  benevoleId: string,
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+
+  const motDePasse = String(formData.get("mot_de_passe") ?? "").trim();
+  if (motDePasse.length < 4) {
+    return { error: "Le mot de passe doit faire au moins 4 caractères." };
+  }
+
+  const benevole = await queryOne<{ numero_fixe: number }>(
+    "SELECT numero_fixe FROM benevoles WHERE id = ?",
+    [benevoleId],
+  );
+  if (!benevole) return { error: "Bénévole introuvable." };
+  if (!estVendeurSpecial(benevole.numero_fixe)) {
+    return { error: "Cette action est réservée aux vendeurs système (901/902)." };
+  }
+
+  await query("UPDATE benevoles SET mot_de_passe_hash = ? WHERE id = ?", [
+    hasherMotDePasse(motDePasse),
+    benevoleId,
+  ]);
+
+  revalidatePath("/gestion/dashboard/benevoles");
+  return { error: null };
+}
+
 export async function modifierBenevole(
   benevoleId: string,
   _prevState: FormState,
