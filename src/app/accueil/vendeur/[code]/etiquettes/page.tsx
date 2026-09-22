@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import QRCode from "qrcode";
+import { EtiquetteArticleNom } from "@/components/EtiquetteArticleNom";
 import { query, queryOne } from "@/lib/db";
 import { PrintButton } from "./print-button";
 
@@ -72,12 +73,15 @@ export default async function EtiquettesPage({
         {labels.map((l) => (
           <div key={l.numero_article} className="label">
             <div className="label__row">
-              <span className="label__vendor">{participation.numero_vendeur}</span>
-              <span className="label__item">{String(l.numero_article).padStart(2, "0")}</span>
+              <div className="label__vendor-group">
+                <img src="/meeple.png" alt="" className="label__logo--inline" />
+                <span className="label__vendor">{participation.numero_vendeur}</span>
+              </div>
+              <span className="label__item">art. {String(l.numero_article).padStart(2, "0")}</span>
             </div>
             <div className="label__price">{l.prix}.–</div>
             <div className="label__row label__row--bottom">
-              <img src="/meeple.png" alt="" className="label__logo--inline" />
+              <EtiquetteArticleNom nom={l.nom} />
               {/* le SVG est produit par la librairie `qrcode` côté serveur à partir
                   d'une chaîne qu'on construit nous-mêmes, pas de contenu utilisateur brut */}
               <div className="qr-wrap" dangerouslySetInnerHTML={{ __html: l.svg }} />

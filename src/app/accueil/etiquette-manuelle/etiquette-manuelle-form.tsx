@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { EtiquetteArticleNom } from "@/components/EtiquetteArticleNom";
 import { rechercherArticlePourEtiquette, type ArticleEtiquette } from "./actions";
 import { PrintButton } from "./print-button";
 
@@ -99,12 +100,15 @@ export function EtiquetteManuelleForm() {
                   {selectionnee ? (
                     <>
                       <div className="label__row">
-                        <span className="label__vendor">{numeroVendeur}</span>
-                        <span className="label__item">{String(article.numeroArticle).padStart(2, "0")}</span>
+                        <div className="label__vendor-group">
+                          <img src="/meeple.png" alt="" className="label__logo--inline" />
+                          <span className="label__vendor">{numeroVendeur}</span>
+                        </div>
+                        <span className="label__item">art. {String(article.numeroArticle).padStart(2, "0")}</span>
                       </div>
                       <div className="label__price">{article.prix}.–</div>
                       <div className="label__row label__row--bottom">
-                        <img src="/meeple.png" alt="" className="label__logo--inline" />
+                        <EtiquetteArticleNom nom={article.nom} />
                         <div className="qr-wrap" dangerouslySetInnerHTML={{ __html: article.svg }} />
                       </div>
                     </>

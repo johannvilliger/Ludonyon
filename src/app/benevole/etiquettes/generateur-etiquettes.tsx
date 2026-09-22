@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { EtiquetteArticleNom } from "@/components/EtiquetteArticleNom";
 import { PrintButton } from "./print-button";
 
 // Planche Herma 4357 (voir globals.css) : 4 colonnes x 10 lignes, 40
@@ -151,14 +152,17 @@ export function GenerateurEtiquettes({
                 article ? (
                   <div key={i} className="label">
                     <div className="label__row">
-                      <span className={special ? "label__vendor label__vendor--special" : "label__vendor"}>
-                        {numeroVendeur}
-                      </span>
-                      <span className="label__item">{String(article.numeroArticle).padStart(2, "0")}</span>
+                      <div className="label__vendor-group">
+                        <img src="/meeple.png" alt="" className="label__logo--inline" />
+                        <span className={special ? "label__vendor label__vendor--special" : "label__vendor"}>
+                          {numeroVendeur}
+                        </span>
+                      </div>
+                      <span className="label__item">art. {String(article.numeroArticle).padStart(2, "0")}</span>
                     </div>
                     <div className="label__price">{article.prix}.–</div>
                     <div className="label__row label__row--bottom">
-                      <img src="/meeple.png" alt="" className="label__logo--inline" />
+                      <EtiquetteArticleNom nom={article.nom} />
                       <div className="qr-wrap" dangerouslySetInnerHTML={{ __html: article.svg }} />
                     </div>
                   </div>
