@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { EtiquetteArticleNom } from "@/components/EtiquetteArticleNom";
+import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 import { rechercherArticlePourEtiquette, type ArticleEtiquette } from "./actions";
 import { PrintButton } from "./print-button";
 
@@ -102,7 +103,15 @@ export function EtiquetteManuelleForm() {
                       <div className="label__row">
                         <div className="label__vendor-group">
                           <img src="/meeple.png" alt="" className="label__logo--inline" />
-                          <span className="label__vendor">{numeroVendeur}</span>
+                          <span
+                            className={
+                              estVendeurSpecial(Number(numeroVendeur))
+                                ? "label__vendor label__vendor--special"
+                                : "label__vendor"
+                            }
+                          >
+                            {numeroVendeur}
+                          </span>
                         </div>
                         <span className="label__item">art. {String(article.numeroArticle).padStart(2, "0")}</span>
                       </div>

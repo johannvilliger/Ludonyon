@@ -3,6 +3,7 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import { EtiquetteArticleNom } from "@/components/EtiquetteArticleNom";
 import { query, queryOne } from "@/lib/db";
+import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 import { PrintButton } from "./print-button";
 
 type Participation = { id: string; numero_vendeur: number; nom_vendeur: string; telephone: string | null };
@@ -24,6 +25,8 @@ export default async function EtiquettesPage({
   );
 
   if (!participation) notFound();
+
+  const special = estVendeurSpecial(participation.numero_vendeur);
 
   // Un article refusé (mauvais état / sale / cassé) est repris par le
   // vendeur et jamais mis en vente : pas la peine de gâcher une étiquette.
@@ -64,7 +67,9 @@ export default async function EtiquettesPage({
       <div className="label-sheet">
         <div className="label label--contact">
           <div className="label__row">
-            <span className="label__vendor">#{participation.numero_vendeur}</span>
+            <span className={special ? "label__vendor label__vendor--special" : "label__vendor"}>
+              #{participation.numero_vendeur}
+            </span>
           </div>
           <div className="label__contact-nom">{participation.nom_vendeur}</div>
           <div className="label__contact-tel">{participation.telephone || "—"}</div>
@@ -75,7 +80,9 @@ export default async function EtiquettesPage({
             <div className="label__row">
               <div className="label__vendor-group">
                 <img src="/meeple.png" alt="" className="label__logo--inline" />
-                <span className="label__vendor">{participation.numero_vendeur}</span>
+                <span className={special ? "label__vendor label__vendor--special" : "label__vendor"}>
+                  {participation.numero_vendeur}
+                </span>
               </div>
               <span className="label__item">art. {String(l.numero_article).padStart(2, "0")}</span>
             </div>
