@@ -28,6 +28,10 @@ export default async function Home() {
     <main className="mx-auto w-full flex max-w-2xl flex-1 flex-col justify-center px-6 py-12">
       <h1 className="text-4xl font-semibold tracking-tight">Troc de la Ludothèque Nyon Région</h1>
 
+      <Link href="/comment-ca-marche" className="mt-2 w-fit text-sm text-zinc-500 hover:underline">
+        Comment fonctionne le troc ? →
+      </Link>
+
       {depotOuvert ? (
         <>
           <p className="mt-3 text-zinc-600">
