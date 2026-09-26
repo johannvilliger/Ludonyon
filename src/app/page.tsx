@@ -1,12 +1,18 @@
 import Link from "next/link";
 import { CompteARebours } from "@/components/CompteARebours";
 import { queryOne } from "@/lib/db";
+import { enregistrerVisite } from "@/lib/visites";
 
 export const dynamic = "force-dynamic";
 
 const MESSAGE_PAR_DEFAUT = "Le dépôt de listes n'est plus ouvert pour le moment.";
 
 export default async function Home() {
+  // L'écriture en base est différée après l'envoi de la réponse (voir
+  // enregistrerVisite) — cet await ne fait que lire les en-têtes de la
+  // requête, quasi instantané.
+  await enregistrerVisite();
+
   const parametres = await queryOne<{
     date_ouverture_troc: string | null;
     message_depot_termine: string | null;
