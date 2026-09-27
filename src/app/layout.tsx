@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Troc Ludothèque Nyon Région",
+  title: "Troc annuel de la Ludothèque Nyon Région",
   description: "Dépôt de listes, contrôle, vente et clôture du troc annuel.",
 };
 
