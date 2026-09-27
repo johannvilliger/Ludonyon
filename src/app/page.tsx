@@ -47,23 +47,12 @@ export default async function Home() {
             Déposer ma liste
           </Link>
 
-          {parametres?.date_ouverture_troc && (
-            <div className="mt-10 text-center">
-              <p className="text-sm font-medium text-zinc-600">Jour du dépôt en personne dans :</p>
-              <p className="mt-0.5 text-xs text-zinc-400">
-                (la liste, elle, se dépose en ligne dès aujourd&apos;hui)
-              </p>
-              <div className="mt-4 flex justify-center">
-                <CompteARebours dateCibleIso={parametres.date_ouverture_troc.replace(" ", "T")} />
-              </div>
-            </div>
-          )}
-
-          {/* Rappel imagé : le compte à rebours ci-dessus concerne le jour du
-              dépôt en personne, pas le dépôt de liste — sans ça, beaucoup de
-              visiteurs pensent qu'il n'y a rien à faire tant qu'il n'est pas
+          {/* Rappel imagé juste après le bouton : le compte à rebours plus
+              bas concerne le jour du dépôt en personne, pas le dépôt de
+              liste — sans ce guide bien visible, beaucoup de visiteurs
+              pensaient qu'il n'y avait rien à faire tant qu'il n'était pas
               à zéro. */}
-          <div className="mt-12 overflow-hidden rounded-xl border border-zinc-200">
+          <div className="mt-10 overflow-hidden rounded-xl border border-zinc-200">
             <div className="px-5 pb-1 pt-4">
               <h2 className="text-base font-semibold">Comment déposer votre liste ?</h2>
               <p className="mt-0.5 text-sm text-zinc-500">
@@ -79,6 +68,18 @@ export default async function Home() {
               className="mt-3 h-auto w-full"
             />
           </div>
+
+          {parametres?.date_ouverture_troc && (
+            <div className="mt-12 text-center">
+              <p className="text-sm font-medium text-zinc-600">Jour du dépôt en personne dans :</p>
+              <p className="mt-0.5 text-xs text-zinc-400">
+                (la liste, elle, se dépose en ligne dès aujourd&apos;hui)
+              </p>
+              <div className="mt-4 flex justify-center">
+                <CompteARebours dateCibleIso={parametres.date_ouverture_troc.replace(" ", "T")} />
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <p className="mt-3 whitespace-pre-line text-zinc-600">
