@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { compterLignes, largeurTexteMm } from "@/lib/etiquette-texte-mesure";
 
 // Taille max/min en mm et largeur utile du coin bas-gauche de l'étiquette
 // (voir .label__name dans globals.css). Mesure réelle de la largeur du
@@ -10,15 +11,13 @@ import { useEffect, useState } from "react";
 const TAILLE_MAX_MM = 3.4;
 const TAILLE_MIN_MM = 2.2;
 const LARGEUR_UTILE_MM = 34.6;
-const PX_PAR_MM = 96 / 25.4;
 
-let ctxMesure: CanvasRenderingContext2D | null = null;
-
-function largeurTexteMm(texte: string, tailleMm: number): number {
-  if (!ctxMesure) ctxMesure = document.createElement("canvas").getContext("2d");
-  if (!ctxMesure) return 0;
-  ctxMesure.font = `700 ${tailleMm * PX_PAR_MM}px Arial`;
-  return ctxMesure.measureText(texte).width / PX_PAR_MM;
+// Un nom qui, même à la taille plancher, a besoin de plus de 2 lignes sera
+// coupé par -webkit-line-clamp — utilisé pour proposer une étiquette
+// "texte seul" en complément (voir nomTropLongPourEtiquetteNormale et la
+// page accueil/vendeur/[code]/etiquettes).
+export function nomTropLongPourEtiquetteNormale(nom: string): boolean {
+  return compterLignes(nom, TAILLE_MIN_MM, LARGEUR_UTILE_MM) > 2;
 }
 
 export function EtiquetteArticleNom({ nom }: { nom: string }) {

@@ -153,6 +153,34 @@ body {
   text-overflow: ellipsis;
 }
 
+/* Étiquette "texte seul" : nom complet, logo gardé, tout le reste (n°,
+   prix, QR) retiré — complément de l'étiquette normale pour un nom trop
+   long pour son coin (voir nomTropLongPourEtiquetteNormale), à coller à
+   côté. Jamais de QR ici : inutilisable seule à la caisse. */
+.label--texte-seul {
+  justify-content: flex-start;
+}
+
+.label__logo--texte-seul {
+  width: 5mm;
+  height: 5mm;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.label__texte-seul {
+  margin-top: 1mm;
+  max-width: 44.1mm;
+  font-weight: 700;
+  font-family: Arial, sans-serif;
+  line-height: 1.12;
+  color: #101010;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+}
+
 /* Repère de position affiché dans les cases encore vides de la planche, sur
    l'écran d'impression manuelle d'une étiquette isolée (choix de la case
    déjà libre sur une feuille entamée) — jamais imprimé, la case reste

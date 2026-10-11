@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import QRCode from "qrcode";
-import { EtiquetteArticleNom } from "@/components/EtiquetteArticleNom";
 import { query, queryOne } from "@/lib/db";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
-import { PrintButton } from "./print-button";
+import { EtiquettesVendeur } from "./etiquettes-vendeur";
 
 type Participation = { id: string; numero_vendeur: number; nom_vendeur: string; telephone: string | null };
 type Article = { numero_article: number; nom: string; prix: number };
@@ -52,50 +51,20 @@ export default async function EtiquettesPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-10 print:m-0 print:max-w-none print:p-0">
-      <div className="mb-6 flex items-center justify-between print:hidden">
-        <div>
-          <Link href={`/accueil/vendeur/${code}`} className="text-sm text-zinc-500 hover:underline">
-            ← Vendeur n° {participation.numero_vendeur}
-          </Link>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-            {labels.length} étiquette{labels.length > 1 ? "s" : ""}
-          </h1>
-        </div>
-        <PrintButton />
-      </div>
+      <Link
+        href={`/accueil/vendeur/${code}`}
+        className="mb-1 block text-sm text-zinc-500 hover:underline print:hidden"
+      >
+        ← Vendeur n° {participation.numero_vendeur}
+      </Link>
 
-      <div className="label-sheet">
-        <div className="label label--contact">
-          <div className="label__row">
-            <span className={special ? "label__vendor label__vendor--special" : "label__vendor"}>
-              #{participation.numero_vendeur}
-            </span>
-          </div>
-          <div className="label__contact-nom">{participation.nom_vendeur}</div>
-          <div className="label__contact-tel">{participation.telephone || "—"}</div>
-          <img src="/meeple.png" alt="" className="label__logo" />
-        </div>
-        {labels.map((l) => (
-          <div key={l.numero_article} className="label">
-            <div className="label__row">
-              <div className="label__vendor-group">
-                <img src="/meeple.png" alt="" className="label__logo--inline" />
-                <span className={special ? "label__vendor label__vendor--special" : "label__vendor"}>
-                  {participation.numero_vendeur}
-                </span>
-              </div>
-              <span className="label__item">art. {String(l.numero_article).padStart(2, "0")}</span>
-            </div>
-            <div className="label__price">{l.prix}.–</div>
-            <div className="label__row label__row--bottom">
-              <EtiquetteArticleNom nom={l.nom} />
-              {/* le SVG est produit par la librairie `qrcode` côté serveur à partir
-                  d'une chaîne qu'on construit nous-mêmes, pas de contenu utilisateur brut */}
-              <div className="qr-wrap" dangerouslySetInnerHTML={{ __html: l.svg }} />
-            </div>
-          </div>
-        ))}
-      </div>
+      <EtiquettesVendeur
+        numeroVendeur={participation.numero_vendeur}
+        nomVendeur={participation.nom_vendeur}
+        telephone={participation.telephone}
+        special={special}
+        labels={labels}
+      />
     </main>
   );
 }
