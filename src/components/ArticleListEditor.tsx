@@ -28,10 +28,18 @@ function prixEstInvalide(prix: string): boolean {
 }
 
 const LONGUEUR_MIN_NOM = 3;
+// Garder synchronisé avec LONGUEUR_MAX_NOM dans lib/validation-articles.ts
+// (filet de sécurité serveur) — au-delà, le nom ne tient plus
+// confortablement sur l'étiquette article, voir EtiquetteArticleNom.
+const LONGUEUR_MAX_NOM = 60;
 
 function nomTropCourt(nom: string): boolean {
   const longueur = nom.trim().length;
   return longueur > 0 && longueur < LONGUEUR_MIN_NOM;
+}
+
+function nomTropLong(nom: string): boolean {
+  return nom.trim().length > LONGUEUR_MAX_NOM;
 }
 
 export function ArticleListEditor({
@@ -83,6 +91,7 @@ export function ArticleListEditor({
         motInterdit(a.nom) ||
         prixEstInvalide(a.prix) ||
         nomTropCourt(a.nom) ||
+        nomTropLong(a.nom) ||
         (comptage.get(a.nom.trim().toLowerCase()) ?? 0) > 1,
     );
     onValiditeChange?.(!invalide);
@@ -149,6 +158,7 @@ export function ArticleListEditor({
           const prixInvalide = nomRempli && prixEstInvalide(article.prix);
           const centimes = prixInvalide && contientCentimes(article.prix);
           const courtInvalide = nomRempli && nomTropCourt(article.nom);
+          const longInvalide = nomRempli && nomTropLong(article.nom);
           const nomDuplique =
             nomRempli && (comptageNoms.get(article.nom.trim().toLowerCase()) ?? 0) > 1;
           const statutEtiquette = nomRempli
@@ -165,7 +175,7 @@ export function ArticleListEditor({
                   onChange={(e) => updateArticle(i, "nom", e.target.value)}
                   placeholder="Nom de l'objet"
                   className={
-                    mot || courtInvalide || nomDuplique
+                    mot || courtInvalide || longInvalide || nomDuplique
                       ? "min-w-0 flex-1 rounded-md border border-red-400 px-3 py-2"
                       : "min-w-0 flex-1 rounded-md border border-zinc-300 px-3 py-2"
                   }
@@ -205,13 +215,19 @@ export function ArticleListEditor({
                   Le nom doit contenir au moins {LONGUEUR_MIN_NOM} caractères.
                 </p>
               )}
-              {!mot && !prixInvalide && !courtInvalide && nomDuplique && (
+              {!mot && !prixInvalide && !courtInvalide && longInvalide && (
+                <p className="ml-8 mt-1 text-sm text-red-600">
+                  Le nom ne doit pas dépasser {LONGUEUR_MAX_NOM} caractères ({article.nom.trim().length}/
+                  {LONGUEUR_MAX_NOM}) — il doit tenir sur l&apos;étiquette.
+                </p>
+              )}
+              {!mot && !prixInvalide && !courtInvalide && !longInvalide && nomDuplique && (
                 <p className="ml-8 mt-1 text-sm text-red-600">
                   Vous avez déjà un article « {article.nom.trim()} » dans la liste — si c&apos;est un
                   objet similaire, ajoutez un détail pour le distinguer (ex. couleur, taille, édition).
                 </p>
               )}
-              {!mot && !prixInvalide && !courtInvalide && !nomDuplique && statutEtiquette && (
+              {!mot && !prixInvalide && !courtInvalide && !longInvalide && !nomDuplique && statutEtiquette && (
                 <p className="ml-8 mt-1">
                   <span
                     className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${ETIQUETTE_STYLES[statutEtiquette]}`}

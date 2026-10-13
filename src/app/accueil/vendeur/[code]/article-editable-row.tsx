@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
+import { LONGUEUR_MAX_NOM } from "@/lib/validation-articles";
 import { modifierArticle } from "./actions";
 
 export function ArticleEditableRow({
@@ -21,6 +22,7 @@ export function ArticleEditableRow({
   const [pending, startTransition] = useTransition();
 
   const mot = nom.trim() ? motInterdit(nom) : null;
+  const tropLong = nom.trim().length > LONGUEUR_MAX_NOM;
   const prixInvalide = nom.trim() !== "" && (prix.trim() === "" || Number(prix) <= 0);
 
   return (
@@ -33,7 +35,7 @@ export function ArticleEditableRow({
             setEnregistre(false);
           }}
           className={
-            mot
+            mot || tropLong
               ? "min-w-0 flex-1 rounded border border-red-400 px-2 py-1 text-sm"
               : "min-w-0 flex-1 rounded border border-zinc-300 px-2 py-1 text-sm"
           }
@@ -55,7 +57,7 @@ export function ArticleEditableRow({
         />
         <button
           type="button"
-          disabled={pending || Boolean(mot) || prixInvalide || enregistre}
+          disabled={pending || Boolean(mot) || tropLong || prixInvalide || enregistre}
           onClick={() =>
             startTransition(async () => {
               await modifierArticle(articleId, code, nom, Number(prix));
@@ -68,7 +70,14 @@ export function ArticleEditableRow({
         </button>
       </div>
       {mot && <p className="mt-1 text-xs text-red-600">{messageMotInterdit(mot)}</p>}
-      {!mot && prixInvalide && <p className="mt-1 text-xs text-red-600">Indiquez un prix supérieur à 0.–.</p>}
+      {!mot && tropLong && (
+        <p className="mt-1 text-xs text-red-600">
+          Le nom dépasse {LONGUEUR_MAX_NOM} caractères ({nom.trim().length}/{LONGUEUR_MAX_NOM}).
+        </p>
+      )}
+      {!mot && !tropLong && prixInvalide && (
+        <p className="mt-1 text-xs text-red-600">Indiquez un prix supérieur à 0.–.</p>
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { envoyerEmailReceptionConfirmee } from "@/lib/email";
 import { accueilEstConnecte } from "@/lib/gestion";
 import { formaterTelephone, telephoneValide } from "@/lib/telephone";
 import { urlAbsolue } from "@/lib/url";
+import { LONGUEUR_MAX_NOM } from "@/lib/validation-articles";
 
 export async function definirBenevole(code: string, estBenevole: boolean) {
   if (!(await accueilEstConnecte())) throw new Error("Non autorisé.");
@@ -122,6 +123,9 @@ export async function modifierArticle(articleId: string, code: string, nom: stri
 
   const nomTrim = nom.trim();
   if (!nomTrim) throw new Error("Le nom est obligatoire.");
+  if (nomTrim.length > LONGUEUR_MAX_NOM) {
+    throw new Error(`Le nom dépasse ${LONGUEUR_MAX_NOM} caractères (il doit tenir sur l'étiquette).`);
+  }
 
   const mot = motInterdit(nomTrim);
   if (mot) throw new Error(messageMotInterdit(mot));
@@ -159,6 +163,9 @@ export async function ajouterArticle(code: string, nom: string, prix: number) {
 
   const nomTrim = nom.trim();
   if (!nomTrim) throw new Error("Le nom est obligatoire.");
+  if (nomTrim.length > LONGUEUR_MAX_NOM) {
+    throw new Error(`Le nom dépasse ${LONGUEUR_MAX_NOM} caractères (il doit tenir sur l'étiquette).`);
+  }
 
   const mot = motInterdit(nomTrim);
   if (mot) throw new Error(messageMotInterdit(mot));

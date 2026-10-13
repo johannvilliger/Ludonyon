@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
+import { LONGUEUR_MAX_NOM } from "@/lib/validation-articles";
 import { ajouterArticle } from "./actions";
 
 export function AjouterArticleForm({ code }: { code: string }) {
@@ -13,11 +14,12 @@ export function AjouterArticleForm({ code }: { code: string }) {
   const [pending, startTransition] = useTransition();
 
   const mot = nom.trim() ? motInterdit(nom) : null;
+  const tropLong = nom.trim().length > LONGUEUR_MAX_NOM;
   const prixInvalide = nom.trim() !== "" && prix.trim() !== "" && Number(prix) <= 0;
 
   function ajouter() {
     setErreur(null);
-    if (!nom.trim() || !prix.trim() || mot || prixInvalide) return;
+    if (!nom.trim() || !prix.trim() || mot || tropLong || prixInvalide) return;
     startTransition(async () => {
       try {
         await ajouterArticle(code, nom, Number(prix));
@@ -41,9 +43,14 @@ export function AjouterArticleForm({ code }: { code: string }) {
             value={nom}
             onChange={(e) => setNom(e.target.value)}
             placeholder="Nom de l'objet"
-            className={mot ? "w-full rounded-md border border-red-400 px-3 py-2" : "w-full rounded-md border border-zinc-300 px-3 py-2"}
+            className={mot || tropLong ? "w-full rounded-md border border-red-400 px-3 py-2" : "w-full rounded-md border border-zinc-300 px-3 py-2"}
           />
           {mot && <p className="mt-1 text-xs text-red-600">{messageMotInterdit(mot)}</p>}
+          {!mot && tropLong && (
+            <p className="mt-1 text-xs text-red-600">
+              Le nom dépasse {LONGUEUR_MAX_NOM} caractères ({nom.trim().length}/{LONGUEUR_MAX_NOM}).
+            </p>
+          )}
         </div>
         <div className="w-28 shrink-0">
           <input
@@ -60,7 +67,7 @@ export function AjouterArticleForm({ code }: { code: string }) {
         <button
           type="button"
           onClick={ajouter}
-          disabled={pending || !nom.trim() || !prix.trim() || Boolean(mot) || prixInvalide}
+          disabled={pending || !nom.trim() || !prix.trim() || Boolean(mot) || tropLong || prixInvalide}
           className="shrink-0 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
         >
           {pending ? "…" : "Ajouter"}
