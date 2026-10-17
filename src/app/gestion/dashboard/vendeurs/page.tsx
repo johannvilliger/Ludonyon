@@ -148,6 +148,12 @@ export default async function VendeursDashboardPage() {
                     {liste.length} article{liste.length > 1 ? "s" : ""} · {total}.–
                   </span>
                   <Link
+                    href={`/gestion/dashboard/vendeurs/${v.participation_id}/corriger`}
+                    className="rounded border border-zinc-300 px-2 py-1 text-xs font-normal hover:border-zinc-400"
+                  >
+                    Corriger
+                  </Link>
+                  <Link
                     href={`/gestion/dashboard/vendeurs/${v.participation_id}/imprimer`}
                     className="rounded border border-zinc-300 px-2 py-1 text-xs font-normal hover:border-zinc-400"
                   >

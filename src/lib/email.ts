@@ -314,3 +314,40 @@ export async function envoyerQuittanceAchat(params: {
     return false;
   }
 }
+
+// Message libre envoyé depuis le dashboard (voir
+// gestion/dashboard/vendeurs/[participationId]/corriger) après une
+// correction manuelle (transfert d'article entre deux listes, édition
+// directe...) — contrairement aux autres emails de ce fichier, le texte
+// est entièrement rédigé par le staff (pas de salutation imposée en plus,
+// pour éviter un "Bonjour" en double avec celui que le staff écrit déjà).
+export async function envoyerMessageCorrection(params: {
+  destinataire: string;
+  numeroVendeur: number;
+  message: string;
+}): Promise<boolean> {
+  const transport = getTransporteur();
+  if (!transport) {
+    console.warn("SMTP non configuré (voir .env.local.example) — message de correction non envoyé.");
+    return false;
+  }
+
+  try {
+    await transport.sendMail({
+      from: {
+        name: "Troc - Ludothèque Nyon Région",
+        address: process.env.SMTP_FROM || process.env.SMTP_USER || "",
+      },
+      to: params.destinataire,
+      subject: `Votre liste — vendeur n° ${params.numeroVendeur}`,
+      html: `
+        <div>${echapperHtml(params.message).replaceAll("\n", "<br>")}</div>
+        <p style="font-size: 0.9em; color: #444;">L'équipe du Troc de la Ludothèque Nyon Région</p>
+      `,
+    });
+    return true;
+  } catch (err) {
+    console.error("Échec de l'envoi du message de correction :", err);
+    return false;
+  }
+}
