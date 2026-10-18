@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { nouvelId, queryOne, withTransaction } from "@/lib/db";
-import { envoyerCopieListeAdmin } from "@/lib/email";
 import { modificationsBloquees } from "@/lib/gestion";
 import { erreurArticles } from "@/lib/validation-articles";
 
@@ -35,16 +34,9 @@ export async function modifierListeVendeur(
   const erreurArticle = erreurArticles(articles);
   if (erreurArticle) return { error: erreurArticle };
 
-  const participation = await queryOne<{
-    id: string;
-    phase: string;
-    numero_vendeur: number;
-    nom: string;
-    telephone: string;
-    email: string | null;
-  }>(
-    `SELECT p.id, e.phase, p.numero_vendeur, v.nom, v.telephone, v.email
-     FROM participations p JOIN editions e ON e.id = p.edition_id JOIN vendeurs v ON v.id = p.vendeur_id
+  const participation = await queryOne<{ id: string; phase: string }>(
+    `SELECT p.id, e.phase
+     FROM participations p JOIN editions e ON e.id = p.edition_id
      WHERE p.code_confirmation = ?`,
     [code],
   );
@@ -80,16 +72,6 @@ export async function modifierListeVendeur(
   } catch {
     return { error: "Impossible d'enregistrer les modifications, réessayez." };
   }
-
-  await envoyerCopieListeAdmin({
-    nomVendeur: participation.nom,
-    numeroVendeur: participation.numero_vendeur,
-    telephone: participation.telephone,
-    email: participation.email ?? "",
-    codeConfirmation: code,
-    modification: true,
-    articles,
-  });
 
   revalidatePath(`/vendeur/modifier/${code}`);
   return { error: null, success: true };
