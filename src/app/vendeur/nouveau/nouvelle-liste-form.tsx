@@ -46,6 +46,10 @@ export function NouvelleListeForm() {
           Règlement (PDF)
         </a>
       </div>
+      <p className="mt-2 text-sm text-zinc-500">
+        Vous recevrez un email avec un lien pour modifier ou compléter votre liste par la suite, si
+        besoin — jusqu&apos;à la veille du dépôt.
+      </p>
       <p className="mt-2 text-zinc-600">
         Un objet par ligne, avec son prix en francs (pas de centimes). Vous recevrez un numéro de
         vendeur et un code à présenter au dépôt.
