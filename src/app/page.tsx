@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { AssistantTroc } from "@/components/AssistantTroc";
 import { CompteARebours } from "@/components/CompteARebours";
 import { queryOne } from "@/lib/db";
 import { enregistrerVisite } from "@/lib/visites";
@@ -86,6 +87,7 @@ export default async function Home() {
           {parametres?.message_depot_termine || MESSAGE_PAR_DEFAUT}
         </p>
       )}
+      <AssistantTroc />
     </main>
   );
 }
