@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import { FAQ_RAPIDE } from "@/lib/faq-troc";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -38,11 +40,12 @@ export function AssistantTroc() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 print:hidden">
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end print:hidden">
       {ouvert && (
-        <div className="mb-2 flex h-96 w-80 max-w-[calc(100vw-2rem)] flex-col rounded-lg border border-zinc-200 bg-white shadow-xl">
-          <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2">
-            <span className="text-sm font-medium text-zinc-800">Une question ?</span>
+        <div className="mb-2.5 flex h-[26rem] w-80 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl">
+          <div className="flex items-center gap-2 border-b border-zinc-200 bg-zinc-50 px-3 py-2.5">
+            <Image src="/meeple.png" alt="" width={24} height={24} />
+            <span className="flex-1 text-sm font-semibold text-zinc-800">Une question ?</span>
             <button
               type="button"
               onClick={() => setOuvert(false)}
@@ -54,6 +57,24 @@ export function AssistantTroc() {
           </div>
 
           <div className="flex-1 space-y-2 overflow-y-auto p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              Questions fréquentes
+            </p>
+            <div className="divide-y divide-zinc-100">
+              {FAQ_RAPIDE.map((q) => (
+                <details key={q.question} className="py-2 first:pt-0">
+                  <summary className="cursor-pointer list-none text-sm font-medium text-zinc-700 marker:content-none">
+                    {q.question}
+                  </summary>
+                  <p className="mt-1.5 text-sm text-zinc-500">{q.reponse}</p>
+                </details>
+              ))}
+            </div>
+
+            <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              Pas trouvé votre réponse ?
+            </p>
+
             {messages.length === 0 && (
               <p className="text-sm text-zinc-500">
                 Posez une question sur le dépôt, les frais, les dates, la restitution… Je ne réponds
@@ -82,7 +103,7 @@ export function AssistantTroc() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") envoyer();
               }}
-              placeholder="Votre question…"
+              placeholder="Posez votre question…"
               className="min-w-0 flex-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
             />
             <button
@@ -97,13 +118,15 @@ export function AssistantTroc() {
         </div>
       )}
 
+      {/* FAB en forme de bulle de BD (coin arrondi + pointe triangulaire)
+          avec le meeple centré dedans, comme sur le reste du site. */}
       <button
         type="button"
         onClick={() => setOuvert((v) => !v)}
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-900 text-xl text-white shadow-lg hover:bg-zinc-800"
         aria-label="Poser une question sur le troc"
+        className="relative flex h-[60px] w-[60px] items-center justify-center rounded-[18px] border border-zinc-200 bg-white shadow-lg after:absolute after:-bottom-[7px] after:right-3.5 after:h-4 after:w-4 after:rotate-45 after:rounded-br-sm after:border-b after:border-r after:border-zinc-200 after:bg-white after:content-['']"
       >
-        💬
+        <Image src="/meeple.png" alt="" width={38} height={38} />
       </button>
     </div>
   );
