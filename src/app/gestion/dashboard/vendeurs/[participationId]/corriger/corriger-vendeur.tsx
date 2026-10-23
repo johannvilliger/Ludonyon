@@ -8,6 +8,7 @@ import {
   envoyerMessageVendeurAction,
   modifierArticleDashboard,
   rechercherVendeurParNumero,
+  supprimerArticleDashboard,
 } from "./actions";
 
 type Article = { id: string; numero_article: number; nom: string; prix: number; statut: string };
@@ -48,6 +49,9 @@ function ArticleRow({
   const [erreurDeplacement, setErreurDeplacement] = useState<string | null>(null);
   const [deplacePending, startDeplace] = useTransition();
   const [deplace, setDeplace] = useState(false);
+
+  const [supprimePending, startSupprimer] = useTransition();
+  const [supprime, setSupprime] = useState(false);
 
   const verrouille = article.statut === "vendu" || article.statut === "invendu";
   const mot = nom.trim() ? motInterdit(nom) : null;
@@ -96,6 +100,17 @@ function ArticleRow({
           {String(article.numero_article).padStart(2, "0")} — {article.nom}
         </span>{" "}
         — déplacé vers vendeur #{cibleResolue?.numero_vendeur}
+      </li>
+    );
+  }
+
+  if (supprime) {
+    return (
+      <li className="py-3 text-sm text-zinc-400">
+        <span className="line-through">
+          {String(article.numero_article).padStart(2, "0")} — {article.nom}
+        </span>{" "}
+        — supprimé
       </li>
     );
   }
@@ -156,6 +171,27 @@ function ArticleRow({
             className="shrink-0 rounded border border-zinc-300 px-2 py-1 text-xs hover:border-zinc-400 disabled:opacity-50"
           >
             {pending ? "…" : enregistre ? "✓" : "Enregistrer"}
+          </button>
+        )}
+        {!verrouille && (
+          <button
+            type="button"
+            disabled={supprimePending}
+            onClick={() => {
+              if (!window.confirm(`Supprimer l'article « ${article.nom} » ? Irréversible.`)) return;
+              startSupprimer(async () => {
+                setErreur(null);
+                try {
+                  await supprimerArticleDashboard(article.id, participationId);
+                  setSupprime(true);
+                } catch (err) {
+                  setErreur(err instanceof Error ? err.message : "Échec de la suppression.");
+                }
+              });
+            }}
+            className="shrink-0 rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:border-red-400 hover:bg-red-50 disabled:opacity-50"
+          >
+            {supprimePending ? "…" : "Supprimer"}
           </button>
         )}
       </div>

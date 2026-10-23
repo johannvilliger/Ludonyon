@@ -40,6 +40,21 @@ export async function modifierArticleDashboard(articleId: string, participationI
   revalidatePath(`/gestion/dashboard/vendeurs/${participationId}/corriger`);
 }
 
+// Supprime un article (ex. article test déposé par erreur) — même garde
+// que modifierArticleDashboard : jamais touché une fois vendu ou invendu.
+export async function supprimerArticleDashboard(articleId: string, participationId: string) {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+
+  const article = await queryOne<{ statut: string }>("SELECT statut FROM articles WHERE id = ?", [articleId]);
+  if (!article) throw new Error("Article introuvable.");
+  if (!STATUTS_MODIFIABLES.includes(article.statut)) {
+    throw new Error("Impossible de supprimer un article déjà vendu ou invendu.");
+  }
+
+  await query("DELETE FROM articles WHERE id = ?", [articleId]);
+  revalidatePath(`/gestion/dashboard/vendeurs/${participationId}/corriger`);
+}
+
 // Simple recherche par numéro, pour afficher une confirmation ("Déplacer
 // vers Vendeur #4 — Akgul ?") avant d'agir — jamais de déplacement direct
 // à l'aveugle sur un numéro tapé au clavier.
