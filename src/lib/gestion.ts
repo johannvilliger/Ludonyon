@@ -37,6 +37,11 @@ export async function dashboardEstConnecte(): Promise<boolean> {
 // contient donc directement le code (comparé au code courant), pas un
 // jeton de session à usage unique.
 export async function accueilEstConnecte(): Promise<boolean> {
+  // Qui a le mot de passe du dashboard a l'accès complet — pas de raison de
+  // lui demander en plus le code accueil séparé (ex. "Voir sa liste" depuis
+  // /gestion/dashboard/benevoles, qui pointe vers /accueil/vendeur/[code]).
+  if (await dashboardEstConnecte()) return true;
+
   const jar = await cookies();
   const valeur = jar.get(COOKIE_ACCUEIL)?.value;
   if (!valeur) return false;
