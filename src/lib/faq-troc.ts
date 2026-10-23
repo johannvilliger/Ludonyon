@@ -42,6 +42,7 @@ export const QUESTIONS_FREQUENTES: QuestionFrequente[] = [
       "pas acceptés",
       "peluche",
       "dvd",
+      "cd",
       "vhs",
       "quoi déposer",
       "quels jouets",
@@ -198,24 +199,35 @@ function mots(texte: string): string[] {
     .filter((m) => m.length > 1);
 }
 
+// Deux mots sont "proches" s'ils sont identiques, ou si le plus court est un
+// préfixe du plus long (au moins 4 lettres, pour éviter qu'un mot-clé court
+// comme "cd" ou "qr" ne matche n'importe quoi) — couvre singulier/pluriel
+// ("peluche" / "peluches") et les conjugaisons usuelles ("déposer" /
+// "dépose") sans avoir à lister chaque variante dans motsCles.
+function motsProches(a: string, b: string): boolean {
+  if (a === b) return true;
+  const [court, long] = a.length <= b.length ? [a, b] : [b, a];
+  return court.length >= 4 && long.startsWith(court);
+}
+
 // Filtre par mots-clés utilisé avant d'appeler Claude (côté client ET côté
 // serveur, voir assistant-troc.ts) : si tous les mots d'une expression connue
-// d'une entrée de la FAQ apparaissent dans la question posée (dans n'importe
-// quel ordre — pas besoin que ce soit la phrase exacte), on répond
-// directement avec sa réponse toute faite plutôt que de dépenser un appel au
-// modèle payant. Volontairement simple (pas d'IA, pas de recherche floue) —
-// un faux négatif (question reformulée non reconnue) retombe sans dommage
-// sur l'appel à Claude habituel ; un faux positif est peu probable vu la
-// spécificité des mots-clés choisis.
+// d'une entrée de la FAQ apparaissent (ou ont un mot proche) dans la question
+// posée, dans n'importe quel ordre, on répond directement avec sa réponse
+// toute faite plutôt que de dépenser un appel au modèle payant.
+// Volontairement simple (pas d'IA, pas de recherche floue) — un faux négatif
+// (question reformulée non reconnue) retombe sans dommage sur l'appel à
+// Claude habituel ; un faux positif est peu probable vu la spécificité des
+// mots-clés choisis.
 export function trouverReponseFaq(message: string): QuestionFrequente | null {
-  const motsMessage = new Set(mots(message));
-  if (motsMessage.size === 0) return null;
+  const motsMessage = mots(message);
+  if (motsMessage.length === 0) return null;
 
   let meilleure: { question: QuestionFrequente; occurrences: number } | null = null;
   for (const q of QUESTIONS_FREQUENTES) {
     const occurrences = q.motsCles.filter((mc) => {
       const motsCle = mots(mc);
-      return motsCle.length > 0 && motsCle.every((m) => motsMessage.has(m));
+      return motsCle.length > 0 && motsCle.every((mCle) => motsMessage.some((mMsg) => motsProches(mCle, mMsg)));
     }).length;
     if (occurrences > 0 && (!meilleure || occurrences > meilleure.occurrences)) {
       meilleure = { question: q, occurrences };
