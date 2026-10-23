@@ -1,6 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { queryOne } from "./db";
+import { trouverReponseFaq } from "./faq-troc";
 
 // Même modèle que la classification d'articles (classification.ts) : rapide
 // et peu coûteux, largement suffisant pour répondre à des questions de FAQ.
@@ -91,6 +92,16 @@ function construirePromptSysteme(ctx: ContexteTroc): string {
 }
 
 export async function repondreQuestionTroc(messages: MessageAssistant[]): Promise<string> {
+  // Filet de sécurité : le widget fait déjà ce même filtre côté client
+  // (réponse instantanée, pas de requête réseau) — on le refait ici au cas
+  // où l'API serait appelée directement, pour ne jamais payer un appel à
+  // Claude quand la réponse est déjà connue mot pour mot.
+  const dernierMessageUtilisateur = [...messages].reverse().find((m) => m.role === "user");
+  if (dernierMessageUtilisateur) {
+    const reponseFaq = trouverReponseFaq(dernierMessageUtilisateur.content);
+    if (reponseFaq) return reponseFaq.reponse;
+  }
+
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY n'est pas configurée sur le serveur.");
   }
