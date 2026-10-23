@@ -187,21 +187,36 @@ function normaliser(texte: string): string {
     .trim();
 }
 
+// Découpe en mots, en ignorant les résidus d'élision ("l'", "d'", "j'" → "l",
+// "d", "j" une fois l'apostrophe retirée) — sans ça, un mot-clé comme
+// "récupérer l'argent" exigerait littéralement le mot "l" dans la question,
+// ce qu'une reformulation parfaitement valide ("récupérer MON argent") n'a
+// aucune raison de contenir.
+function mots(texte: string): string[] {
+  return normaliser(texte)
+    .split(" ")
+    .filter((m) => m.length > 1);
+}
+
 // Filtre par mots-clés utilisé avant d'appeler Claude (côté client ET côté
-// serveur, voir assistant-troc.ts) : si la question posée contient une des
-// expressions connues d'une entrée de la FAQ, on répond directement avec sa
-// réponse toute faite plutôt que de dépenser un appel au modèle payant.
-// Volontairement simple (pas d'IA, pas de recherche floue) — un faux négatif
-// (question reformulée non reconnue) retombe sans dommage sur l'appel à
-// Claude habituel ; un faux positif est peu probable vu la spécificité des
-// mots-clés choisis.
+// serveur, voir assistant-troc.ts) : si tous les mots d'une expression connue
+// d'une entrée de la FAQ apparaissent dans la question posée (dans n'importe
+// quel ordre — pas besoin que ce soit la phrase exacte), on répond
+// directement avec sa réponse toute faite plutôt que de dépenser un appel au
+// modèle payant. Volontairement simple (pas d'IA, pas de recherche floue) —
+// un faux négatif (question reformulée non reconnue) retombe sans dommage
+// sur l'appel à Claude habituel ; un faux positif est peu probable vu la
+// spécificité des mots-clés choisis.
 export function trouverReponseFaq(message: string): QuestionFrequente | null {
-  const texte = normaliser(message);
-  if (!texte) return null;
+  const motsMessage = new Set(mots(message));
+  if (motsMessage.size === 0) return null;
 
   let meilleure: { question: QuestionFrequente; occurrences: number } | null = null;
   for (const q of QUESTIONS_FREQUENTES) {
-    const occurrences = q.motsCles.filter((mc) => texte.includes(normaliser(mc))).length;
+    const occurrences = q.motsCles.filter((mc) => {
+      const motsCle = mots(mc);
+      return motsCle.length > 0 && motsCle.every((m) => motsMessage.has(m));
+    }).length;
     if (occurrences > 0 && (!meilleure || occurrences > meilleure.occurrences)) {
       meilleure = { question: q, occurrences };
     }
