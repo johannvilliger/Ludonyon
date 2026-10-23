@@ -1,10 +1,10 @@
 import "server-only";
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 import QRCode from "qrcode";
 import { formaterMontant } from "./argent";
 import { CONDITIONS_TROC } from "./conditions";
 
-let transporteur: nodemailer.Transporter | null = null;
+let transporteur: Transporter | null = null;
 
 // Le nom du vendeur est une donnée saisie par le public, injectée telle
 // quelle dans un email HTML — sans échappement, un nom contenant du HTML/JS
@@ -23,7 +23,7 @@ function echapperHtml(valeur: string): string {
 // .env.local.example) : sans identifiants SMTP configurés, on log juste un
 // avertissement plutôt que de faire planter la soumission de liste — un
 // vendeur ne doit jamais perdre sa liste à cause d'un email qui échoue.
-function getTransporteur(): nodemailer.Transporter | null {
+function getTransporteur(): Transporter | null {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD } = process.env;
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASSWORD) return null;
 
