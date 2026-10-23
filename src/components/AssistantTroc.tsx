@@ -14,19 +14,21 @@ export function AssistantTroc() {
   const [ouvert, setOuvert] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [saisie, setSaisie] = useState("");
-  // L'appel à Claude est désactivé pour le moment (voir messages-sans-reponse.ts) :
-  // une question qui ne matche aucune entrée de la FAQ bascule ici plutôt que
-  // d'appeler l'API — pour réactiver Claude, remplacer ce mode par l'ancien
-  // fetch("/api/assistant-troc") (voir historique git de ce fichier).
+  const [pendingClaude, setPendingClaude] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  // Formulaire de secours — rejoint soit via le lien "Laisser un message",
+  // soit automatiquement si l'appel à Claude échoue (voir le catch
+  // ci-dessous).
   const [modeContact, setModeContact] = useState(false);
   const [messageContact, setMessageContact] = useState("");
   const [telephone, setTelephone] = useState("");
   const [state, formAction, pending] = useActionState(envoyerMessageSansReponse, initialState);
 
-  function envoyer() {
+  async function envoyer() {
     const texte = saisie.trim();
-    if (!texte) return;
+    if (!texte || pendingClaude) return;
 
+    setErreur(null);
     const nouveaux: Message[] = [...messages, { role: "user", content: texte }];
     setMessages(nouveaux);
     setSaisie("");
@@ -39,8 +41,22 @@ export function AssistantTroc() {
       return;
     }
 
-    setMessageContact(texte);
-    setModeContact(true);
+    setPendingClaude(true);
+    try {
+      const reponse = await fetch("/api/assistant-troc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: nouveaux }),
+      });
+      const donnees = await reponse.json();
+      if (!reponse.ok) throw new Error(donnees.erreur || "Échec de la requête.");
+      setMessages((prev) => [...prev, { role: "assistant", content: donnees.reponse }]);
+    } catch (err) {
+      setErreur(err instanceof Error ? err.message : "Échec de l'envoi.");
+      setMessageContact(texte);
+    } finally {
+      setPendingClaude(false);
+    }
   }
 
   return (
@@ -109,6 +125,19 @@ export function AssistantTroc() {
                     </span>
                   </div>
                 ))}
+                {pendingClaude && <p className="text-sm text-zinc-400">…</p>}
+                {erreur && (
+                  <p className="text-sm text-red-600">
+                    {erreur}{" "}
+                    <button
+                      type="button"
+                      onClick={() => setModeContact(true)}
+                      className="underline hover:text-red-700"
+                    >
+                      Laisser un message à la place ?
+                    </button>
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-2 border-t border-zinc-200 p-2">
@@ -124,7 +153,7 @@ export function AssistantTroc() {
                 <button
                   type="button"
                   onClick={envoyer}
-                  disabled={!saisie.trim()}
+                  disabled={pendingClaude || !saisie.trim()}
                   className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800 disabled:opacity-50"
                 >
                   →
