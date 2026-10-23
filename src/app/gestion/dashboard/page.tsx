@@ -224,7 +224,7 @@ export default async function DashboardGestionPage() {
           <Link href="/gestion/dashboard/statistiques" className="text-sm text-zinc-500 hover:underline">
             Visiteurs →
           </Link>
-          <Link href="/gestion/dashboard/messages" className="text-sm text-zinc-500 hover:underline">
+          <Link href="/gestion/dashboard/messages" prefetch={false} className="text-sm text-zinc-500 hover:underline">
             Messages
             {Boolean(messagesNonTraites?.total) && (
               <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">

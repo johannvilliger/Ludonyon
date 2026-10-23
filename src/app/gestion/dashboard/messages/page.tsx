@@ -25,7 +25,12 @@ export default async function MessagesPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
-      <Link href="/gestion/dashboard" className="text-sm text-zinc-500 hover:underline">
+      {/* prefetch désactivé : le dashboard prérécupéré au survol/affichage de
+          ce lien figerait le badge "Messages" (nombre de non traités) à sa
+          valeur d'avant qu'on marque un message traité sur cette page même —
+          revalidatePath() ne force pas le client à rejeter un payload déjà
+          préchargé. */}
+      <Link href="/gestion/dashboard" prefetch={false} className="text-sm text-zinc-500 hover:underline">
         ← Dashboard
       </Link>
 
