@@ -19,7 +19,9 @@ const initialState: EnvoiMessageState = { error: null, envoye: false };
 const MESSAGE_ACCUEIL = "Bonjour ! N'hésitez pas à me poser vos questions sur le troc — dépôt, frais, dates, restitution…";
 
 export function AssistantTroc() {
-  const [ouvert, setOuvert] = useState(false);
+  // Ouvert par défaut — le panneau (avec le message d'accueil) est visible
+  // dès l'arrivée sur la page, pas seulement après un clic sur la bulle.
+  const [ouvert, setOuvert] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [saisie, setSaisie] = useState("");
   const [pendingClaude, setPendingClaude] = useState(false);
