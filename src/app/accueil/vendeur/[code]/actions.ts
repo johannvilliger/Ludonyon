@@ -146,6 +146,16 @@ export async function modifierArticle(articleId: string, code: string, nom: stri
   revalidatePath(`/accueil/vendeur/${code}`);
 }
 
+// Supprime un article (ex. article test, doublon, erreur de saisie) —
+// même garde que modifierArticle : jamais touché une fois vendu ou invendu.
+export async function supprimerArticle(articleId: string, code: string) {
+  if (!(await accueilEstConnecte())) throw new Error("Non autorisé.");
+
+  await query("DELETE FROM articles WHERE id = ? AND statut IN ('non_recu', 'recu', 'refuse')", [articleId]);
+
+  revalidatePath(`/accueil/vendeur/${code}`);
+}
+
 // Pas de plafond de 30 articles ici, contrairement au dépôt normal : permet
 // à l'accueil de rattraper un article oublié par le vendeur sans lui faire
 // refaire toute sa liste, même si elle est déjà à 30. Les étiquettes sont

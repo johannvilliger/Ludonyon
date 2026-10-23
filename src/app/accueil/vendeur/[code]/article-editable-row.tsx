@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
 import { LONGUEUR_MAX_NOM } from "@/lib/validation-articles";
-import { modifierArticle } from "./actions";
+import { modifierArticle, supprimerArticle } from "./actions";
 
 export function ArticleEditableRow({
   articleId,
@@ -20,10 +20,16 @@ export function ArticleEditableRow({
   const [prix, setPrix] = useState(String(prixInitial));
   const [enregistre, setEnregistre] = useState(true);
   const [pending, startTransition] = useTransition();
+  const [supprimePending, startSupprimer] = useTransition();
+  const [supprime, setSupprime] = useState(false);
 
   const mot = nom.trim() ? motInterdit(nom) : null;
   const tropLong = nom.trim().length > LONGUEUR_MAX_NOM;
   const prixInvalide = nom.trim() !== "" && (prix.trim() === "" || Number(prix) <= 0);
+
+  if (supprime) {
+    return <p className="flex-1 self-center text-sm text-zinc-400 line-through">{nomInitial}</p>;
+  }
 
   return (
     <div className="flex-1">
@@ -67,6 +73,20 @@ export function ArticleEditableRow({
           className="shrink-0 rounded border border-zinc-300 px-2 py-1 text-xs hover:border-zinc-400 disabled:opacity-50"
         >
           {pending ? "…" : enregistre ? "✓" : "Enregistrer"}
+        </button>
+        <button
+          type="button"
+          disabled={supprimePending}
+          onClick={() => {
+            if (!window.confirm(`Supprimer l'article « ${nom || nomInitial} » ? Irréversible.`)) return;
+            startSupprimer(async () => {
+              await supprimerArticle(articleId, code);
+              setSupprime(true);
+            });
+          }}
+          className="shrink-0 rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:border-red-400 hover:bg-red-50 disabled:opacity-50"
+        >
+          {supprimePending ? "…" : "Supprimer"}
         </button>
       </div>
       {mot && <p className="mt-1 text-xs text-red-600">{messageMotInterdit(mot)}</p>}
