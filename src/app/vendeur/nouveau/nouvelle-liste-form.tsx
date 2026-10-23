@@ -13,6 +13,7 @@ const initialState: FormState = { error: null };
 export function NouvelleListeForm() {
   const [state, formAction, pending] = useActionState(soumettreListe, initialState);
   const [articlesValides, setArticlesValides] = useState(true);
+  const [nbArticles, setNbArticles] = useState(0);
   // Champs contrôlés (pas juste `name=`) : React réinitialise les inputs
   // non-contrôlés après une soumission de formulaire via Server Action, même
   // en cas d'erreur — sans ça, le vendeur perdrait ses coordonnées à chaque
@@ -34,7 +35,11 @@ export function NouvelleListeForm() {
       {/* Uniquement une fois qu'il y a une vraie saisie en cours (pas dès
           l'ouverture de la page) — sinon /gestion/dashboard afficherait une
           "session active" pour n'importe quel visiteur qui jette un œil. */}
-      {saisieEnCours && <SignalerActiviteEnCours label={`Dépôt en cours — ${nom || "vendeur non identifié"}`} />}
+      {saisieEnCours && (
+        <SignalerActiviteEnCours
+          label={`Dépôt en cours — ${nom || "vendeur non identifié"} (${nbArticles} article${nbArticles > 1 ? "s" : ""})`}
+        />
+      )}
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">Déposer ma liste</h1>
         <a
@@ -158,7 +163,7 @@ export function NouvelleListeForm() {
 
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
-        <ArticleListEditor onValiditeChange={setArticlesValides} />
+        <ArticleListEditor onValiditeChange={setArticlesValides} onNombreArticlesChange={setNbArticles} />
       </form>
     </main>
   );

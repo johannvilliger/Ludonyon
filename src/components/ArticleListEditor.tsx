@@ -46,6 +46,7 @@ export function ArticleListEditor({
   fieldName = "articles",
   initialArticles,
   onValiditeChange,
+  onNombreArticlesChange,
   illimite = false,
   numeroDepart = 1,
   statutsEtiquetteParNom,
@@ -53,6 +54,11 @@ export function ArticleListEditor({
   fieldName?: string;
   initialArticles?: { nom: string; prix: number }[];
   onValiditeChange?: (valide: boolean) => void;
+  // Nombre de lignes actuellement remplies (nom non vide) — utilisé par le
+  // formulaire parent pour l'afficher dans le battement d'activité en cours
+  // (voir SignalerActiviteEnCours), sans dupliquer ici la logique de
+  // filtrage déjà faite dans l'effet ci-dessous.
+  onNombreArticlesChange?: (nombre: number) => void;
   // Pas de plafond de 30 (comptes bénévoles 9xx) : les 30 premières lignes
   // restent affichées d'emblée, mais un bouton permet d'en ajouter au-delà.
   // Active aussi la grille 2 colonnes et la recherche ci-dessous, utiles
@@ -95,7 +101,8 @@ export function ArticleListEditor({
         (comptage.get(a.nom.trim().toLowerCase()) ?? 0) > 1,
     );
     onValiditeChange?.(!invalide);
-  }, [articles, onValiditeChange]);
+    onNombreArticlesChange?.(remplis.length);
+  }, [articles, onValiditeChange, onNombreArticlesChange]);
 
   function updateArticle(index: number, field: keyof ArticleRow, value: string) {
     setArticles((prev) =>

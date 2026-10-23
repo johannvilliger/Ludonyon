@@ -21,6 +21,7 @@ export function BenevoleArticlesEditor({
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [articlesValides, setArticlesValides] = useState(true);
+  const [nbArticles, setNbArticles] = useState(initialArticles.length);
   const [erreur, setErreur] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -53,10 +54,13 @@ export function BenevoleArticlesEditor({
         enregistrer();
       }}
     >
-      <SignalerActiviteEnCours label={`Bénévole n° ${numeroVendeur} — ajout d'articles`} />
+      <SignalerActiviteEnCours
+        label={`Bénévole n° ${numeroVendeur} — ajout d'articles (${nbArticles} article${nbArticles > 1 ? "s" : ""})`}
+      />
       <ArticleListEditor
         initialArticles={initialArticles}
         onValiditeChange={setArticlesValides}
+        onNombreArticlesChange={setNbArticles}
         illimite
         numeroDepart={numeroDepart}
         statutsEtiquetteParNom={statutsEtiquetteParNom}

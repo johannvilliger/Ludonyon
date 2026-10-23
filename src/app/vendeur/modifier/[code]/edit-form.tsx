@@ -19,11 +19,18 @@ export function EditForm({
   const action = modifierListeVendeur.bind(null, code);
   const [state, formAction, pending] = useActionState(action, initialState);
   const [articlesValides, setArticlesValides] = useState(true);
+  const [nbArticles, setNbArticles] = useState(initialArticles.length);
 
   return (
     <form action={formAction} className="mt-8 space-y-6">
-      <SignalerActiviteEnCours label={`Vendeur n° ${numeroVendeur} — modification de liste`} />
-      <ArticleListEditor initialArticles={initialArticles} onValiditeChange={setArticlesValides} />
+      <SignalerActiviteEnCours
+        label={`Vendeur n° ${numeroVendeur} — modification de liste (${nbArticles} article${nbArticles > 1 ? "s" : ""})`}
+      />
+      <ArticleListEditor
+        initialArticles={initialArticles}
+        onValiditeChange={setArticlesValides}
+        onNombreArticlesChange={setNbArticles}
+      />
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       {state.success && <p className="text-sm text-green-700">Liste mise à jour.</p>}
