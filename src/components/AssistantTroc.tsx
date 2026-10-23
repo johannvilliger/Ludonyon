@@ -10,6 +10,14 @@ type Message = { role: "user" | "assistant"; content: string };
 
 const initialState: EnvoiMessageState = { error: null, envoye: false };
 
+// Premier message affiché à l'ouverture, avant toute saisie — pour que le
+// widget ne s'ouvre jamais sur une zone de chat vide et silencieuse.
+// Volontairement hors de l'état `messages` (qui part de Claude de son côté
+// de la conversation) : l'API Anthropic exige que le premier message d'une
+// conversation ait le rôle "user", donc ce message d'accueil ne doit jamais
+// être envoyé dans le payload de /api/assistant-troc.
+const MESSAGE_ACCUEIL = "Bonjour ! N'hésitez pas à me poser vos questions sur le troc — dépôt, frais, dates, restitution…";
+
 export function AssistantTroc() {
   const [ouvert, setOuvert] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -109,11 +117,11 @@ export function AssistantTroc() {
                   </button>
                 </div>
 
-                {messages.length === 0 && (
-                  <p className="text-sm text-zinc-500">
-                    Posez une question sur le dépôt, les frais, les dates, la restitution…
-                  </p>
-                )}
+                <div className="text-left">
+                  <span className="inline-block max-w-[85%] rounded-lg bg-zinc-100 px-3 py-1.5 text-sm text-zinc-800">
+                    {MESSAGE_ACCUEIL}
+                  </span>
+                </div>
                 {messages.map((m, i) => (
                   <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
                     <span
