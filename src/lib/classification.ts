@@ -46,10 +46,10 @@ async function classerUnLot(client: Anthropic, lot: ArticleAClasser[]): Promise<
               items: {
                 type: "object",
                 properties: {
-                  id: { type: "string", description: "L'identifiant fourni pour cet article." },
+                  index: { type: "integer", description: "Le numéro fourni devant cet article dans la liste." },
                   categorie: { type: "string", enum: [...CATEGORIES_ARTICLES] },
                 },
-                required: ["id", "categorie"],
+                required: ["index", "categorie"],
               },
             },
           },
@@ -65,7 +65,13 @@ async function classerUnLot(client: Anthropic, lot: ArticleAClasser[]): Promise<
           `Tu classes des articles déposés pour un troc de ludothèque (jeux/jouets d'occasion). ` +
           `Pour chaque article ci-dessous, choisis la catégorie la plus appropriée parmi : ${CATEGORIES_ARTICLES.join(", ")}. ` +
           `Base-toi uniquement sur le nom fourni. Utilise "Autre" si le nom est ambigu, incompréhensible, ou ne correspond à aucune des autres catégories.\n\n` +
-          lot.map((a) => `${a.id} — ${a.nom}`).join("\n"),
+          // Numéro de position plutôt que l'UUID réel de l'article : demander
+          // au modèle de recopier un UUID complet pour chacun des (jusqu'à
+          // 150) articles d'un lot est fragile — une seule erreur de recopie
+          // fait échouer silencieusement l'UPDATE correspondant en base (voir
+          // classerArticlesEdition). Un entier court est quasi impossible à
+          // mal recopier, et on refait le lien avec le vrai id localement.
+          lot.map((a, i) => `${i} — ${a.nom}`).join("\n"),
       },
     ],
   });
@@ -73,10 +79,13 @@ async function classerUnLot(client: Anthropic, lot: ArticleAClasser[]): Promise<
   const resultat = new Map<string, string>();
   for (const block of message.content) {
     if (block.type === "tool_use" && block.name === "classer_articles") {
-      const input = block.input as { classifications?: { id: string; categorie: string }[] };
+      const input = block.input as { classifications?: { index?: number; categorie: string }[] };
       for (const c of input.classifications ?? []) {
+        if (typeof c.index !== "number") continue;
+        const article = lot[c.index];
+        if (!article) continue; // index hors limites — réponse à ignorer plutôt que planter tout le lot
         if ((CATEGORIES_ARTICLES as readonly string[]).includes(c.categorie)) {
-          resultat.set(c.id, c.categorie);
+          resultat.set(article.id, c.categorie);
         }
       }
     }

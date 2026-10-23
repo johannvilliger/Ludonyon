@@ -2,6 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { queryOne } from "./db";
 import { trouverReponseFaq } from "./faq-troc";
+import { CATEGORIES_ARTICLES } from "./categories";
 
 // Même modèle que la classification d'articles (classification.ts) : rapide
 // et peu coûteux, largement suffisant pour répondre à des questions de FAQ.
@@ -63,7 +64,12 @@ function construirePromptSysteme(ctx: ContexteTroc): string {
     ``,
     `Faits à connaître :`,
     `- Dépôt de liste : en ligne, gratuit, jusqu'à 30 articles par vendeur, modifiable via le lien reçu par email jusqu'à la veille du jour de dépôt en personne.`,
-    `- Objets non acceptés : peluches, DVD, CD, VHS.`,
+    // Catégories reprises de lib/categories.ts (mêmes que le classement
+    // automatique des articles) : une liste positive et explicite, pour que
+    // l'assistant réponde avec assurance ("oui, les puzzles sont acceptés")
+    // plutôt que d'hésiter faute d'information sur tout ce qui n'est pas
+    // explicitement interdit.
+    `- Objets acceptés : tout objet d'occasion relevant de ces catégories — ${CATEGORIES_ARTICLES.filter((c) => c !== "Autre").join(", ")} (puériculture = poussette, chaise haute, parc, etc.) — et plus largement tout jeu, jouet, livre ou article pour enfant en bon état. Seuls les peluches, DVD, CD et VHS ne sont PAS acceptés : en cas de doute sur un objet qui ne rentre dans aucune de ces catégories, affirme qu'il est a priori accepté sauf s'il s'agit d'une peluche, d'un DVD, d'un CD ou d'une VHS.`,
     `- État requis des objets : propres, complets, en bon état, bien attachés ou emballés.`,
     `- Frais : ${pourcentVendeur}% sont retenus sur le prix de vente (pour le vendeur) ; ${pourcentAchat}% sont ajoutés au prix affiché (pour l'acheteur).`,
     `- Paiement le jour de la vente : uniquement en espèces (cash), aucun autre moyen accepté sur place.`,
