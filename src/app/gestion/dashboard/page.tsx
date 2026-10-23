@@ -197,6 +197,10 @@ export default async function DashboardGestionPage() {
 
   const sessionsActives = listerSessionsActives();
 
+  const messagesNonTraites = await queryOne<{ total: number }>(
+    "SELECT COUNT(*) AS total FROM messages_assistant WHERE traite = 0",
+  );
+
   return (
     <RefreshPauseProvider>
     <main className="mx-auto w-full max-w-[1600px] px-6 py-12">
@@ -219,6 +223,15 @@ export default async function DashboardGestionPage() {
           </Link>
           <Link href="/gestion/dashboard/statistiques" className="text-sm text-zinc-500 hover:underline">
             Visiteurs →
+          </Link>
+          <Link href="/gestion/dashboard/messages" className="text-sm text-zinc-500 hover:underline">
+            Messages
+            {Boolean(messagesNonTraites?.total) && (
+              <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
+                {messagesNonTraites?.total}
+              </span>
+            )}{" "}
+            →
           </Link>
         </div>
       </div>

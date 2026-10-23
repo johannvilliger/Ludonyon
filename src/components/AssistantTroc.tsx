@@ -1,42 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import Image from "next/image";
-import { FAQ_RAPIDE } from "@/lib/faq-troc";
+import { FAQ_RAPIDE, trouverReponseFaq } from "@/lib/faq-troc";
+import { envoyerMessageSansReponse, type EnvoiMessageState } from "@/lib/messages-sans-reponse";
+import { formaterTelephone } from "@/lib/telephone";
 
 type Message = { role: "user" | "assistant"; content: string };
+
+const initialState: EnvoiMessageState = { error: null, envoye: false };
 
 export function AssistantTroc() {
   const [ouvert, setOuvert] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [saisie, setSaisie] = useState("");
-  const [pending, setPending] = useState(false);
-  const [erreur, setErreur] = useState<string | null>(null);
+  // L'appel à Claude est désactivé pour le moment (voir messages-sans-reponse.ts) :
+  // une question qui ne matche aucune entrée de la FAQ bascule ici plutôt que
+  // d'appeler l'API — pour réactiver Claude, remplacer ce mode par l'ancien
+  // fetch("/api/assistant-troc") (voir historique git de ce fichier).
+  const [modeContact, setModeContact] = useState(false);
+  const [messageContact, setMessageContact] = useState("");
+  const [telephone, setTelephone] = useState("");
+  const [state, formAction, pending] = useActionState(envoyerMessageSansReponse, initialState);
 
-  async function envoyer() {
+  function envoyer() {
     const texte = saisie.trim();
-    if (!texte || pending) return;
+    if (!texte) return;
 
-    setErreur(null);
     const nouveaux: Message[] = [...messages, { role: "user", content: texte }];
     setMessages(nouveaux);
     setSaisie("");
-    setPending(true);
 
-    try {
-      const reponse = await fetch("/api/assistant-troc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nouveaux }),
-      });
-      const donnees = await reponse.json();
-      if (!reponse.ok) throw new Error(donnees.erreur || "Échec de la requête.");
-      setMessages((prev) => [...prev, { role: "assistant", content: donnees.reponse }]);
-    } catch (err) {
-      setErreur(err instanceof Error ? err.message : "Échec de l'envoi.");
-    } finally {
-      setPending(false);
+    // Réponse instantanée si la question matche une entrée de la FAQ —
+    // aucune requête réseau, aucun appel à Claude.
+    const reponseFaq = trouverReponseFaq(texte);
+    if (reponseFaq) {
+      setMessages((prev) => [...prev, { role: "assistant", content: reponseFaq.reponse }]);
+      return;
     }
+
+    setMessageContact(texte);
+    setModeContact(true);
   }
 
   return (
@@ -56,65 +60,174 @@ export function AssistantTroc() {
             </button>
           </div>
 
-          <div className="flex-1 space-y-2 overflow-y-auto p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              Questions fréquentes
-            </p>
-            <div className="divide-y divide-zinc-100">
-              {FAQ_RAPIDE.map((q) => (
-                <details key={q.question} className="py-2 first:pt-0">
-                  <summary className="cursor-pointer list-none text-sm font-medium text-zinc-700 marker:content-none">
-                    {q.question}
-                  </summary>
-                  <p className="mt-1.5 text-sm text-zinc-500">{q.reponse}</p>
-                </details>
-              ))}
-            </div>
+          {!modeContact ? (
+            <>
+              <div className="flex-1 space-y-2 overflow-y-auto p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  Questions fréquentes
+                </p>
+                <div className="divide-y divide-zinc-100">
+                  {FAQ_RAPIDE.map((q) => (
+                    <details key={q.question} className="py-2 first:pt-0">
+                      <summary className="cursor-pointer list-none text-sm font-medium text-zinc-700 marker:content-none">
+                        {q.question}
+                      </summary>
+                      <p className="mt-1.5 text-sm text-zinc-500">{q.reponse}</p>
+                    </details>
+                  ))}
+                </div>
 
-            <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              Pas trouvé votre réponse ?
-            </p>
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                    Pas trouvé votre réponse ?
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMessageContact("");
+                      setModeContact(true);
+                    }}
+                    className="text-xs font-medium text-zinc-500 underline hover:text-zinc-700"
+                  >
+                    Laisser un message
+                  </button>
+                </div>
 
-            {messages.length === 0 && (
-              <p className="text-sm text-zinc-500">
-                Posez une question sur le dépôt, les frais, les dates, la restitution… Je ne réponds
-                qu&apos;aux questions sur le fonctionnement du troc.
-              </p>
-            )}
-            {messages.map((m, i) => (
-              <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
-                <span
-                  className={`inline-block max-w-[85%] rounded-lg px-3 py-1.5 text-sm ${
-                    m.role === "user" ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-800"
-                  }`}
-                >
-                  {m.content}
-                </span>
+                {messages.length === 0 && (
+                  <p className="text-sm text-zinc-500">
+                    Posez une question sur le dépôt, les frais, les dates, la restitution…
+                  </p>
+                )}
+                {messages.map((m, i) => (
+                  <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
+                    <span
+                      className={`inline-block max-w-[85%] rounded-lg px-3 py-1.5 text-sm ${
+                        m.role === "user" ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-800"
+                      }`}
+                    >
+                      {m.content}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
-            {pending && <p className="text-sm text-zinc-400">…</p>}
-            {erreur && <p className="text-sm text-red-600">{erreur}</p>}
-          </div>
 
-          <div className="flex gap-2 border-t border-zinc-200 p-2">
-            <input
-              value={saisie}
-              onChange={(e) => setSaisie(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") envoyer();
-              }}
-              placeholder="Posez votre question…"
-              className="min-w-0 flex-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
-            />
-            <button
-              type="button"
-              onClick={envoyer}
-              disabled={pending || !saisie.trim()}
-              className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800 disabled:opacity-50"
-            >
-              →
-            </button>
-          </div>
+              <div className="flex gap-2 border-t border-zinc-200 p-2">
+                <input
+                  value={saisie}
+                  onChange={(e) => setSaisie(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") envoyer();
+                  }}
+                  placeholder="Posez votre question…"
+                  className="min-w-0 flex-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={envoyer}
+                  disabled={!saisie.trim()}
+                  className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800 disabled:opacity-50"
+                >
+                  →
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 overflow-y-auto p-3">
+              {state.envoye ? (
+                <div className="space-y-3 text-center">
+                  <p className="text-sm font-medium text-zinc-800">Message envoyé !</p>
+                  <p className="text-sm text-zinc-500">
+                    Le comité vous répondra directement par téléphone ou par email.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModeContact(false);
+                      setMessageContact("");
+                      setTelephone("");
+                    }}
+                    className="text-xs font-medium text-zinc-500 underline hover:text-zinc-700"
+                  >
+                    ← Retour
+                  </button>
+                </div>
+              ) : (
+                <form action={formAction} className="space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setModeContact(false)}
+                    className="text-xs font-medium text-zinc-500 underline hover:text-zinc-700"
+                  >
+                    ← Retour
+                  </button>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                    Je ne trouve pas la réponse à ma question
+                  </p>
+
+                  {/* Honeypot anti-spam : voir vendeur/nouveau/nouvelle-liste-form.tsx */}
+                  <input
+                    type="text"
+                    name="site_web"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
+                  />
+
+                  <label className="block">
+                    <span className="text-xs font-medium text-zinc-700">Nom</span>
+                    <input
+                      name="nom"
+                      required
+                      className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-medium text-zinc-700">Téléphone</span>
+                    <input
+                      name="telephone"
+                      type="tel"
+                      value={telephone}
+                      onChange={(e) => setTelephone(formaterTelephone(e.target.value))}
+                      placeholder="079 123 45 67"
+                      required
+                      className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-medium text-zinc-700">Email</span>
+                    <input
+                      name="email"
+                      type="email"
+                      required
+                      className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-medium text-zinc-700">Votre question</span>
+                    <textarea
+                      name="message"
+                      required
+                      rows={3}
+                      value={messageContact}
+                      onChange={(e) => setMessageContact(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+
+                  {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+
+                  <button
+                    type="submit"
+                    disabled={pending}
+                    className="w-full rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    {pending ? "Envoi…" : "Envoyer ma question"}
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
         </div>
       )}
 
