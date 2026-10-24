@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Image from "next/image";
 import { FAQ_RAPIDE, trouverReponseFaq } from "@/lib/faq-troc";
 import { envoyerMessageSansReponse, type EnvoiMessageState } from "@/lib/messages-sans-reponse";
@@ -18,10 +18,15 @@ const initialState: EnvoiMessageState = { error: null, envoye: false };
 // être envoyé dans le payload de /api/assistant-troc.
 const MESSAGE_ACCUEIL = "Bonjour ! N'hésitez pas à me poser vos questions sur le troc — dépôt, frais, dates, restitution…";
 
+// Texte de la bulle qui invite à ouvrir le widget, affichée quelques
+// secondes après l'arrivée sur la page plutôt que d'ouvrir le panneau tout
+// de suite (moins intrusif qu'une ouverture automatique).
+const MESSAGE_TEASER = "Une question ? N'hésitez pas, je suis là pour vous aider !";
+const DELAI_TEASER_MS = 5_000;
+
 export function AssistantTroc() {
-  // Ouvert par défaut — le panneau (avec le message d'accueil) est visible
-  // dès l'arrivée sur la page, pas seulement après un clic sur la bulle.
-  const [ouvert, setOuvert] = useState(true);
+  const [ouvert, setOuvert] = useState(false);
+  const [teaser, setTeaser] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [saisie, setSaisie] = useState("");
   const [pendingClaude, setPendingClaude] = useState(false);
@@ -33,6 +38,16 @@ export function AssistantTroc() {
   const [messageContact, setMessageContact] = useState("");
   const [telephone, setTelephone] = useState("");
   const [state, formAction, pending] = useActionState(envoyerMessageSansReponse, initialState);
+
+  useEffect(() => {
+    const minuteur = setTimeout(() => setTeaser(true), DELAI_TEASER_MS);
+    return () => clearTimeout(minuteur);
+  }, []);
+
+  function ouvrir() {
+    setTeaser(false);
+    setOuvert(true);
+  }
 
   async function envoyer() {
     const texte = saisie.trim();
@@ -270,11 +285,27 @@ export function AssistantTroc() {
         </div>
       )}
 
+      {!ouvert && teaser && (
+        <div className="relative mb-2.5 max-w-[220px] rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-lg after:absolute after:-bottom-[6px] after:right-5 after:h-3 after:w-3 after:rotate-45 after:border-b after:border-r after:border-zinc-200 after:bg-white after:content-['']">
+          <button
+            type="button"
+            onClick={() => setTeaser(false)}
+            aria-label="Ignorer"
+            className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-zinc-200 bg-white text-xs text-zinc-400 hover:text-zinc-600"
+          >
+            ✕
+          </button>
+          <button type="button" onClick={ouvrir} className="text-left">
+            {MESSAGE_TEASER}
+          </button>
+        </div>
+      )}
+
       {/* FAB en forme de bulle de BD (coin arrondi + pointe triangulaire)
           avec le meeple centré dedans, comme sur le reste du site. */}
       <button
         type="button"
-        onClick={() => setOuvert((v) => !v)}
+        onClick={() => (ouvert ? setOuvert(false) : ouvrir())}
         aria-label="Poser une question sur le troc"
         className="relative flex h-[60px] w-[60px] items-center justify-center rounded-[18px] border border-zinc-200 bg-white shadow-lg after:absolute after:-bottom-[7px] after:right-3.5 after:h-4 after:w-4 after:rotate-45 after:rounded-br-sm after:border-b after:border-r after:border-zinc-200 after:bg-white after:content-['']"
       >

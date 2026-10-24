@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { ArticleListEditor } from "@/components/ArticleListEditor";
+import { AssistantTroc } from "@/components/AssistantTroc";
 import { SignalerActiviteEnCours } from "@/components/SignalerActiviteEnCours";
 import { CONDITIONS_TROC } from "@/lib/conditions";
 import { emailValide } from "@/lib/email-format";
@@ -165,6 +166,7 @@ export function NouvelleListeForm() {
 
         <ArticleListEditor onValiditeChange={setArticlesValides} onNombreArticlesChange={setNbArticles} />
       </form>
+      <AssistantTroc />
     </main>
   );
 }
