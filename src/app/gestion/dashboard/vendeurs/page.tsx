@@ -3,7 +3,7 @@ import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
 import { calculerDiffImpression, type ArticleSimple } from "@/lib/articles-diff";
-import { ClasserButton } from "./classer-button";
+import { ClasserButton, ReclasserButton } from "./classer-button";
 
 export const dynamic = "force-dynamic";
 
@@ -99,8 +99,9 @@ export default async function VendeursDashboardPage() {
       {!edition && <p className="mt-6 text-sm text-zinc-500">Aucune édition active.</p>}
 
       {edition && (
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap items-start gap-2">
           <ClasserButton />
+          <ReclasserButton />
         </div>
       )}
 

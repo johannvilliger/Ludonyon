@@ -1,6 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { CATEGORIES_ARTICLES } from "@/lib/categories";
+import { trouverCategorieParMotsCles } from "@/lib/classification-mots-cles";
 
 const MODELE = "claude-haiku-4-5-20251001";
 const TAILLE_LOT = 150;
@@ -13,16 +14,33 @@ export type ArticleAClasser = { id: string; nom: string };
 // internet réelle, la connaissance générale du modèle suffit largement
 // pour ce genre de classification et évite la lenteur/fragilité d'un vrai
 // scraping de résultats de recherche.
+//
+// Filtre par mots-clés d'abord (voir classification-mots-cles.ts) : un nom
+// contenant "playmobil", "livre"... est classé sans dépenser le moindre
+// token — seuls les articles non reconnus partent chez Claude.
 export async function classerArticles(articles: ArticleAClasser[]): Promise<Map<string, string>> {
+  const resultat = new Map<string, string>();
+  const articlesRestants: ArticleAClasser[] = [];
+
+  for (const a of articles) {
+    const categorie = trouverCategorieParMotsCles(a.nom);
+    if (categorie) {
+      resultat.set(a.id, categorie);
+    } else {
+      articlesRestants.push(a);
+    }
+  }
+
+  if (articlesRestants.length === 0) return resultat;
+
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY n'est pas configurée sur le serveur.");
   }
 
   const client = new Anthropic();
-  const resultat = new Map<string, string>();
 
-  for (let i = 0; i < articles.length; i += TAILLE_LOT) {
-    const lot = articles.slice(i, i + TAILLE_LOT);
+  for (let i = 0; i < articlesRestants.length; i += TAILLE_LOT) {
+    const lot = articlesRestants.slice(i, i + TAILLE_LOT);
     const classifications = await classerUnLot(client, lot);
     for (const [id, categorie] of classifications) resultat.set(id, categorie);
   }

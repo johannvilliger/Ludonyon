@@ -7,7 +7,7 @@ import { classerArticles } from "@/lib/classification";
 
 export type ResultatClassement = { classes: number; autre: number };
 
-export async function classerArticlesEdition(): Promise<ResultatClassement> {
+async function classerArticlesDeLEdition(filtrerNonClasses: boolean): Promise<ResultatClassement> {
   if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
 
   const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1");
@@ -27,7 +27,7 @@ export async function classerArticlesEdition(): Promise<ResultatClassement> {
   const articles = await query<{ id: string; nom: string }>(
     `SELECT a.id, a.nom FROM articles a
      JOIN participations p ON p.id = a.participation_id
-     WHERE p.edition_id = ? AND a.categorie_id IS NULL`,
+     WHERE p.edition_id = ?${filtrerNonClasses ? " AND a.categorie_id IS NULL" : ""}`,
     [edition.id],
   );
   if (articles.length === 0) return { classes: 0, autre: 0 };
@@ -45,5 +45,21 @@ export async function classerArticlesEdition(): Promise<ResultatClassement> {
   }
 
   revalidatePath("/gestion/dashboard/vendeurs");
+  revalidatePath("/gestion/dashboard/articles");
   return { classes, autre };
+}
+
+// Classe uniquement les articles pas encore catégorisés — sûr à relancer
+// n'importe quand, ne touche jamais une catégorie déjà posée (automatique
+// ou corrigée manuellement depuis /gestion/dashboard/articles).
+export async function classerArticlesEdition(): Promise<ResultatClassement> {
+  return classerArticlesDeLEdition(true);
+}
+
+// Reclasse TOUS les articles de l'édition, y compris ceux déjà catégorisés
+// — écrase donc aussi d'éventuelles corrections manuelles. Pensé pour un
+// usage ponctuel (ex. après un changement de la liste des catégories), pas
+// en routine — voir ReclasserButton.
+export async function reclasserTousLesArticlesEdition(): Promise<ResultatClassement> {
+  return classerArticlesDeLEdition(false);
 }
