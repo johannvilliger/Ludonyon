@@ -82,7 +82,9 @@ async function classerUnLot(client: Anthropic, lot: ArticleAClasser[]): Promise<
         content:
           `Tu classes des articles déposés pour un troc de ludothèque (jeux/jouets d'occasion). ` +
           `Pour chaque article ci-dessous, choisis la catégorie la plus appropriée parmi : ${CATEGORIES_ARTICLES.join(", ")}. ` +
-          `Base-toi uniquement sur le nom fourni. Utilise "Autre" si le nom est ambigu, incompréhensible, ou ne correspond à aucune des autres catégories.\n\n` +
+          `Base-toi uniquement sur le nom fourni, en mobilisant tes connaissances générales (marques, jeux connus, personnages de fiction...) pour reconnaître l'objet même si le nom est partiel ou familier. ` +
+          `"Jouets" est la catégorie générique pour tout jouet qui ne correspond à aucune catégorie plus spécifique — préfère-la à "Autre" dès que l'article est clairement un jouet, un jeu ou un objet pour enfant, même si son usage précis est flou. ` +
+          `Réserve "Autre" aux noms qui ne désignent pas un jouet/jeu/livre (ex. une erreur de saisie du vendeur) ou qui sont vraiment trop vagues pour deviner quoi que ce soit.\n\n` +
           // Numéro de position plutôt que l'UUID réel de l'article : demander
           // au modèle de recopier un UUID complet pour chacun des (jusqu'à
           // 150) articles d'un lot est fragile — une seule erreur de recopie

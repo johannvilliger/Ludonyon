@@ -4,6 +4,7 @@ export const CATEGORIES_ARTICLES = [
   "Construction",
   "Playmobil",
   "Jouets",
+  "Déguisements",
   "Garages (voitures)",
   "Jouets en bois",
   "Poupées",

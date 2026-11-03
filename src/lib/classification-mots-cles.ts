@@ -15,6 +15,10 @@ const MOTS_CLES_PAR_CATEGORIE: { categorie: CategorieArticle; motsCles: string[]
     categorie: "Construction",
     motsCles: ["kapla", "meccano", "k'nex", "knex", "mega bloks", "clics", "construction"],
   },
+  {
+    categorie: "Déguisements",
+    motsCles: ["deguisement", "costume", "masque", "panoplie", "dressing up"],
+  },
   { categorie: "Poupées", motsCles: ["poupee", "barbie", "baigneur", "baigneuse"] },
   { categorie: "Garages (voitures)", motsCles: ["garage"] },
   { categorie: "Jouets en bois", motsCles: ["bois"] },
