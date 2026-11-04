@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "pdf-to-printer": "^5.0.2",
-    "pdfkit": "^0.15.1"
+    "pdfkit": "^0.15.1",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@yao-pkg/pkg": "^5.16.1"

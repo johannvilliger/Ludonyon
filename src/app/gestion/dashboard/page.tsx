@@ -30,7 +30,9 @@ import { MessageEditor } from "./message-editor";
 import { ModificationsBloqueesButton } from "./modifications-bloquees-button";
 import { PhaseButton } from "./phase-button";
 import { PurgerFileAttenteButton } from "./purger-file-attente-button";
+import { PurgerEtiquettesFileAttenteButton } from "./purger-etiquettes-file-attente-button";
 import { RelancerEchecsButton } from "./relancer-echecs-button";
+import { RelancerEtiquettesEchecsButton } from "./relancer-etiquettes-echecs-button";
 import { RefreshPauseProvider } from "./refresh-pause-context";
 import { ReouvrirCaisseButton } from "./reouvrir-caisse-button";
 import { SauvegardeButton } from "./sauvegarde-button";
@@ -193,6 +195,13 @@ export default async function DashboardGestionPage() {
        COALESCE(SUM(statut = 'en_attente'), 0) AS en_attente,
        COALESCE(SUM(statut = 'echec'), 0) AS echec
      FROM etiquettes_impression`,
+  );
+
+  const etiquettesArticlesImpression = await queryOne<{ en_attente: number; echec: number }>(
+    `SELECT
+       COALESCE(SUM(statut = 'en_attente'), 0) AS en_attente,
+       COALESCE(SUM(statut = 'echec'), 0) AS echec
+     FROM etiquettes_articles_impression`,
   );
 
   const sessionsActives = listerSessionsActives();
@@ -646,6 +655,25 @@ export default async function DashboardGestionPage() {
                 </p>
                 {Number(etiquettesImpression.en_attente) > 0 && (
                   <PurgerFileAttenteButton nb={Number(etiquettesImpression.en_attente)} />
+                )}
+              </div>
+            )}
+            {etiquettesArticlesImpression && (
+              <div className="flex items-center justify-between gap-3 border-t border-zinc-100 pt-3">
+                <p className="text-sm text-zinc-600">
+                  {Number(etiquettesArticlesImpression.en_attente)} feuille
+                  {Number(etiquettesArticlesImpression.en_attente) > 1 ? "s" : ""} d&apos;étiquettes en
+                  attente d&apos;impression
+                  {Number(etiquettesArticlesImpression.echec) > 0 && (
+                    <>
+                      {" "}
+                      · <RelancerEtiquettesEchecsButton nb={Number(etiquettesArticlesImpression.echec)} />
+                    </>
+                  )}
+                  .
+                </p>
+                {Number(etiquettesArticlesImpression.en_attente) > 0 && (
+                  <PurgerEtiquettesFileAttenteButton nb={Number(etiquettesArticlesImpression.en_attente)} />
                 )}
               </div>
             )}

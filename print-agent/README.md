@@ -1,14 +1,23 @@
 # print-agent
 
-Petit programme Windows qui imprime les tickets papier de caisse (case
-"Ticket papier" à l'encaissement) sur une imprimante à étiquettes centralisée
-(Brother QL-820NWB ou équivalent), sans intervention manuelle.
+Petit programme Windows qui imprime, sans intervention manuelle, sur une ou
+deux imprimantes centralisées :
+
+- les tickets papier de caisse (case "Ticket papier" à l'encaissement), sur
+  une imprimante à étiquettes continue (Brother QL-820NWB ou équivalent) ;
+- les feuilles d'étiquettes articles (bouton "Envoyer à l'impression
+  centralisée" sur `/accueil/vendeur/[code]/etiquettes`), sur une imprimante
+  A4 chargée avec la planche adhésive Herma 4357.
 
 Il ne fait pas partie du site — c'est un programme séparé, à faire tourner
-sur UN SEUL ordinateur Windows, celui branché (réseau ou USB) à
-l'imprimante.
+sur le(s) ordinateur(s) Windows branché(s) (réseau ou USB) à ces imprimantes.
+Les deux flux sont indépendants : un même poste peut gérer les deux
+imprimantes, ou deux postes séparés peuvent chacun n'en gérer qu'une (voir
+`printerName` / `printerNameEtiquettes` dans la configuration).
 
 ## Comment ça marche
+
+### Tickets de caisse
 
 1. À l'encaissement, si "Ticket papier" est coché, le site dépose un ticket
    dans une file d'attente en base (table `etiquettes_impression`).
@@ -19,21 +28,48 @@ l'imprimante.
 3. Il informe le site que le ticket est imprimé (ou en échec)
    (`POST /api/etiquettes/[id]/statut`).
 
-Le site n'a besoin d'aucun accès au réseau local de la salle : c'est ce
-programme qui va chercher le travail, comme un navigateur.
+### Étiquettes articles
 
-## Installation (une fois, sur le PC près de l'imprimante)
+1. Depuis `/accueil/vendeur/[code]/etiquettes`, le bouton "Envoyer à
+   l'impression centralisée" dépose la feuille (coordonnées + articles,
+   copies et étiquettes "texte seul" déjà calculées) dans une file d'attente
+   séparée (table `etiquettes_articles_impression`).
+2. Ce programme l'interroge aussi (`GET /api/etiquettes-articles/en-attente`),
+   régénère la feuille en PDF (une page A4 par planche de 40, grille 4×10
+   calquée au mm près sur `src/app/globals.css` — voir `src/etiquettes-pdf.js`)
+   et l'imprime, toujours sans boîte de dialogue.
+3. Il informe le site du résultat (`POST /api/etiquettes-articles/[id]/statut`).
 
-1. Installer l'imprimante Brother QL-820NWB normalement dans Windows
-   (pilote officiel Brother), et noter son nom exact tel qu'il apparaît
-   dans "Imprimantes et scanners" (ex. `Brother QL-820NWB`).
+**⚠️ Vérification physique obligatoire avant usage en conditions réelles** :
+contrairement à un ticket (papier continu bon marché, une impression ratée
+se réimprime sans conséquence), une feuille d'étiquettes s'imprime sur une
+planche adhésive à positions fixes. Un décalage de marge non détecté gâche
+une feuille de 40 étiquettes d'un coup. Avant de faire confiance à ce flux
+le jour J, imprimer au moins une feuille de test sur une vraie planche et
+vérifier au mm que chaque étiquette tombe bien dans sa case — l'aperçu
+navigateur (impression classique, toujours disponible en parallèle) reste
+le moyen de vérifier visuellement avant d'imprimer si un doute subsiste.
+
+Dans les deux cas, le site n'a besoin d'aucun accès au réseau local de la
+salle : c'est ce programme qui va chercher le travail, comme un navigateur.
+
+## Installation (une fois, sur chaque PC près d'une imprimante)
+
+1. Installer l'imprimante normalement dans Windows (pilote officiel du
+   fabricant), et noter son nom exact tel qu'il apparaît dans "Imprimantes
+   et scanners" (ex. `Brother QL-820NWB`, ou le nom de l'imprimante A4 de
+   l'accueil).
 2. Copier `config.example.json` vers `config.json`, à côté de
    `print-agent.exe`, et remplir :
    - `siteUrl` : l'adresse du site (celle de test pendant les essais, celle
      de prod une fois migré).
    - `codeImpression` : le code affiché dans le dashboard, section
-     "Impression des tickets (print-agent)".
-   - `printerName` : le nom exact noté à l'étape 1.
+     "Impression des tickets (print-agent)" — le même code sert pour les
+     deux flux (tickets et étiquettes).
+   - `printerName` : le nom exact de l'imprimante à tickets (laisser vide,
+     `""`, si ce poste ne gère que les étiquettes).
+   - `printerNameEtiquettes` : le nom exact de l'imprimante A4 de l'accueil
+     (laisser vide si ce poste ne gère que les tickets).
    - `pollIntervalMs` : fréquence de vérification en millisecondes
      (5000 = 5 secondes, largement suffisant).
    - `longueurMaxMm` : DOIT être identique à "Longueur" dans les

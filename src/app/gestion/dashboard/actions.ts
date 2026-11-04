@@ -274,6 +274,20 @@ export async function purgerTicketsEnAttente() {
   revalidatePath("/gestion/dashboard");
 }
 
+export async function relancerEtiquettesArticlesEchec() {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+  await query("UPDATE etiquettes_articles_impression SET statut = 'en_attente' WHERE statut = 'echec'");
+  revalidatePath("/gestion/dashboard");
+}
+
+// Ne touche jamais aux articles/catégories derrière chaque feuille (seule la
+// file d'impression est purgée) — même logique que purgerTicketsEnAttente.
+export async function purgerEtiquettesArticlesEnAttente() {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+  await query("DELETE FROM etiquettes_articles_impression WHERE statut = 'en_attente'");
+  revalidatePath("/gestion/dashboard");
+}
+
 export async function modifierMessageDepotTermine(nouveauMessage: string) {
   if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
   const message = nouveauMessage.trim();

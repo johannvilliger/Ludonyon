@@ -59,6 +59,7 @@ export default async function EtiquettesPage({
       </Link>
 
       <EtiquettesVendeur
+        code={code}
         numeroVendeur={participation.numero_vendeur}
         nomVendeur={participation.nom_vendeur}
         telephone={participation.telephone}

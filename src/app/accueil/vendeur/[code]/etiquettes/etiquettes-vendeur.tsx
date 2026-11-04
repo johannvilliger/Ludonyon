@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { EtiquetteArticleNom, nomTropLongPourEtiquetteNormale } from "@/components/EtiquetteArticleNom";
 import { EtiquetteTexteSeul } from "@/components/EtiquetteTexteSeul";
+import type { CaseEtiquette } from "@/lib/etiquettes-articles-impression";
+import { EnvoyerImpressionButton } from "./envoyer-impression-button";
 import { PrintButton } from "./print-button";
 
 // Planche Herma 4357 (voir globals.css) : 40 étiquettes/feuille. Au-delà,
@@ -21,12 +23,14 @@ function optionsParDefaut(): Options {
 }
 
 export function EtiquettesVendeur({
+  code,
   numeroVendeur,
   nomVendeur,
   telephone,
   special,
   labels,
 }: {
+  code: string;
   numeroVendeur: number;
   nomVendeur: string;
   telephone: string | null;
@@ -78,6 +82,14 @@ export function EtiquettesVendeur({
     reste = reste.slice(NB_ETIQUETTES);
   }
 
+  // Même ordre que l'aperçu (slots, ci-dessus) — la feuille envoyée à
+  // l'impression centralisée doit être identique à ce qui est affiché.
+  const cases: CaseEtiquette[] = slots.map((s) =>
+    s.type === "texte"
+      ? { type: "texte", nom: s.article.nom }
+      : { type: "normal", numeroArticle: s.article.numero_article, nom: s.article.nom, prix: s.article.prix },
+  );
+
   const copiesSupplementaires = slots.filter((s) => s.type === "normal").length - labels.length;
   const etiquettesTexteSeul = slots.filter((s) => s.type === "texte").length;
 
@@ -121,7 +133,17 @@ export function EtiquettesVendeur({
         <h1 className="text-2xl font-semibold tracking-tight">
           {labels.length} étiquette{labels.length > 1 ? "s" : ""}
         </h1>
-        <PrintButton />
+        <div className="flex items-center gap-2">
+          <EnvoyerImpressionButton
+            code={code}
+            numeroVendeur={numeroVendeur}
+            nomVendeur={nomVendeur}
+            telephone={telephone}
+            special={special}
+            cases={cases}
+          />
+          <PrintButton />
+        </div>
       </div>
 
       <p className="mb-3 text-sm text-zinc-500 print:hidden">

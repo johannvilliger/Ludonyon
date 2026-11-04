@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { genererTicketsPdf, LONGUEUR_MAX_MM_DEFAUT } = require("./ticket-pdf");
+const { genererEtiquettesPdf } = require("./etiquettes-pdf");
 const { imprimer } = require("./print");
 const { getPrinters } = require("pdf-to-printer");
 
@@ -36,11 +37,21 @@ function chargerConfig() {
     process.exit(1);
   }
   const config = JSON.parse(fs.readFileSync(chemin, "utf8"));
-  for (const champ of ["siteUrl", "codeImpression", "printerName"]) {
+  for (const champ of ["siteUrl", "codeImpression"]) {
     if (!config[champ]) {
       console.error(`config.json : le champ "${champ}" est manquant ou vide.`);
       process.exit(1);
     }
+  }
+  // printerName (tickets) et printerNameEtiquettes (étiquettes articles)
+  // sont chacun indépendamment optionnels — ce poste peut ne gérer qu'une
+  // seule des deux imprimantes — mais il en faut au moins une, sinon ce
+  // programme n'a rien à faire.
+  if (!config.printerName && !config.printerNameEtiquettes) {
+    console.error(
+      'config.json : au moins un des champs "printerName" (tickets) ou "printerNameEtiquettes" (étiquettes) doit être renseigné.',
+    );
+    process.exit(1);
   }
   return config;
 }
@@ -64,7 +75,57 @@ async function marquerStatut(config, id, statut) {
   });
 }
 
+async function recupererFeuillesEnAttente(config) {
+  const reponse = await fetch(`${config.siteUrl.replace(/\/$/, "")}/api/etiquettes-articles/en-attente`, {
+    headers: { "X-Code-Impression": config.codeImpression },
+  });
+  if (!reponse.ok) {
+    throw new Error(`GET /api/etiquettes-articles/en-attente a répondu ${reponse.status}`);
+  }
+  const donnees = await reponse.json();
+  return donnees.feuilles;
+}
+
+async function marquerStatutFeuille(config, id, statut) {
+  await fetch(`${config.siteUrl.replace(/\/$/, "")}/api/etiquettes-articles/${id}/statut`, {
+    method: "POST",
+    headers: { "X-Code-Impression": config.codeImpression, "Content-Type": "application/json" },
+    body: JSON.stringify({ statut }),
+  });
+}
+
+async function traiterEtiquettesUnTour(config) {
+  let feuilles;
+  try {
+    feuilles = await recupererFeuillesEnAttente(config);
+  } catch (err) {
+    console.error("Erreur de récupération des étiquettes en attente :", err.message);
+    return;
+  }
+
+  for (const feuille of feuilles) {
+    console.log(`Étiquettes ${feuille.id} (vendeur ${feuille.contenu.numeroVendeur}) — impression…`);
+    let cheminPdf = null;
+    try {
+      cheminPdf = await genererEtiquettesPdf(feuille.contenu, feuille.id);
+      await imprimer(cheminPdf, config.printerNameEtiquettes);
+      await marquerStatutFeuille(config, feuille.id, "imprimee");
+      console.log("  -> imprimé.");
+    } catch (err) {
+      console.error("  -> échec :", err && err.message ? err.message : String(err));
+      await marquerStatutFeuille(config, feuille.id, "echec").catch(() => {});
+    } finally {
+      if (cheminPdf) fs.unlink(cheminPdf, () => {});
+    }
+  }
+}
+
 async function traiterUnTour(config) {
+  if (config.printerName) await traiterTicketsUnTour(config);
+  if (config.printerNameEtiquettes) await traiterEtiquettesUnTour(config);
+}
+
+async function traiterTicketsUnTour(config) {
   let tickets;
   try {
     tickets = await recupererTicketsEnAttente(config);
@@ -130,11 +191,16 @@ async function main() {
     return;
   }
   const config = chargerConfig();
-  console.log(
-    `print-agent démarré — site : ${config.siteUrl} — imprimante : ${config.printerName} — ` +
-      `longueur max : ${config.longueurMaxMm || LONGUEUR_MAX_MM_DEFAUT}mm ` +
-      "(doit correspondre à \"Longueur\" dans les préférences d'impression Windows)",
-  );
+  console.log(`print-agent démarré — site : ${config.siteUrl}`);
+  if (config.printerName) {
+    console.log(
+      `  tickets   -> imprimante "${config.printerName}" — longueur max : ` +
+        `${config.longueurMaxMm || LONGUEUR_MAX_MM_DEFAUT}mm (doit correspondre à "Longueur" dans les préférences d'impression Windows)`,
+    );
+  }
+  if (config.printerNameEtiquettes) {
+    console.log(`  étiquettes -> imprimante "${config.printerNameEtiquettes}"`);
+  }
   await boucle(config);
 }
 
