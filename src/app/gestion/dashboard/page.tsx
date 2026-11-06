@@ -1,8 +1,10 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
 import { arrondiCentimes, formaterMontant } from "@/lib/argent";
 import { dashboardEstConnecte } from "@/lib/gestion";
+import { qrAvecLogoDataUrl } from "@/lib/qr-logo";
 import { listerSessionsActives } from "@/lib/sessions-actives";
 import {
   changerPhase,
@@ -26,6 +28,7 @@ import { CodeEditor } from "./code-editor";
 import { DateOuvertureEditor } from "./date-ouverture-editor";
 import { EditionForm } from "./edition-form";
 import { EditionPanel } from "./edition-panel";
+import { LienAccesButton } from "./lien-acces-button";
 import { MessageEditor } from "./message-editor";
 import { ModificationsBloqueesButton } from "./modifications-bloquees-button";
 import { PhaseButton } from "./phase-button";
@@ -125,6 +128,28 @@ export default async function DashboardGestionPage() {
      ORDER BY pc.numero`,
     [edition?.id ?? null],
   );
+
+  // Lien/QR magique par poste (accueil, caisses) : connecte directement
+  // sans retaper le code — voir /gestion/acces/[code]. "host" dépend d'un
+  // en-tête de requête donc force-dynamic (déjà le cas ci-dessus) est requis.
+  const enTetes = await headers();
+  const hote = enTetes.get("host");
+  const protocole = enTetes.get("x-forwarded-proto") ?? (process.env.NODE_ENV === "production" ? "https" : "http");
+  const origine = hote ? `${protocole}://${hote}` : null;
+
+  function lienAcces(code: string): string | null {
+    return origine ? `${origine}/gestion/acces/${encodeURIComponent(code)}` : null;
+  }
+
+  const postesAvecLiens = await Promise.all(
+    postes.map(async (p) => {
+      const lien = lienAcces(p.code_acces);
+      return { ...p, lienAcces: lien, qrAcces: lien ? await qrAvecLogoDataUrl(lien) : null };
+    }),
+  );
+
+  const accueilLien = parametres ? lienAcces(parametres.code_accueil) : null;
+  const accueilQr = accueilLien ? await qrAvecLogoDataUrl(accueilLien) : null;
 
   const posteRemboursement = postes.find((p) => p.type === "remboursement") ?? null;
   const remboursementsTotal = posteRemboursement?.caisse_id
@@ -604,16 +629,31 @@ export default async function DashboardGestionPage() {
         <h2 className="text-lg font-medium">Codes d&apos;accès</h2>
         <div className="mt-3 space-y-2 rounded-md border border-zinc-200 p-4">
           {edition &&
-            postes.map((p) => (
-              <CodeEditor
-                key={p.poste_id}
-                label={p.type === "remboursement" ? "SàV" : `Caisse ${p.numero}`}
-                valeurInitiale={p.code_acces}
-                onSave={modifierCodeCaisse.bind(null, p.poste_id)}
-              />
+            postesAvecLiens.map((p) => (
+              <div key={p.poste_id} className="flex items-center gap-2">
+                <div className="flex-1">
+                  <CodeEditor
+                    label={p.type === "remboursement" ? "SàV" : `Caisse ${p.numero}`}
+                    valeurInitiale={p.code_acces}
+                    onSave={modifierCodeCaisse.bind(null, p.poste_id)}
+                  />
+                </div>
+                {p.lienAcces && p.qrAcces && (
+                  <LienAccesButton
+                    label={p.type === "remboursement" ? "SàV" : `Caisse ${p.numero}`}
+                    lien={p.lienAcces}
+                    qrDataUrl={p.qrAcces}
+                  />
+                )}
+              </div>
             ))}
           {parametres && (
-            <CodeEditor label="Accueil" valeurInitiale={parametres.code_accueil} onSave={modifierCodeAccueil} />
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <CodeEditor label="Accueil" valeurInitiale={parametres.code_accueil} onSave={modifierCodeAccueil} />
+              </div>
+              {accueilLien && accueilQr && <LienAccesButton label="Accueil" lien={accueilLien} qrDataUrl={accueilQr} />}
+            </div>
           )}
           {parametres && (
             <CodeEditor label="Dashboard" valeurInitiale={parametres.code_dashboard} onSave={modifierCodeDashboard} />

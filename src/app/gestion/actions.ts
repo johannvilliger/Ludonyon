@@ -13,13 +13,17 @@ function messageBlocage(secondesRestantes: number): string {
   return `Trop de tentatives échouées. Réessayez dans ${unite}.`;
 }
 
-export async function validerCode(_prevState: CodeState, formData: FormData): Promise<CodeState> {
-  const ip = await ipAppelante();
+type ResultatCode = { destination: string } | { error: string };
+
+// Logique commune au formulaire (saisie manuelle, POST) et au lien/QR
+// magique (/gestion/acces/[code], GET) — seule la façon de livrer le
+// résultat (renvoyer une erreur à afficher vs. rediriger) diffère entre
+// les deux appelants.
+export async function resoudreCode(code: string, ip: string): Promise<ResultatCode> {
   const cle = `gestion:${ip}`;
   const blocage = verifierBlocage(cle);
   if (blocage.bloque) return { error: messageBlocage(blocage.secondesRestantes) };
 
-  const code = String(formData.get("code") ?? "").trim();
   if (!code) return { error: "Entrez un code." };
 
   const dashboard = await queryOne<{ id: number }>("SELECT id FROM parametres_gestion WHERE code_dashboard = ?", [
@@ -32,7 +36,7 @@ export async function validerCode(_prevState: CodeState, formData: FormData): Pr
     const jar = await cookies();
     jar.set(COOKIE_DASHBOARD, token, OPTIONS_COOKIE_SESSION);
     reinitialiserEchecs(cle);
-    redirect("/gestion/dashboard");
+    return { destination: "/gestion/dashboard" };
   }
 
   const accueil = await queryOne<{ id: number }>("SELECT id FROM parametres_gestion WHERE code_accueil = ?", [code]);
@@ -41,7 +45,7 @@ export async function validerCode(_prevState: CodeState, formData: FormData): Pr
     const jar = await cookies();
     jar.set(COOKIE_ACCUEIL, code, OPTIONS_COOKIE_SESSION);
     reinitialiserEchecs(cle);
-    redirect("/accueil");
+    return { destination: "/accueil" };
   }
 
   const poste = await queryOne<{ id: string; numero: number; connecte: number; type: "vente" | "remboursement" }>(
@@ -75,11 +79,19 @@ export async function validerCode(_prevState: CodeState, formData: FormData): Pr
     }
 
     await query("UPDATE postes_caisse SET demande_en_attente = 1 WHERE id = ?", [poste.id]);
-    redirect(`/gestion/attente/${poste.numero}`);
+    return { destination: `/gestion/attente/${poste.numero}` };
   }
 
   await enregistrerEchec(cle, ip, "/gestion (dashboard/accueil/caisse)");
   return { error: "Code invalide." };
+}
+
+export async function validerCode(_prevState: CodeState, formData: FormData): Promise<CodeState> {
+  const ip = await ipAppelante();
+  const code = String(formData.get("code") ?? "").trim();
+  const resultat = await resoudreCode(code, ip);
+  if ("error" in resultat) return { error: resultat.error };
+  redirect(resultat.destination);
 }
 
 export type StatutAttente = "attente" | "approuve" | "refuse";

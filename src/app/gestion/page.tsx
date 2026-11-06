@@ -1,12 +1,26 @@
 "use client";
 
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import { validerCode, type CodeState } from "./actions";
 
 const initialState: CodeState = { error: null };
 
 export default function GestionPage() {
+  return (
+    <Suspense>
+      <GestionForm />
+    </Suspense>
+  );
+}
+
+function GestionForm() {
   const [state, formAction, pending] = useActionState(validerCode, initialState);
+  const searchParams = useSearchParams();
+  // Renvoyé par /gestion/acces/[code] (lien/QR magique) quand le code
+  // qu'il contenait n'est plus valide — ex. révoqué après un vol.
+  const erreurLien = searchParams.get("erreur");
+  const erreur = state.error ?? erreurLien;
 
   return (
     <main className="mx-auto w-full flex max-w-sm flex-1 flex-col justify-center px-6 py-12">
@@ -21,7 +35,7 @@ export default function GestionPage() {
           placeholder="Code d'accès"
           className="w-full rounded-md border border-zinc-300 px-3 py-2 text-center font-mono tracking-widest"
         />
-        {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+        {erreur && <p className="text-sm text-red-600">{erreur}</p>}
         <button
           type="submit"
           disabled={pending}
