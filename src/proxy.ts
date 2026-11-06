@@ -7,8 +7,8 @@ import { siteTrocOuvert } from "@/lib/gestion";
 // toujours accessibles : ce sont les points d'entrée du staff, déjà
 // protégés par leurs propres codes (accès caisse/accueil + validation
 // depuis le dashboard) — un verrouillage forcé du site public ne doit
-// jamais empêcher les bénévoles à la réception, les caissières ou le poste
-// de remboursement de travailler.
+// jamais empêcher les bénévoles à la réception, les personnes en caisse ou
+// le poste de remboursement de travailler.
 export default async function proxy(request: NextRequest) {
   if (await siteTrocOuvert()) return NextResponse.next();
 

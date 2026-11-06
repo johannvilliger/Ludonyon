@@ -128,10 +128,10 @@ export async function changerPhase(nouvellePhase: Phase) {
   if (!PHASES.includes(nouvellePhase)) throw new Error("Phase inconnue.");
 
   // Doublon volontaire du blocage côté client (bouton "Post-vente", voir
-  // page.tsx) : la vraie protection est ici, pour ne jamais dépendre d'un
-  // caissier qui aurait échappé au JS. Une caisse jamais utilisée peut être
-  // clôturée à zéro depuis le dashboard (voir cloturerCaisseVide) plutôt que
-  // de bloquer indéfiniment le passage en post-vente.
+  // page.tsx) : la vraie protection est ici, pour ne jamais dépendre d'une
+  // personne en caisse qui aurait échappé au JS. Une caisse jamais utilisée
+  // peut être clôturée à zéro depuis le dashboard (voir cloturerCaisseVide)
+  // plutôt que de bloquer indéfiniment le passage en post-vente.
   if (nouvellePhase === "post_vente") {
     const ouvertes = await queryOne<{ nb: number }>(
       `SELECT COUNT(*) AS nb
@@ -154,7 +154,7 @@ export async function changerPhase(nouvellePhase: Phase) {
 // post-vente (voir le garde-fou ci-dessus) quand un poste n'a simplement pas
 // été utilisé pendant l'édition. Toute caisse ayant eu du mouvement doit
 // être clôturée depuis son propre poste (voir cloturerCaisse, identique en
-// substance mais réservée au caissier lui-même).
+// substance mais réservée à la personne en caisse elle-même).
 export async function cloturerCaisseVide(caisseId: string) {
   if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
 
@@ -349,8 +349,8 @@ export async function deconnecterCaisse(posteId: string) {
 
 // Réouvre une caisse clôturée par erreur (ou pour rejouer un scénario de
 // test) sans toucher aux ventes déjà encaissées ni aux autres caisses — la
-// caissière devra se reconnecter normalement avec son code une fois
-// rouverte.
+// personne en caisse devra se reconnecter normalement avec son code une
+// fois rouverte.
 export async function rouvrirCaisse(caisseId: string) {
   await query("UPDATE caisses SET cloturee = 0, montant_cloture = NULL WHERE id = ?", [caisseId]);
   revalidatePath("/gestion/dashboard");

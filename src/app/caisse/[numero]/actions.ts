@@ -72,10 +72,11 @@ export async function rechercherArticle(editionId: string, codeBrut: string, cai
   }
 
   // Réservation exclusive de l'article pour cette caisse : purge d'abord les
-  // réservations trop anciennes (caissier qui a scanné puis rechargé sans
-  // vider son panier), puis tente la réservation elle-même. La clé primaire
-  // sur article_id fait respecter l'exclusivité au niveau de la base, pas
-  // par une simple vérification applicative sujette aux courses.
+  // réservations trop anciennes (personne en caisse qui a scanné puis
+  // rechargé sans vider son panier), puis tente la réservation elle-même.
+  // La clé primaire sur article_id fait respecter l'exclusivité au niveau
+  // de la base, pas par une simple vérification applicative sujette aux
+  // courses.
   await query("DELETE FROM articles_reserves WHERE article_id = ? AND reserve_le < (NOW() - INTERVAL 10 MINUTE)", [
     article.id,
   ]);
@@ -314,7 +315,8 @@ export async function encaisserPanier(
     // immédiatement, pour ne jamais envoyer un ticket pour une vente encore
     // annulable. La vente elle-même est déjà actée à ce stade (transaction
     // commitée juste avant) — un raté ici ne doit jamais la remettre en
-    // cause, juste être signalé pour que la caissière puisse redemander.
+    // cause, juste être signalé pour que la personne en caisse puisse
+    // redemander.
     try {
       await query("INSERT INTO quittances (id, vente_id, caisse_id, email) VALUES (?, ?, ?, ?)", [
         nouvelId(),
@@ -376,7 +378,7 @@ export async function queuerTicketPapier(caisseId: string, numeroCaisse: number)
 // polling côté client (voir caisse-scanner.tsx) pour que le bandeau "mode
 // préparation" et le bouton Encaisser se mettent à jour tout seuls si
 // l'admin bascule la phase pendant qu'un poste est déjà connecté, sans
-// attendre que la caissière recharge la page.
+// attendre que la personne en caisse recharge la page.
 export async function estPhaseCaisseOuverte(editionId: string): Promise<boolean> {
   const edition = await queryOne<{ phase: string }>("SELECT phase FROM editions WHERE id = ?", [editionId]);
   return edition?.phase === "caisse";

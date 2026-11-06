@@ -13,7 +13,7 @@ export function ReouvrirCaisseButton({ caisseId, numero }: { caisseId: string; n
       onClick={() => {
         if (
           !window.confirm(
-            `Rouvrir la caisse ${numero} ? Les ventes déjà encaissées restent inchangées — la caissière devra se reconnecter avec son code.`,
+            `Rouvrir la caisse ${numero} ? Les ventes déjà encaissées restent inchangées — la personne en caisse devra se reconnecter avec son code.`,
           )
         )
           return;

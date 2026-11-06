@@ -81,9 +81,9 @@ function snapshotServeur() {
   return false;
 }
 
-// Suit la connectivité réseau du téléphone, pour prévenir la caissière
-// visuellement plutôt que de la laisser découvrir le problème seulement au
-// moment où une action échoue.
+// Suit la connectivité réseau du téléphone, pour prévenir la personne en
+// caisse visuellement plutôt que de la laisser découvrir le problème
+// seulement au moment où une action échoue.
 function sAbonnerReseau(callback: () => void) {
   window.addEventListener("online", callback);
   window.addEventListener("offline", callback);
@@ -101,11 +101,11 @@ function snapshotReseauServeur() {
 
 // Le panier n'existe qu'en mémoire React : si le téléphone perd le réseau
 // quelques secondes pendant qu'une action échoue et que la page se recharge
-// (ou si la caissière recharge par réflexe), tout le travail en cours serait
-// perdu. On le sauvegarde donc à chaque changement dans localStorage (propre
-// à chaque caisse) et on le restaure au montage — les réservations
-// (articles_reserves) survivent déjà côté serveur, ce filet ne fait que
-// remettre l'écran dans le même état.
+// (ou si la personne en caisse recharge par réflexe), tout le travail en
+// cours serait perdu. On le sauvegarde donc à chaque changement dans
+// localStorage (propre à chaque caisse) et on le restaure au montage — les
+// réservations (articles_reserves) survivent déjà côté serveur, ce filet
+// ne fait que remettre l'écran dans le même état.
 function clePanier(caisseId: string) {
   return `caisse-panier-${caisseId}`;
 }
@@ -168,7 +168,7 @@ export function CaisseScanner({
   // Repoll régulier de la phase : si l'admin bascule l'édition en phase
   // "Caisse" (ou en sort) pendant qu'un poste est déjà connecté (ex. ouvert
   // en préparation), le bandeau et le bouton Encaisser doivent suivre sans
-  // attendre que la caissière recharge la page elle-même.
+  // attendre que la personne en caisse recharge la page elle-même.
   useEffect(() => {
     const id = setInterval(() => {
       estPhaseCaisseOuverte(editionId)
@@ -281,7 +281,8 @@ export function CaisseScanner({
   function retirer(articleId: string) {
     setPanier((prev) => prev.filter((a) => a.articleId !== articleId));
     // Best-effort : si la connexion flanche ici, la réservation expirera
-    // d'elle-même côté serveur (voir rechercherArticle) sans bloquer la caissière.
+    // d'elle-même côté serveur (voir rechercherArticle) sans bloquer la
+    // personne en caisse.
     void libererArticle(articleId, caisseId).catch(() => {});
   }
 

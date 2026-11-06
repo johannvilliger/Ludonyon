@@ -7,7 +7,8 @@ import { usePathname } from "next/navigation";
 export function SiteHeader() {
   const pathname = usePathname();
   // Sur les pages caisse, le logo ne doit pas être cliquable : un clic
-  // accidentel en pleine vente ne doit jamais sortir le caissier de l'appli.
+  // accidentel en pleine vente ne doit jamais sortir la personne en caisse
+  // de l'appli.
   const logoCliquable = !pathname?.startsWith("/caisse");
 
   const logo = (
