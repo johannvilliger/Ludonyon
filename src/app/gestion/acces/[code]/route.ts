@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resoudreCode } from "../../actions";
 import { ipAppelante } from "@/lib/rate-limit";
+import { urlAbsolue } from "@/lib/url";
 
 // Lien/QR magique : équivalent de /gestion avec le code déjà tapé. Permet
 // d'imprimer un QR par poste (accueil, caisse) à scanner ou mettre en
@@ -8,14 +9,18 @@ import { ipAppelante } from "@/lib/rate-limit";
 // après un navigateur vidé. Révoquer un QR volé = changer le code du poste
 // concerné dans le dashboard (voir resoudreCode : la même vérification que
 // la saisie manuelle s'applique, donc le même blocage anti-brute-force).
+//
+// La redirection passe par urlAbsolue() (SITE_URL) plutôt que request.url :
+// derrière le proxy de l'hébergement, request.url reflète le Host interne
+// (localhost:3000), pas le domaine public.
 export async function GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const ip = await ipAppelante();
   const resultat = await resoudreCode(decodeURIComponent(code).trim(), ip);
 
   if ("error" in resultat) {
-    return NextResponse.redirect(new URL(`/gestion?erreur=${encodeURIComponent(resultat.error)}`, request.url));
+    return NextResponse.redirect(await urlAbsolue(`/gestion?erreur=${encodeURIComponent(resultat.error)}`));
   }
 
-  return NextResponse.redirect(new URL(resultat.destination, request.url));
+  return NextResponse.redirect(await urlAbsolue(resultat.destination));
 }
