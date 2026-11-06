@@ -7,6 +7,7 @@ import { CameraScanner } from "./camera-scanner";
 import {
   annulerDerniereVente,
   encaisserPanier,
+  estPhaseCaisseOuverte,
   libererArticle,
   obtenirDerniereVente,
   queuerTicketPapier,
@@ -135,7 +136,7 @@ export function CaisseScanner({
   editionId,
   numero,
   tauxAchat,
-  ventesOuvertes,
+  ventesOuvertes: ventesOuvertesInitial,
 }: {
   caisseId: string;
   editionId: string;
@@ -162,6 +163,20 @@ export function CaisseScanner({
   const scanEnCoursRef = useRef(false);
   const [derniereVente, setDerniereVente] = useState<DerniereVente | null>(null);
   const [annulationEnCours, setAnnulationEnCours] = useState(false);
+  const [ventesOuvertes, setVentesOuvertes] = useState(ventesOuvertesInitial);
+
+  // Repoll régulier de la phase : si l'admin bascule l'édition en phase
+  // "Caisse" (ou en sort) pendant qu'un poste est déjà connecté (ex. ouvert
+  // en préparation), le bandeau et le bouton Encaisser doivent suivre sans
+  // attendre que la caissière recharge la page elle-même.
+  useEffect(() => {
+    const id = setInterval(() => {
+      estPhaseCaisseOuverte(editionId)
+        .then(setVentesOuvertes)
+        .catch(() => {});
+    }, 15000);
+    return () => clearInterval(id);
+  }, [editionId]);
 
   // Chargée depuis le serveur (pas gardée en mémoire client uniquement) :
   // reste correcte même après un rechargement de page.

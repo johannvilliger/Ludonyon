@@ -372,6 +372,16 @@ export async function queuerTicketPapier(caisseId: string, numeroCaisse: number)
   ]);
 }
 
+// Vérifie si la vente est ouverte pour CETTE édition — interrogé en léger
+// polling côté client (voir caisse-scanner.tsx) pour que le bandeau "mode
+// préparation" et le bouton Encaisser se mettent à jour tout seuls si
+// l'admin bascule la phase pendant qu'un poste est déjà connecté, sans
+// attendre que la caissière recharge la page.
+export async function estPhaseCaisseOuverte(editionId: string): Promise<boolean> {
+  const edition = await queryOne<{ phase: string }>("SELECT phase FROM editions WHERE id = ?", [editionId]);
+  return edition?.phase === "caisse";
+}
+
 export type DerniereVente = {
   total: number;
   articles: { nom: string; numeroVendeur: number }[];
