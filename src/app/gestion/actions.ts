@@ -60,13 +60,13 @@ export async function resoudreCode(code: string, ip: string): Promise<ResultatCo
       return { error: `La caisse ${poste.numero} est déjà connectée ailleurs.` };
     }
 
-    const edition = await queryOne<{ phase: string }>("SELECT phase FROM editions WHERE active_flag = 1");
-    // Les remboursements peuvent avoir lieu après la fin de la vente (un
-    // acheteur revient plus tard) — on autorise donc aussi la phase
-    // "post_vente" pour ce type de poste, contrairement aux caisses de vente.
-    const phasesAutorisees = poste.type === "remboursement" ? ["caisse", "post_vente"] : ["caisse"];
-    if (!edition || !phasesAutorisees.includes(edition.phase)) {
-      return { error: "Les caisses ne sont pas encore ouvertes — l'édition n'est pas en phase « Caisse »." };
+    // Connexion autorisée quelle que soit la phase (même avant "Caisse") pour
+    // permettre aux bénévoles de préparer/essayer l'écran à l'avance — seul
+    // l'encaissement lui-même reste bloqué hors phase (voir encaisserPanier),
+    // le scan restant disponible pour faire une démonstration.
+    const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1");
+    if (!edition) {
+      return { error: "Aucune édition active — les caisses ne peuvent pas encore être ouvertes." };
     }
 
     const caisse = await queryOne<{ cloturee: number }>(

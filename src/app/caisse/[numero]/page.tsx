@@ -7,7 +7,14 @@ import { CaisseScanner } from "./caisse-scanner";
 import { ClotureCaisse } from "./cloture-caisse";
 import { InstructionsCaisse } from "./instructions-modal";
 
-type Caisse = { id: string; edition_id: string; taux_achat: number; cloturee: number; instructions_vues: number };
+type Caisse = {
+  id: string;
+  edition_id: string;
+  taux_achat: number;
+  cloturee: number;
+  instructions_vues: number;
+  phase: string;
+};
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +27,7 @@ export default async function CaisseDetailPage({ params }: { params: Promise<{ n
   if (!autorisation) redirect("/gestion");
 
   const caisse = await queryOne<Caisse>(
-    `SELECT c.id, c.edition_id, e.taux_achat, c.cloturee, c.instructions_vues
+    `SELECT c.id, c.edition_id, e.taux_achat, c.cloturee, c.instructions_vues, e.phase
      FROM caisses c
      JOIN editions e ON e.id = c.edition_id
      WHERE c.poste_caisse_id = ? AND e.active_flag = 1`,
@@ -57,6 +64,7 @@ export default async function CaisseDetailPage({ params }: { params: Promise<{ n
               editionId={caisse.edition_id}
               numero={numeroInt}
               tauxAchat={Number(caisse.taux_achat)}
+              ventesOuvertes={caisse.phase === "caisse"}
             />
           </div>
           <div className="mt-8 border-t border-zinc-200 pt-4">

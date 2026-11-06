@@ -224,8 +224,22 @@ export async function encaisserPanier(
   // annulerDerniereVente, qui ne cible jamais que LA dernière vente).
   await flusherQuittancesEnAttente(caisseId).catch(() => {});
 
-  const edition = await queryOne<{ taux_achat: number }>("SELECT taux_achat FROM editions WHERE id = ?", [editionId]);
+  const edition = await queryOne<{ taux_achat: number; phase: string }>(
+    "SELECT taux_achat, phase FROM editions WHERE id = ?",
+    [editionId],
+  );
   if (!edition) return { ok: false, error: "Édition introuvable." };
+
+  // La connexion à la caisse est désormais possible avant la phase "Caisse"
+  // (préparation/démonstration, voir resoudreCode) — le scan et le panier
+  // fonctionnent donc déjà, mais l'encaissement reste bloqué tant que
+  // l'édition n'est pas officiellement passée en phase "Caisse".
+  if (edition.phase !== "caisse") {
+    return {
+      ok: false,
+      error: "Vente pas encore ouverte — l'édition n'est pas en phase « Caisse ». Le scan reste disponible pour s'entraîner.",
+    };
+  }
 
   const placeholders = articleIds.map(() => "?").join(", ");
   const articles = await query<{ id: string; prix: number; numero_vendeur: number }>(

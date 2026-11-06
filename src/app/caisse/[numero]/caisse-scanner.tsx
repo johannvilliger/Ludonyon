@@ -135,11 +135,13 @@ export function CaisseScanner({
   editionId,
   numero,
   tauxAchat,
+  ventesOuvertes,
 }: {
   caisseId: string;
   editionId: string;
   numero: number;
   tauxAchat: number;
+  ventesOuvertes: boolean;
 }) {
   const [panier, setPanier] = useState<ArticleTrouve[]>([]);
   const [acheteurBenevole, setAcheteurBenevole] = useState(false);
@@ -356,6 +358,12 @@ export function CaisseScanner({
 
   return (
     <div>
+      {!ventesOuvertes && (
+        <p className="mb-3 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-800">
+          Mode préparation — le scan fonctionne pour s&apos;entraîner, mais l&apos;encaissement reste bloqué tant
+          que l&apos;édition n&apos;est pas passée en phase « Caisse ».
+        </p>
+      )}
       {!enLigne && (
         <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
           Pas de connexion — le panier est conservé sur le téléphone, il suffit d&apos;attendre le retour du
