@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
@@ -6,6 +5,7 @@ import { arrondiCentimes, formaterMontant } from "@/lib/argent";
 import { dashboardEstConnecte } from "@/lib/gestion";
 import { qrAvecLogoDataUrl } from "@/lib/qr-logo";
 import { listerSessionsActives } from "@/lib/sessions-actives";
+import { urlAbsolue } from "@/lib/url";
 import {
   changerPhase,
   deconnecterCaisse,
@@ -130,25 +130,17 @@ export default async function DashboardGestionPage() {
   );
 
   // Lien/QR magique par poste (accueil, caisses) : connecte directement
-  // sans retaper le code — voir /gestion/acces/[code]. "host" dépend d'un
-  // en-tête de requête donc force-dynamic (déjà le cas ci-dessus) est requis.
-  const enTetes = await headers();
-  const hote = enTetes.get("host");
-  const protocole = enTetes.get("x-forwarded-proto") ?? (process.env.NODE_ENV === "production" ? "https" : "http");
-  const origine = hote ? `${protocole}://${hote}` : null;
-
-  function lienAcces(code: string): string | null {
-    return origine ? `${origine}/gestion/acces/${encodeURIComponent(code)}` : null;
-  }
-
+  // sans retaper le code — voir /gestion/acces/[code]. urlAbsolue() dépend
+  // d'en-têtes de requête donc force-dynamic (déjà le cas ci-dessus) est
+  // requis.
   const postesAvecLiens = await Promise.all(
     postes.map(async (p) => {
-      const lien = lienAcces(p.code_acces);
-      return { ...p, lienAcces: lien, qrAcces: lien ? await qrAvecLogoDataUrl(lien) : null };
+      const lien = await urlAbsolue(`/gestion/acces/${encodeURIComponent(p.code_acces)}`);
+      return { ...p, lienAcces: lien, qrAcces: await qrAvecLogoDataUrl(lien) };
     }),
   );
 
-  const accueilLien = parametres ? lienAcces(parametres.code_accueil) : null;
+  const accueilLien = parametres ? await urlAbsolue(`/gestion/acces/${encodeURIComponent(parametres.code_accueil)}`) : null;
   const accueilQr = accueilLien ? await qrAvecLogoDataUrl(accueilLien) : null;
 
   const posteRemboursement = postes.find((p) => p.type === "remboursement") ?? null;
