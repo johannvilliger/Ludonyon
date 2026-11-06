@@ -397,13 +397,21 @@ export default async function DashboardGestionPage() {
               const fondInitial = p.fond_initial != null ? Number(p.fond_initial) : null;
               const cashEnCaisse = fondInitial != null ? arrondiCentimes(fondInitial + ventes - vidages) : null;
               const enAlerte = cashEnCaisse != null && cashEnCaisse > SEUIL_ALERTE_CAISSE;
-              const ouverte = Boolean(p.connecte);
+              const connecte = Boolean(p.connecte);
+              // Connectée en dehors de la phase "Caisse" = un bénévole qui
+              // prépare/s'entraîne (voir resoudreCode) — pas une vraie vente en
+              // cours, distingué visuellement (ambre) pour ne pas confondre
+              // avec une caisse réellement ouverte au public (vert).
+              const preparation = connecte && edition.phase !== "caisse";
+              const ouverte = connecte && !preparation;
 
               const tuileClasses = enAlerte
                 ? "caisse-alerte rounded-lg border border-red-600 p-4 text-white"
-                : ouverte
-                  ? "rounded-lg border border-emerald-300 bg-emerald-50 p-4"
-                  : "rounded-lg border border-zinc-200 bg-white p-4";
+                : preparation
+                  ? "rounded-lg border border-amber-300 bg-amber-50 p-4"
+                  : ouverte
+                    ? "rounded-lg border border-emerald-300 bg-emerald-50 p-4"
+                    : "rounded-lg border border-zinc-200 bg-white p-4";
 
               return (
                 <div key={p.poste_id} className={tuileClasses}>
@@ -416,8 +424,12 @@ export default async function DashboardGestionPage() {
                       Historique →
                     </Link>
                   </div>
-                  <p className={`mt-1 text-xs font-medium uppercase tracking-wide ${enAlerte ? "text-white" : ouverte ? "text-emerald-700" : "text-zinc-400"}`}>
-                    {ouverte ? "Ouverte" : "Fermée"}
+                  <p
+                    className={`mt-1 text-xs font-medium uppercase tracking-wide ${
+                      enAlerte ? "text-white" : preparation ? "text-amber-700" : ouverte ? "text-emerald-700" : "text-zinc-400"
+                    }`}
+                  >
+                    {preparation ? "Connectée (préparation)" : ouverte ? "Ouverte" : "Fermée"}
                   </p>
                   {p.caisse_id ? (
                     <>
@@ -503,17 +515,35 @@ export default async function DashboardGestionPage() {
                 />
               )}
             </div>
-            <p
-              className={`mt-1 text-xs font-medium uppercase tracking-wide ${
-                posteRemboursement.cloturee
-                  ? "text-zinc-400"
-                  : posteRemboursement.connecte
-                    ? "text-emerald-700"
-                    : "text-zinc-400"
-              }`}
-            >
-              {posteRemboursement.cloturee ? "Clôturé" : posteRemboursement.connecte ? "Ouvert" : "Fermé"}
-            </p>
+            {(() => {
+              const connecte = Boolean(posteRemboursement.connecte);
+              // Le SàV est légitimement utilisé en phase "caisse" ou
+              // "post_vente" — connecté en dehors de ces deux-là, c'est de la
+              // préparation (voir resoudreCode), pas un vrai service en cours.
+              const preparation = connecte && edition.phase !== "caisse" && edition.phase !== "post_vente";
+              const ouvert = connecte && !preparation;
+              return (
+                <p
+                  className={`mt-1 text-xs font-medium uppercase tracking-wide ${
+                    posteRemboursement.cloturee
+                      ? "text-zinc-400"
+                      : preparation
+                        ? "text-amber-700"
+                        : ouvert
+                          ? "text-emerald-700"
+                          : "text-zinc-400"
+                  }`}
+                >
+                  {posteRemboursement.cloturee
+                    ? "Clôturé"
+                    : preparation
+                      ? "Connecté (préparation)"
+                      : ouvert
+                        ? "Ouvert"
+                        : "Fermé"}
+                </p>
+              );
+            })()}
             {posteRemboursement.caisse_id ? (
               <>
                 <p className="mt-2 text-sm text-zinc-600">
