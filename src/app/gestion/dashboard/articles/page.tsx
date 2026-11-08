@@ -87,6 +87,10 @@ export default async function ArticlesDashboardPage({
       )
     : [];
   const totalParCategorie = new Map(repartition.map((r) => [r.categorie ?? SANS_CATEGORIE, r.total]));
+  // Toujours recalculé depuis repartition (pas une valeur en dur) : reste
+  // exact à chaque chargement de page (dynamic = "force-dynamic" ci-dessus),
+  // donc toujours à jour sans action supplémentaire.
+  const totalGeneral = repartition.reduce((somme, r) => somme + Number(r.total), 0);
 
   const rechercheLancee = Boolean(nom) || statut !== "tous" || categorieFiltre !== undefined;
 
@@ -147,7 +151,12 @@ export default async function ArticlesDashboardPage({
 
       {edition && (
         <div className="mt-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Répartition par catégorie</p>
+          <div className="flex items-baseline justify-between gap-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Répartition par catégorie</p>
+            <p className="text-sm font-semibold text-zinc-700">
+              Total : {totalGeneral} article{totalGeneral > 1 ? "s" : ""}
+            </p>
+          </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {[...CATEGORIES_ARTICLES, SANS_CATEGORIE].map((c) => {
               const total = totalParCategorie.get(c) ?? 0;

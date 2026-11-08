@@ -41,7 +41,12 @@ export function NouvelleListeForm() {
           label={`Dépôt en cours — ${nom || "vendeur non identifié"} (${nbArticles} article${nbArticles > 1 ? "s" : ""})`}
         />
       )}
-      <div className="flex items-start justify-between gap-4">
+      <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <strong>Pas besoin d&apos;une liste complète pour déposer.</strong> Envoyez-la même incomplète —
+        vous recevrez un email avec un lien personnel pour la modifier et la compléter plus tard, jusqu&apos;à
+        la veille du dépôt.
+      </div>
+      <div className="mt-4 flex items-start justify-between gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">Déposer ma liste</h1>
         <a
           href="/reglement.pdf"
@@ -52,10 +57,6 @@ export function NouvelleListeForm() {
           Règlement (PDF)
         </a>
       </div>
-      <p className="mt-2 text-sm text-zinc-500">
-        Vous recevrez un email avec un lien pour modifier ou compléter votre liste par la suite, si
-        besoin — jusqu&apos;à la veille du dépôt.
-      </p>
       <p className="mt-2 text-zinc-600">
         Un objet par ligne, avec son prix en francs (pas de centimes). Vous recevrez un numéro de
         vendeur et un code à présenter au dépôt.
