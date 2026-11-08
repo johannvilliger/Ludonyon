@@ -81,7 +81,13 @@ depuis le dashboard, section "Codes d'accès".
 - Adresse du dépôt Git à utiliser : `https://github.com/johannvilliger/Ludonyon.git`
   (l'adresse de la page GitHub, avec `/tree/...`, ne fonctionne pas — il faut
   l'adresse "propre" du dépôt). La branche par défaut est `main`.
-- Commande de build : `npm run build`
+- Commande de build : `npm run build` (force `--webpack` — le bundler
+  Turbopack, défaut depuis Next 16, plante en fin de build sur l'hébergement
+  Node.js d'Infomaniak avec `Error: kill EACCES`, le conteneur n'autorisant
+  pas le `kill` que Turbopack envoie à ses workers en fin de build ; le
+  build a bien réussi juste avant, ce n'est que le nettoyage qui casse.
+  Fonctionne normalement en local avec Turbopack, donc `npm run dev` n'a pas
+  besoin du même contournement.)
 - Commande d'exécution : `npm start`
 - Renseigne les variables d'environnement `DB_HOST`, `DB_PORT`, `DB_USER`,
   `DB_PASSWORD`, `DB_NAME` dans les réglages de l'application Node.js
