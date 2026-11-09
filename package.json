@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
+    "build": "node --import ./scripts/patch-kill-eacces.mjs node_modules/next/dist/bin/next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "node scripts/migrate.mjs"

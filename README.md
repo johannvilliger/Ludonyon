@@ -81,13 +81,18 @@ depuis le dashboard, section "Codes d'accès".
 - Adresse du dépôt Git à utiliser : `https://github.com/johannvilliger/Ludonyon.git`
   (l'adresse de la page GitHub, avec `/tree/...`, ne fonctionne pas — il faut
   l'adresse "propre" du dépôt). La branche par défaut est `main`.
-- Commande de build : `npm run build` (force `--webpack` — le bundler
-  Turbopack, défaut depuis Next 16, plante en fin de build sur l'hébergement
-  Node.js d'Infomaniak avec `Error: kill EACCES`, le conteneur n'autorisant
-  pas le `kill` que Turbopack envoie à ses workers en fin de build ; le
-  build a bien réussi juste avant, ce n'est que le nettoyage qui casse.
-  Fonctionne normalement en local avec Turbopack, donc `npm run dev` n'a pas
-  besoin du même contournement.)
+- Commande de build : `npm run build` — charge `scripts/patch-kill-eacces.mjs`
+  (via `node --import`) avant `next build`. En fin de build, Next.js tue de
+  force ses processus workers internes s'ils ne se terminent pas assez vite
+  (`kill("SIGTERM")`) ; sur l'hébergement Node.js d'Infomaniak, ce `kill()`
+  est refusé par le bac à sable (`Error: kill EACCES`) même sur un processus
+  créé par l'appli elle-même, ce qui fait planter tout le build **alors que
+  la compilation avait déjà réussi juste avant** ("Finalizing page
+  optimization" dans les logs). Confirmé indépendant du bundler (identique
+  avec Turbopack et avec `--webpack`) — le script avale uniquement ce
+  `EACCES` précis sur `kill`, jamais une autre erreur. Pas besoin du même
+  contournement en local (`npm run dev`), le problème ne touche que
+  l'hébergement Infomaniak.
 - Commande d'exécution : `npm start`
 - Renseigne les variables d'environnement `DB_HOST`, `DB_PORT`, `DB_USER`,
   `DB_PASSWORD`, `DB_NAME` dans les réglages de l'application Node.js
