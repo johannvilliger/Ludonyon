@@ -11,6 +11,7 @@ export type ResultatRemise = { error: string | null };
 export async function confirmerRemiseEnveloppe(
   participationId: string,
   signatureDataUrl: string,
+  souhaiteEtreInforme: boolean,
 ): Promise<ResultatRemise> {
   if (!(await accueilEstConnecte())) throw new Error("Non autorisé.");
   if (!signatureDataUrl.startsWith("data:image/png;base64,")) {
@@ -20,6 +21,16 @@ export async function confirmerRemiseEnveloppe(
   await query(
     "UPDATE participations SET enveloppe_recuperee_le = NOW(), enveloppe_signature = ? WHERE id = ?",
     [signatureDataUrl, participationId],
+  );
+
+  // Sur vendeurs (pas participations) : c'est une préférence de la
+  // personne, pas liée à cette édition précise — voir migration 0034.
+  await query(
+    `UPDATE vendeurs v
+     JOIN participations p ON p.vendeur_id = v.id
+     SET v.souhaite_etre_informe = ?
+     WHERE p.id = ?`,
+    [souhaiteEtreInforme, participationId],
   );
 
   revalidatePath("/accueil/enveloppes");
