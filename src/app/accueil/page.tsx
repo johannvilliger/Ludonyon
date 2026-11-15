@@ -25,12 +25,18 @@ export default async function AccueilPage({
   const { q } = await searchParams;
   const terme = (q ?? "").trim();
 
+  const edition = await queryOne<{ id: string; phase: string }>(
+    "SELECT id, phase FROM editions WHERE active_flag = 1 LIMIT 1",
+  );
+  // Les enveloppes ne sont prêtes (montant/invendus calculés) qu'à partir
+  // de la clôture — masqué en dépôt/réception pour ne pas laisser croire
+  // que la récupération est déjà possible.
+  const enveloppesDisponibles = Boolean(edition && ["caisse", "post_vente"].includes(edition.phase));
+
   let resultats: ResultatRecherche[] = [];
   let editionOuverte = true;
 
   if (terme) {
-    const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1 LIMIT 1");
-
     if (!edition) {
       editionOuverte = false;
     } else {
@@ -73,9 +79,11 @@ export default async function AccueilPage({
           <Link href="/accueil/etiquette-manuelle" className="text-sm text-zinc-500 hover:underline">
             Réimprimer une étiquette →
           </Link>
-          <Link href="/accueil/enveloppes" className="text-sm text-zinc-500 hover:underline">
-            Récupération des enveloppes →
-          </Link>
+          {enveloppesDisponibles && (
+            <Link href="/accueil/enveloppes" className="text-sm text-zinc-500 hover:underline">
+              Récupération des enveloppes →
+            </Link>
+          )}
         </div>
       </div>
 
