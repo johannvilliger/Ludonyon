@@ -221,7 +221,7 @@ export default async function DashboardGestionPage() {
      FROM etiquettes_articles_impression`,
   );
 
-  const sessionsActives = listerSessionsActives();
+  const sessionsActives = await listerSessionsActives();
 
   const messagesNonTraites = await queryOne<{ total: number }>(
     "SELECT COUNT(*) AS total FROM messages_assistant WHERE traite = 0",
