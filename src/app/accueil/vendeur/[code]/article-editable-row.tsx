@@ -28,7 +28,7 @@ export function ArticleEditableRow({
   const prixInvalide = nom.trim() !== "" && (prix.trim() === "" || Number(prix) <= 0);
 
   if (supprime) {
-    return <p className="flex-1 self-center text-sm text-zinc-400 line-through">{nomInitial}</p>;
+    return <p className="flex-1 self-center text-base text-zinc-400 line-through">{nomInitial}</p>;
   }
 
   return (
@@ -42,8 +42,8 @@ export function ArticleEditableRow({
           }}
           className={
             mot || tropLong
-              ? "min-w-0 flex-1 rounded border border-red-400 px-2 py-1 text-sm"
-              : "min-w-0 flex-1 rounded border border-zinc-300 px-2 py-1 text-sm"
+              ? "min-w-0 flex-1 rounded border border-red-400 px-3 py-2 text-base"
+              : "min-w-0 flex-1 rounded border border-zinc-300 px-3 py-2 text-base"
           }
         />
         <input
@@ -57,8 +57,8 @@ export function ArticleEditableRow({
           }}
           className={
             prixInvalide
-              ? "w-20 shrink-0 rounded border border-red-400 px-2 py-1 text-sm"
-              : "w-20 shrink-0 rounded border border-zinc-300 px-2 py-1 text-sm"
+              ? "w-24 shrink-0 rounded border border-red-400 px-3 py-2 text-base"
+              : "w-24 shrink-0 rounded border border-zinc-300 px-3 py-2 text-base"
           }
         />
         <button
@@ -70,7 +70,7 @@ export function ArticleEditableRow({
               setEnregistre(true);
             })
           }
-          className="shrink-0 rounded border border-zinc-300 px-2 py-1 text-xs hover:border-zinc-400 disabled:opacity-50"
+          className="shrink-0 rounded border border-zinc-300 px-3 py-2 text-sm hover:border-zinc-400 disabled:opacity-50"
         >
           {pending ? "…" : enregistre ? "✓" : "Enregistrer"}
         </button>
@@ -84,19 +84,19 @@ export function ArticleEditableRow({
               setSupprime(true);
             });
           }}
-          className="shrink-0 rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:border-red-400 hover:bg-red-50 disabled:opacity-50"
+          className="shrink-0 rounded border border-red-300 px-3 py-2 text-sm text-red-600 hover:border-red-400 hover:bg-red-50 disabled:opacity-50"
         >
           {supprimePending ? "…" : "Supprimer"}
         </button>
       </div>
-      {mot && <p className="mt-1 text-xs text-red-600">{messageMotInterdit(mot)}</p>}
+      {mot && <p className="mt-1 text-sm text-red-600">{messageMotInterdit(mot)}</p>}
       {!mot && tropLong && (
-        <p className="mt-1 text-xs text-red-600">
+        <p className="mt-1 text-sm text-red-600">
           Le nom dépasse {LONGUEUR_MAX_NOM} caractères ({nom.trim().length}/{LONGUEUR_MAX_NOM}).
         </p>
       )}
       {!mot && !tropLong && prixInvalide && (
-        <p className="mt-1 text-xs text-red-600">Indiquez un prix supérieur à 0.–.</p>
+        <p className="mt-1 text-sm text-red-600">Indiquez un prix supérieur à 0.–.</p>
       )}
     </div>
   );

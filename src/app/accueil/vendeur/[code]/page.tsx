@@ -72,7 +72,7 @@ export default async function VendeurAccueilPage({
   const receptionTerminee = articles.length > 0 && !articles.some((a) => a.statut === "non_recu");
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-12">
+    <main className="mx-auto w-full max-w-4xl px-6 py-12">
       <Link href="/accueil" className="text-sm text-zinc-500 hover:underline">
         ← Recherche
       </Link>
@@ -146,7 +146,7 @@ export default async function VendeurAccueilPage({
       </div>
 
       <div className="mt-8 flex items-center justify-between">
-        <h2 className="text-lg font-medium">
+        <h2 className="text-xl font-medium">
           {articles.length} article{articles.length > 1 ? "s" : ""} · {total} CHF
         </h2>
         {articles.length > 0 && <ToutAccepterButton code={code} />}
@@ -155,8 +155,8 @@ export default async function VendeurAccueilPage({
         {articles.map((a) => {
           const modifiable = a.statut === "non_recu" || a.statut === "recu" || a.statut === "refuse";
           return (
-            <li key={a.id} className="flex items-stretch gap-3 py-2 text-sm">
-              <span className="w-6 shrink-0 self-center text-zinc-400">
+            <li key={a.id} className="flex items-stretch gap-4 py-3 text-base">
+              <span className="w-8 shrink-0 self-center text-zinc-400">
                 {String(a.numero_article).padStart(2, "0")}
               </span>
               {modifiable ? (
@@ -169,8 +169,8 @@ export default async function VendeurAccueilPage({
                         type="submit"
                         className={
                           a.statut === "recu"
-                            ? "rounded-md bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800"
-                            : "rounded-md border border-zinc-300 px-3 py-1 text-xs font-medium hover:border-emerald-400 hover:text-emerald-700"
+                            ? "rounded-md bg-emerald-100 px-4 py-2 text-sm font-medium text-emerald-800"
+                            : "rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:border-emerald-400 hover:text-emerald-700"
                         }
                       >
                         {a.statut === "recu" ? "✓ Accepté" : "Accepter"}
@@ -181,8 +181,8 @@ export default async function VendeurAccueilPage({
                         type="submit"
                         className={
                           a.statut === "refuse"
-                            ? "rounded-md bg-red-100 px-3 py-1 text-xs font-medium text-red-800"
-                            : "rounded-md border border-zinc-300 px-3 py-1 text-xs font-medium hover:border-red-400 hover:text-red-700"
+                            ? "rounded-md bg-red-100 px-4 py-2 text-sm font-medium text-red-800"
+                            : "rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:border-red-400 hover:text-red-700"
                         }
                       >
                         {a.statut === "refuse" ? "✓ Refusé" : "Refuser"}
@@ -196,7 +196,7 @@ export default async function VendeurAccueilPage({
                     {a.nom} <span className="font-mono text-zinc-500">{a.prix}.–</span>
                   </span>
                   <span
-                    className={`shrink-0 self-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUT_ARTICLE_STYLES[a.statut] ?? "bg-zinc-100 text-zinc-600"}`}
+                    className={`shrink-0 self-center rounded-full px-3 py-1 text-sm font-medium ${STATUT_ARTICLE_STYLES[a.statut] ?? "bg-zinc-100 text-zinc-600"}`}
                   >
                     {STATUT_ARTICLE_LABELS[a.statut] ?? a.statut}
                   </span>
