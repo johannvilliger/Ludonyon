@@ -153,9 +153,12 @@ export default async function DashboardGestionPage() {
       )
     : null;
 
+  // Un vendeur marqué absent (no-show confirmé, voir migration 0037) sort de
+  // tous les comptes ci-dessous — sa liste/ses articles restent en base,
+  // juste exclus des statistiques de réception.
   const controlesManquants = edition
     ? await queryOne<{ nb: number }>(
-        "SELECT COUNT(*) AS nb FROM participations WHERE edition_id = ? AND statut = 'liste_soumise'",
+        "SELECT COUNT(*) AS nb FROM participations WHERE edition_id = ? AND statut = 'liste_soumise' AND absent = 0",
         [edition.id],
       )
     : null;
@@ -163,9 +166,12 @@ export default async function DashboardGestionPage() {
 
   // "Venu" = a soumis sa liste ET est passé par le contrôle accueil (tout
   // statut au-delà de liste_soumise) — un vendeur qui n'est jamais venu
-  // reste bloqué sur liste_soumise indéfiniment.
+  // reste bloqué sur liste_soumise indéfiniment, à moins d'être marqué absent.
   const totalVendeurs = edition
-    ? await queryOne<{ nb: number }>("SELECT COUNT(*) AS nb FROM participations WHERE edition_id = ?", [edition.id])
+    ? await queryOne<{ nb: number }>(
+        "SELECT COUNT(*) AS nb FROM participations WHERE edition_id = ? AND absent = 0",
+        [edition.id],
+      )
     : null;
   const nbTotalVendeurs = Number(totalVendeurs?.nb ?? 0);
   const nbVendeursVenus = nbTotalVendeurs - nbControlesManquants;
@@ -183,7 +189,7 @@ export default async function DashboardGestionPage() {
            COALESCE(SUM(a.statut = 'refuse'), 0) AS refuses,
            COUNT(*) AS total
          FROM articles a JOIN participations p ON p.id = a.participation_id
-         WHERE p.edition_id = ?`,
+         WHERE p.edition_id = ? AND p.absent = 0`,
         [edition.id],
       )
     : null;
@@ -402,7 +408,12 @@ export default async function DashboardGestionPage() {
               salle quand certains vendeurs ne sont pas venus. */}
           {edition && (
         <section className="mb-8">
-          <h2 className="text-lg font-medium">Avancement de la réception</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium">Avancement de la réception</h2>
+            <Link href="/gestion/dashboard/absents" className="text-sm text-zinc-500 hover:underline">
+              Vendeurs non venus →
+            </Link>
+          </div>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
             <div className="rounded-md border border-zinc-200 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Vendeurs venus</p>
