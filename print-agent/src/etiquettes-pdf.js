@@ -276,18 +276,27 @@ async function genererEtiquettesPdf(contenu, feuilleId) {
   const flux = fs.createWriteStream(cheminFichier);
   doc.pipe(flux);
 
+  // undefined (feuilles déjà en file avant ce champ) traité comme true, pour
+  // rester compatible avec ce qui était déjà en attente.
+  const avecContact = contenu.avecContact !== false;
+
   // 1re feuille : la case 0 est prise par l'étiquette coordonnées (même
   // règle que etiquettes-vendeur.tsx : NB_ETIQUETTES - 1 cases pour les
-  // articles). Feuilles suivantes : pleines, toutes les cases pour les
-  // articles.
+  // articles) — sauf avecContact:false (réimpression d'un article isolé,
+  // voir accueil/etiquette-manuelle : aucune case réservée, les "vide" en
+  // tête du tableau positionnent déjà l'unique vraie case au bon endroit).
+  // Feuilles suivantes : toujours pleines, jamais de 2e étiquette contact.
   const pages = [];
   let reste = contenu.cases;
-  pages.push({ avecContact: true, cases: reste.slice(0, NB_ETIQUETTES - 1) });
-  reste = reste.slice(NB_ETIQUETTES - 1);
+  if (avecContact) {
+    pages.push({ avecContact: true, cases: reste.slice(0, NB_ETIQUETTES - 1) });
+    reste = reste.slice(NB_ETIQUETTES - 1);
+  }
   while (reste.length > 0) {
     pages.push({ avecContact: false, cases: reste.slice(0, NB_ETIQUETTES) });
     reste = reste.slice(NB_ETIQUETTES);
   }
+  if (pages.length === 0) pages.push({ avecContact: false, cases: [] });
 
   pages.forEach((page, indexPage) => {
     if (indexPage > 0) doc.addPage({ size: [pt(PAGE_LARGEUR_MM), pt(PAGE_HAUTEUR_MM)], margin: 0 });
@@ -303,7 +312,10 @@ async function genererEtiquettesPdf(contenu, feuilleId) {
       const ligne = Math.floor(indexCase / COLONNES);
       const xMm = MARGE_GAUCHE_MM + colonne * CELL_LARGEUR_MM;
       const yMm = MARGE_HAUT_MM + ligne * CELL_HAUTEUR_MM;
-      if (c.type === "texte") {
+      if (c.type === "vide") {
+        // Rien à dessiner : case déjà utilisée ou volontairement laissée
+        // vierge sur la planche physique en place dans l'imprimante.
+      } else if (c.type === "texte") {
         dessinerEtiquetteTexteSeul(doc, c, xMm, yMm);
       } else {
         dessinerEtiquetteArticle(doc, contenu, c, xMm, yMm);

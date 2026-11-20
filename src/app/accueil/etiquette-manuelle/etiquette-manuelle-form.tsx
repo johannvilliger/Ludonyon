@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { EtiquetteArticleNom } from "@/components/EtiquetteArticleNom";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 import { rechercherArticlePourEtiquette, type ArticleEtiquette } from "./actions";
+import { EnvoyerImpressionButton } from "./envoyer-impression-button";
 import { PrintButton } from "./print-button";
 
 // Planche Herma 4357 (voir globals.css) : 4 colonnes x 10 lignes, 40
@@ -85,7 +86,16 @@ export function EtiquetteManuelleForm() {
               « {article.nom} » — {article.prix}.– · Cliquez sur la case encore vierge sur la feuille physique, puis
               imprimez.
             </p>
-            {position !== null && <PrintButton />}
+            {position !== null && (
+              <div className="flex items-center gap-2">
+                <EnvoyerImpressionButton
+                  numeroVendeur={Number(numeroVendeur)}
+                  numeroArticle={article.numeroArticle}
+                  position={position}
+                />
+                <PrintButton />
+              </div>
+            )}
           </div>
 
           <div className="label-sheet mt-4">

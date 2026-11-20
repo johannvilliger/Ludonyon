@@ -4,10 +4,12 @@ import { redirect } from "next/navigation";
 import { assignerNumeroVendeur, nouveauCode, nouvelId, queryOne, withTransaction } from "@/lib/db";
 import { envoyerEmailConfirmationListe } from "@/lib/email";
 import { emailValide } from "@/lib/email-format";
+import type { CaseEtiquette, ContenuEtiquettesArticles } from "@/lib/etiquettes-articles-impression";
 import { accueilEstConnecte } from "@/lib/gestion";
 import { formaterTelephone, telephoneValide } from "@/lib/telephone";
 import { urlAbsolue } from "@/lib/url";
 import { erreurArticles } from "@/lib/validation-articles";
+import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 
 export type FormState = { error: string | null };
 
@@ -87,6 +89,31 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
           [nouvelId(), participationId, i + 1, a.nom, a.prix],
         );
       }
+
+      // Gagne du temps à l'accueil : une liste créée sur place vient d'être
+      // tapée en direct par le bénévole, articles physiquement sous les
+      // yeux — pas besoin d'un contrôle séparé avant d'imprimer. Envoie
+      // directement à la file d'attente print-agent (même format que
+      // l'envoi manuel depuis la fiche vendeur, voir
+      // accueil/vendeur/[code]/etiquettes/actions.ts) ; l'impression
+      // classique du navigateur reste disponible en secours sur la fiche.
+      const cases: CaseEtiquette[] = articles.map((a, i) => ({
+        type: "normal",
+        numeroArticle: i + 1,
+        nom: a.nom,
+        prix: a.prix,
+      }));
+      const contenu: ContenuEtiquettesArticles = {
+        numeroVendeur: numeroVendeurAttribue,
+        nomVendeur: nom,
+        telephone,
+        special: estVendeurSpecial(numeroVendeurAttribue),
+        cases,
+      };
+      await conn.query(
+        "INSERT INTO etiquettes_articles_impression (id, participation_id, numero_vendeur, contenu_json) VALUES (?, ?, ?, ?)",
+        [nouvelId(), participationId, numeroVendeurAttribue, JSON.stringify(contenu)],
+      );
     });
   } catch {
     return { error: "Impossible d'enregistrer la liste, réessayez." };
