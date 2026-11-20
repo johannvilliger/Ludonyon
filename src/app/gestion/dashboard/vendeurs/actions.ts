@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { query, queryOne } from "@/lib/db";
+import { nouvelId, query, queryOne, withTransaction } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
 import { classerArticles } from "@/lib/classification";
+import type { CaseEtiquette, ContenuEtiquettesArticles } from "@/lib/etiquettes-articles-impression";
+import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 
 export type ResultatClassement = { classes: number; autre: number };
 
@@ -62,4 +64,92 @@ export async function classerArticlesEdition(): Promise<ResultatClassement> {
 // en routine — voir ReclasserButton.
 export async function reclasserTousLesArticlesEdition(): Promise<ResultatClassement> {
   return classerArticlesDeLEdition(false);
+}
+
+type ParticipationPlage = { id: string; numero_vendeur: number; nom_vendeur: string; telephone: string | null };
+type ArticlePlage = { participation_id: string; numero_article: number; nom: string; prix: number };
+
+export type ResultatEnvoiPlage =
+  | { ok: true; nbFeuilles: number; nbVendeursSansArticle: number }
+  | { ok: false; error: string };
+
+// Même contenu que l'envoi un par un depuis la fiche vendeur (voir
+// accueil/vendeur/[code]/etiquettes/actions.ts) — une étiquette normale par
+// article non refusé, pas de copie ni de "texte seul" supplémentaire (ça,
+// c'est au cas par cas depuis la fiche vendeur). Pensé pour envoyer tout un
+// lot d'un coup (plage de numéros) à la file d'attente print-agent plutôt
+// que vendeur par vendeur.
+export async function envoyerEtiquettesPlage(numeroDebut: number, numeroFin: number): Promise<ResultatEnvoiPlage> {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+
+  if (!Number.isInteger(numeroDebut) || !Number.isInteger(numeroFin) || numeroDebut < 1 || numeroFin < numeroDebut) {
+    return { ok: false, error: "Plage invalide : entrez deux numéros de vendeur (début ≤ fin)." };
+  }
+
+  const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1");
+  if (!edition) return { ok: false, error: "Aucune édition active." };
+
+  const participations = await query<ParticipationPlage>(
+    `SELECT p.id, p.numero_vendeur, v.nom AS nom_vendeur, v.telephone
+     FROM participations p
+     JOIN vendeurs v ON v.id = p.vendeur_id
+     WHERE p.edition_id = ? AND p.numero_vendeur BETWEEN ? AND ?
+     ORDER BY p.numero_vendeur`,
+    [edition.id, numeroDebut, numeroFin],
+  );
+  if (participations.length === 0) {
+    return { ok: false, error: "Aucun vendeur dans cette plage pour l'édition active." };
+  }
+
+  const placeholders = participations.map(() => "?").join(", ");
+  const articles = await query<ArticlePlage>(
+    `SELECT participation_id, numero_article, nom, prix FROM articles
+     WHERE participation_id IN (${placeholders}) AND statut != 'refuse'
+     ORDER BY numero_article`,
+    participations.map((p) => p.id),
+  );
+
+  const articlesParParticipation = new Map<string, ArticlePlage[]>();
+  for (const a of articles) {
+    const liste = articlesParParticipation.get(a.participation_id) ?? [];
+    liste.push(a);
+    articlesParParticipation.set(a.participation_id, liste);
+  }
+
+  let nbFeuilles = 0;
+  let nbVendeursSansArticle = 0;
+
+  await withTransaction(async (conn) => {
+    for (const p of participations) {
+      const liste = articlesParParticipation.get(p.id) ?? [];
+      if (liste.length === 0) {
+        nbVendeursSansArticle++;
+        continue;
+      }
+
+      const cases: CaseEtiquette[] = liste.map((a) => ({
+        type: "normal",
+        numeroArticle: a.numero_article,
+        nom: a.nom,
+        prix: a.prix,
+      }));
+      const contenu: ContenuEtiquettesArticles = {
+        numeroVendeur: p.numero_vendeur,
+        nomVendeur: p.nom_vendeur,
+        telephone: p.telephone,
+        special: estVendeurSpecial(p.numero_vendeur),
+        cases,
+      };
+
+      await conn.query(
+        "INSERT INTO etiquettes_articles_impression (id, participation_id, numero_vendeur, contenu_json) VALUES (?, ?, ?, ?)",
+        [nouvelId(), p.id, p.numero_vendeur, JSON.stringify(contenu)],
+      );
+      nbFeuilles++;
+    }
+  });
+
+  revalidatePath("/gestion/dashboard");
+  revalidatePath("/gestion/dashboard/vendeurs");
+  return { ok: true, nbFeuilles, nbVendeursSansArticle };
 }

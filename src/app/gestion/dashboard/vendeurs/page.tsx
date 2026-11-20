@@ -4,6 +4,7 @@ import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
 import { calculerDiffImpression, type ArticleSimple } from "@/lib/articles-diff";
 import { ClasserButton, ReclasserButton } from "./classer-button";
+import { EnvoyerPlageButton } from "./envoyer-plage-button";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +103,12 @@ export default async function VendeursDashboardPage() {
         <div className="mt-4 flex flex-wrap items-start gap-2">
           <ClasserButton />
           <ReclasserButton />
+        </div>
+      )}
+
+      {edition && (
+        <div className="mt-3">
+          <EnvoyerPlageButton />
         </div>
       )}
 
