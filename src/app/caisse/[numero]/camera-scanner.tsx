@@ -33,8 +33,14 @@ export function CameraScanner({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
   const [erreurCamera, setErreurCamera] = useState<string | null>(null);
   const [dernierResultat, setDernierResultat] = useState<ResultatScan | null>(null);
+  // La lampe torche n'est pas dans le type MediaTrackCapabilities standard —
+  // supportée surtout par Chrome Android, absente sur iOS Safari : masqué
+  // plutôt qu'affiché puis sans effet si la capacité n'est pas annoncée.
+  const [torcheSupportee, setTorcheSupportee] = useState(false);
+  const [torcheActive, setTorcheActive] = useState(false);
 
   // Refs pour que la boucle de lecture (montée une seule fois) voie toujours
   // la version à jour de onScan et de la pause après un scan, sans redémarrer
@@ -74,6 +80,12 @@ export function CameraScanner({
       if (!video) return;
       video.srcObject = stream;
       await video.play();
+
+      const track = stream.getVideoTracks()[0] ?? null;
+      trackRef.current = track;
+      const capacites = track?.getCapabilities?.() as (MediaTrackCapabilities & { torch?: boolean }) | undefined;
+      if (capacites && "torch" in capacites) setTorcheSupportee(true);
+
       frameId = requestAnimationFrame(boucle);
     }
 
@@ -123,6 +135,19 @@ export function CameraScanner({
     };
   }, []);
 
+  async function toggleTorche() {
+    const track = trackRef.current;
+    if (!track) return;
+    const nouvelEtat = !torcheActive;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: nouvelEtat } as MediaTrackConstraintSet] });
+      setTorcheActive(nouvelEtat);
+    } catch {
+      // Capacité annoncée mais échec à l'usage (rare) — on laisse l'état
+      // tel quel plutôt que d'afficher une erreur pour un simple confort.
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-4">
       <div className="relative w-full max-w-sm overflow-hidden rounded-lg bg-black">
@@ -146,13 +171,28 @@ export function CameraScanner({
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={onClose}
-        className="mt-4 rounded-md border border-white/30 px-4 py-2 text-sm font-medium text-white hover:bg-white/10"
-      >
-        Terminé
-      </button>
+      <div className="mt-4 flex gap-3">
+        {torcheSupportee && (
+          <button
+            type="button"
+            onClick={toggleTorche}
+            className={
+              torcheActive
+                ? "rounded-md border border-amber-300 bg-amber-400/90 px-4 py-2 text-sm font-medium text-black"
+                : "rounded-md border border-white/30 px-4 py-2 text-sm font-medium text-white hover:bg-white/10"
+            }
+          >
+            {torcheActive ? "💡 Lampe allumée" : "💡 Lampe torche"}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-md border border-white/30 px-4 py-2 text-sm font-medium text-white hover:bg-white/10"
+        >
+          Terminé
+        </button>
+      </div>
     </div>
   );
 }
