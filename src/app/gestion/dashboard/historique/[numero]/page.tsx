@@ -10,7 +10,8 @@ export default async function HistoriqueDashboardPage({ params }: { params: Prom
 
   const { numero } = await params;
   const numeroInt = Number(numero);
-  if (!Number.isInteger(numeroInt) || numeroInt < 1 || numeroInt > 5) notFound();
+  // 6 est le poste remboursement (type distinct, voir migration 0020).
+  if (!Number.isInteger(numeroInt) || numeroInt < 1 || numeroInt > 7 || numeroInt === 6) notFound();
 
   const caisse = await queryOne<{ id: string }>(
     `SELECT c.id

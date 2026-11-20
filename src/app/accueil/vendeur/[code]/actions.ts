@@ -105,6 +105,27 @@ export async function accepterArticle(articleId: string, code: string) {
   revalidatePath(`/accueil/vendeur/${code}`);
 }
 
+// Accepte en un coup tous les articles encore en attente ou refusés de ce
+// vendeur — gain de temps quand toute la liste est manifestement en bon
+// état. Ne touche jamais un article déjà vendu/invendu, comme
+// accepterArticle ci-dessus.
+export async function accepterTousLesArticles(code: string) {
+  if (!(await accueilEstConnecte())) throw new Error("Non autorisé.");
+
+  const participation = await queryOne<{ id: string }>(
+    "SELECT id FROM participations WHERE code_confirmation = ?",
+    [code],
+  );
+  if (!participation) throw new Error("Vendeur introuvable.");
+
+  await query(
+    "UPDATE articles SET statut = 'recu' WHERE participation_id = ? AND statut IN ('non_recu', 'recu', 'refuse')",
+    [participation.id],
+  );
+
+  revalidatePath(`/accueil/vendeur/${code}`);
+}
+
 export async function refuserArticle(articleId: string, code: string) {
   if (!(await accueilEstConnecte())) throw new Error("Non autorisé.");
 

@@ -5,6 +5,7 @@ import { AjouterArticleForm } from "./ajouter-article-form";
 import { ArticleEditableRow } from "./article-editable-row";
 import { CoordonneesEditor } from "./coordonnees-editor";
 import { accepterArticle, definirBenevole, marquerControlee, refuserArticle, terminerReception } from "./actions";
+import { ToutAccepterButton } from "./tout-accepter-button";
 
 type Article = { id: string; numero_article: number; nom: string; prix: number; statut: string };
 type Participation = {
@@ -144,9 +145,12 @@ export default async function VendeurAccueilPage({
         )}
       </div>
 
-      <h2 className="mt-8 text-lg font-medium">
-        {articles.length} article{articles.length > 1 ? "s" : ""} · {total} CHF
-      </h2>
+      <div className="mt-8 flex items-center justify-between">
+        <h2 className="text-lg font-medium">
+          {articles.length} article{articles.length > 1 ? "s" : ""} · {total} CHF
+        </h2>
+        {articles.length > 0 && <ToutAccepterButton code={code} />}
+      </div>
       <ul className="mt-3 divide-y divide-zinc-200">
         {articles.map((a) => {
           const modifiable = a.statut === "non_recu" || a.statut === "recu" || a.statut === "refuse";

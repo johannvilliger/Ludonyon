@@ -8,7 +8,8 @@ import { HistoriqueCaisse } from "@/components/HistoriqueCaisse";
 export default async function HistoriqueCaissePage({ params }: { params: Promise<{ numero: string }> }) {
   const { numero } = await params;
   const numeroInt = Number(numero);
-  if (!Number.isInteger(numeroInt) || numeroInt < 1 || numeroInt > 5) notFound();
+  // 6 est le poste remboursement (type distinct, voir migration 0020).
+  if (!Number.isInteger(numeroInt) || numeroInt < 1 || numeroInt > 7 || numeroInt === 6) notFound();
 
   const autorisation = await posteCaisseAutorise(numeroInt);
   if (!autorisation) redirect("/gestion");

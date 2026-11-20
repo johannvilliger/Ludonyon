@@ -161,6 +161,37 @@ export default async function DashboardGestionPage() {
     : null;
   const nbControlesManquants = Number(controlesManquants?.nb ?? 0);
 
+  // "Venu" = a soumis sa liste ET est passé par le contrôle accueil (tout
+  // statut au-delà de liste_soumise) — un vendeur qui n'est jamais venu
+  // reste bloqué sur liste_soumise indéfiniment.
+  const totalVendeurs = edition
+    ? await queryOne<{ nb: number }>("SELECT COUNT(*) AS nb FROM participations WHERE edition_id = ?", [edition.id])
+    : null;
+  const nbTotalVendeurs = Number(totalVendeurs?.nb ?? 0);
+  const nbVendeursVenus = nbTotalVendeurs - nbControlesManquants;
+
+  // "En salle" = passé par la réception, qu'il soit encore en stock (recu)
+  // ou déjà vendu/invendu — distinct de "en attente" (non_recu, jamais
+  // présenté à l'accueil) et "refusé" (repris par le vendeur, jamais en
+  // vente). Répond directement à "combien d'articles sont réellement dans
+  // la salle" quand des vendeurs ne sont pas venus.
+  const statutsArticles = edition
+    ? await queryOne<{ valides: number; en_attente: number; refuses: number; total: number }>(
+        `SELECT
+           COALESCE(SUM(a.statut IN ('recu', 'vendu', 'invendu')), 0) AS valides,
+           COALESCE(SUM(a.statut = 'non_recu'), 0) AS en_attente,
+           COALESCE(SUM(a.statut = 'refuse'), 0) AS refuses,
+           COUNT(*) AS total
+         FROM articles a JOIN participations p ON p.id = a.participation_id
+         WHERE p.edition_id = ?`,
+        [edition.id],
+      )
+    : null;
+  const nbArticlesValides = Number(statutsArticles?.valides ?? 0);
+  const nbArticlesEnAttente = Number(statutsArticles?.en_attente ?? 0);
+  const nbArticlesRefuses = Number(statutsArticles?.refuses ?? 0);
+  const nbArticlesTotal = Number(statutsArticles?.total ?? 0);
+
   const totaux = edition
     ? await queryOne<Totaux>(
         `SELECT
@@ -366,6 +397,39 @@ export default async function DashboardGestionPage() {
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]">
         <div>
+          {/* Avancement de la réception : vendeurs venus et répartition des
+              articles, pour savoir combien sont réellement présents en
+              salle quand certains vendeurs ne sont pas venus. */}
+          {edition && (
+        <section className="mb-8">
+          <h2 className="text-lg font-medium">Avancement de la réception</h2>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <div className="rounded-md border border-zinc-200 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Vendeurs venus</p>
+              <p className="mt-1 text-2xl font-semibold">
+                {nbVendeursVenus} / {nbTotalVendeurs}
+              </p>
+            </div>
+            <div className="rounded-md border border-zinc-200 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Articles en salle</p>
+              <p className="mt-1 text-2xl font-semibold text-emerald-700">{nbArticlesValides}</p>
+            </div>
+            <div className="rounded-md border border-zinc-200 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">En attente</p>
+              <p className="mt-1 text-2xl font-semibold text-amber-700">{nbArticlesEnAttente}</p>
+            </div>
+            <div className="rounded-md border border-zinc-200 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Refusés</p>
+              <p className="mt-1 text-2xl font-semibold text-red-700">{nbArticlesRefuses}</p>
+            </div>
+            <div className="rounded-md border border-zinc-200 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Total articles</p>
+              <p className="mt-1 text-2xl font-semibold">{nbArticlesTotal}</p>
+            </div>
+          </div>
+        </section>
+      )}
+
           {/* Stats globales */}
           {edition && (
         <section>
