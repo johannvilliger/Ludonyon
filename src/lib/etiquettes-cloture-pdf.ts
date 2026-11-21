@@ -111,7 +111,7 @@ export async function genererPdfEtiquettesCloture(editionId: string): Promise<{ 
      FROM participations p
      JOIN vendeurs v ON v.id = p.vendeur_id
      LEFT JOIN articles a ON a.participation_id = p.id
-     WHERE p.edition_id = ? AND p.numero_vendeur NOT IN (901, 902)
+     WHERE p.edition_id = ? AND p.numero_vendeur NOT IN (901, 902) AND p.absent = 0
      GROUP BY p.id, p.numero_vendeur, v.nom, p.est_benevole
      HAVING COUNT(a.id) > 0
      ORDER BY p.numero_vendeur`,

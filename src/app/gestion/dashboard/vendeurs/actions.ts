@@ -93,7 +93,7 @@ export async function envoyerEtiquettesPlage(numeroDebut: number, numeroFin: num
     `SELECT p.id, p.numero_vendeur, v.nom AS nom_vendeur, v.telephone
      FROM participations p
      JOIN vendeurs v ON v.id = p.vendeur_id
-     WHERE p.edition_id = ? AND p.numero_vendeur BETWEEN ? AND ?
+     WHERE p.edition_id = ? AND p.numero_vendeur BETWEEN ? AND ? AND p.absent = 0
      ORDER BY p.numero_vendeur`,
     [edition.id, numeroDebut, numeroFin],
   );

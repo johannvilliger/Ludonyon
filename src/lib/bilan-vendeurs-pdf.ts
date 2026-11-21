@@ -43,7 +43,7 @@ async function chargerVendeurs(editionId: string, tauxVendeur: number): Promise<
      FROM participations p
      JOIN vendeurs v ON v.id = p.vendeur_id
      LEFT JOIN articles a ON a.participation_id = p.id
-     WHERE p.edition_id = ? AND p.numero_vendeur NOT IN (901, 902)
+     WHERE p.edition_id = ? AND p.numero_vendeur NOT IN (901, 902) AND p.absent = 0
      GROUP BY p.id, p.numero_vendeur, v.nom, v.telephone, v.email, p.est_benevole
      HAVING COUNT(a.id) > 0
      ORDER BY p.numero_vendeur`,
@@ -88,7 +88,7 @@ export async function genererPdfClotureVendeurs(editionId: string): Promise<{ ba
     `SELECT a.participation_id, a.numero_article, a.nom, a.prix, a.statut
      FROM articles a
      JOIN participations p ON p.id = a.participation_id
-     WHERE p.edition_id = ? AND p.numero_vendeur NOT IN (901, 902)
+     WHERE p.edition_id = ? AND p.numero_vendeur NOT IN (901, 902) AND p.absent = 0
      ORDER BY a.numero_article`,
     [editionId],
   );
