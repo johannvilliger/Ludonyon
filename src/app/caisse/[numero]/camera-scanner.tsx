@@ -41,6 +41,9 @@ export function CameraScanner({
   // plutôt qu'affiché puis sans effet si la capacité n'est pas annoncée.
   const [torcheSupportee, setTorcheSupportee] = useState(false);
   const [torcheActive, setTorcheActive] = useState(false);
+  // Idem pour le réglage manuel de la mise au point : masqué si l'appareil
+  // n'annonce pas de mode "single-shot" (redéclenchable à la demande).
+  const [refocusSupporte, setRefocusSupporte] = useState(false);
 
   // Refs pour que la boucle de lecture (montée une seule fois) voie toujours
   // la version à jour de onScan et de la pause après un scan, sans redémarrer
@@ -57,9 +60,21 @@ export function CameraScanner({
     let frameId = 0;
     let stream: MediaStream | null = null;
 
+    // Résolution demandée en "ideal" (jamais "exact") : le navigateur retombe
+    // sur ce qu'il peut sans jamais échouer — une image plus détaillée aide
+    // jsQR à décoder un QR code petit ou un peu flou, sans rien changer à
+    // l'affichage (toujours mis à l'échelle en CSS). focusMode "continuous"
+    // dans "advanced" est du best-effort pur : ignoré silencieusement si la
+    // caméra ne le supporte pas.
     async function demarrer() {
+      const contraintesVideo: MediaTrackConstraints = {
+        facingMode: "environment",
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet],
+      };
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        stream = await navigator.mediaDevices.getUserMedia({ video: contraintesVideo });
       } catch (err) {
         // Certains navigateurs (Samsung Internet notamment) refusent la
         // contrainte facingMode si l'appareil a plusieurs caméras arrière
@@ -83,8 +98,11 @@ export function CameraScanner({
 
       const track = stream.getVideoTracks()[0] ?? null;
       trackRef.current = track;
-      const capacites = track?.getCapabilities?.() as (MediaTrackCapabilities & { torch?: boolean }) | undefined;
+      const capacites = track?.getCapabilities?.() as
+        | (MediaTrackCapabilities & { torch?: boolean; focusMode?: string[] })
+        | undefined;
       if (capacites && "torch" in capacites) setTorcheSupportee(true);
+      if (capacites?.focusMode?.includes("single-shot")) setRefocusSupporte(true);
 
       frameId = requestAnimationFrame(boucle);
     }
@@ -135,6 +153,24 @@ export function CameraScanner({
     };
   }, []);
 
+  // Redéclenche une mise au point ponctuelle — utile quand l'autofocus
+  // continu "chasse" ou reste flou sur un QR code de près (fréquent en
+  // macro). On repasse en continu juste après plutôt que de rester bloqué
+  // en single-shot.
+  async function refaireMiseAuPoint() {
+    const track = trackRef.current;
+    if (!track) return;
+    try {
+      await track.applyConstraints({ advanced: [{ focusMode: "single-shot" } as MediaTrackConstraintSet] });
+      setTimeout(() => {
+        track.applyConstraints({ advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet] }).catch(() => {});
+      }, 500);
+    } catch {
+      // Capacité annoncée mais échec à l'usage — sans conséquence, le scan
+      // continue avec la mise au point déjà en cours.
+    }
+  }
+
   async function toggleTorche() {
     const track = trackRef.current;
     if (!track) return;
@@ -150,7 +186,10 @@ export function CameraScanner({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-4">
-      <div className="relative w-full max-w-sm overflow-hidden rounded-lg bg-black">
+      <div
+        className={`relative w-full max-w-sm overflow-hidden rounded-lg bg-black ${refocusSupporte ? "cursor-pointer" : ""}`}
+        onClick={refocusSupporte ? refaireMiseAuPoint : undefined}
+      >
         <video ref={videoRef} playsInline muted className="w-full" />
         {dernierResultat && (
           <div
@@ -168,6 +207,7 @@ export function CameraScanner({
       {!erreurCamera && (
         <p className="mt-4 max-w-sm text-center text-sm text-white/70">
           Visez le QR code de l&apos;étiquette — le scan continue automatiquement après chaque article.
+          {refocusSupporte && " Touchez l'image si elle reste floue pour refaire la mise au point."}
         </p>
       )}
 
