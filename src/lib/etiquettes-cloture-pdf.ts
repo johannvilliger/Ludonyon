@@ -92,13 +92,19 @@ function dessinerEtiquetteCloture(doc: PDFKit.PDFDocument, v: VendeurCloture, xM
 // toutes les 40 étiquettes — contrairement à l'écran actuel (grille CSS
 // continue imprimée via le navigateur), qui ne réapplique jamais la marge
 // de la planche au-delà de la 1re feuille A4.
-export async function genererPdfEtiquettesCloture(editionId: string): Promise<{ base64: string; nomFichier: string }> {
+export async function genererPdfEtiquettesCloture(
+  editionId: string,
+  plage?: { debut: number; fin: number },
+): Promise<{ base64: string; nomFichier: string }> {
   const edition = await queryOne<{ annee: number; taux_vendeur: number }>(
     "SELECT annee, taux_vendeur FROM editions WHERE id = ?",
     [editionId],
   );
   if (!edition) throw new Error("Édition introuvable.");
 
+  // 901/902 (Ludothèque, Dons Ludothèque) inclus — jamais rien ne leur est
+  // dû (voir estVendeurSpecial), d'où le cas particulier dans montant_du
+  // plutôt qu'une exclusion de la liste.
   const vendeurs = await query<VendeurCloture>(
     `SELECT
        p.numero_vendeur,
@@ -106,16 +112,21 @@ export async function genererPdfEtiquettesCloture(editionId: string): Promise<{ 
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN 1 ELSE 0 END), 0) AS nb_ventes,
        COALESCE(SUM(CASE WHEN a.statut = 'invendu' THEN 1 ELSE 0 END), 0) AS nb_invendus,
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN
-         CASE WHEN p.est_benevole = 1 THEN a.prix ELSE ROUND(a.prix * (1 - ?), 2) END
+         CASE
+           WHEN p.numero_vendeur IN (901, 902) THEN 0
+           WHEN p.est_benevole = 1 THEN a.prix
+           ELSE ROUND(a.prix * (1 - ?), 2)
+         END
        ELSE 0 END), 0) AS montant_du
      FROM participations p
      JOIN vendeurs v ON v.id = p.vendeur_id
      LEFT JOIN articles a ON a.participation_id = p.id
-     WHERE p.edition_id = ? AND p.numero_vendeur NOT IN (901, 902) AND p.absent = 0
+     WHERE p.edition_id = ? AND p.absent = 0
+       ${plage ? "AND p.numero_vendeur BETWEEN ? AND ?" : ""}
      GROUP BY p.id, p.numero_vendeur, v.nom, p.est_benevole
      HAVING COUNT(a.id) > 0
      ORDER BY p.numero_vendeur`,
-    [Number(edition.taux_vendeur), editionId],
+    plage ? [Number(edition.taux_vendeur), editionId, plage.debut, plage.fin] : [Number(edition.taux_vendeur), editionId],
   );
   if (vendeurs.length === 0) throw new Error("Aucun vendeur à inclure dans ces étiquettes.");
 
@@ -142,6 +153,8 @@ export async function genererPdfEtiquettesCloture(editionId: string): Promise<{ 
 
   return {
     base64: buffer.toString("base64"),
-    nomFichier: `etiquettes-cloture-${edition.annee}.pdf`,
+    nomFichier: plage
+      ? `etiquettes-cloture-${edition.annee}-${plage.debut}-${plage.fin}.pdf`
+      : `etiquettes-cloture-${edition.annee}.pdf`,
   };
 }

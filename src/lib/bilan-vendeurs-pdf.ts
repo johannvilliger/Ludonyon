@@ -24,10 +24,17 @@ const STATUT_LABELS: Record<string, string> = {
   refuse: "Refusé",
 };
 
+export type PlageVendeurs = { debut: number; fin: number };
+
 // Même requête (mêmes totaux) que l'écran de clôture des vendeurs
-// (cloture-vente/page.tsx) : 901/902 exclus, comme sur les étiquettes
-// enveloppe — ils ne reçoivent jamais d'argent physique.
-async function chargerVendeurs(editionId: string, tauxVendeur: number): Promise<VendeurLigne[]> {
+// (cloture-vente/page.tsx). 901/902 (Ludothèque, Dons Ludothèque) inclus —
+// jamais rien ne leur est dû (voir estVendeurSpecial), d'où le cas
+// particulier dans montant_du plutôt qu'une exclusion de la liste.
+async function chargerVendeurs(
+  editionId: string,
+  tauxVendeur: number,
+  plage?: PlageVendeurs,
+): Promise<VendeurLigne[]> {
   return query<VendeurLigne>(
     `SELECT
        p.id AS participation_id,
@@ -38,16 +45,21 @@ async function chargerVendeurs(editionId: string, tauxVendeur: number): Promise<
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN 1 ELSE 0 END), 0) AS nb_ventes,
        COALESCE(SUM(CASE WHEN a.statut = 'invendu' THEN 1 ELSE 0 END), 0) AS nb_invendus,
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN
-         CASE WHEN p.est_benevole = 1 THEN a.prix ELSE ROUND(a.prix * (1 - ?), 2) END
+         CASE
+           WHEN p.numero_vendeur IN (901, 902) THEN 0
+           WHEN p.est_benevole = 1 THEN a.prix
+           ELSE ROUND(a.prix * (1 - ?), 2)
+         END
        ELSE 0 END), 0) AS montant_du
      FROM participations p
      JOIN vendeurs v ON v.id = p.vendeur_id
      LEFT JOIN articles a ON a.participation_id = p.id
-     WHERE p.edition_id = ? AND p.numero_vendeur NOT IN (901, 902) AND p.absent = 0
+     WHERE p.edition_id = ? AND p.absent = 0
+       ${plage ? "AND p.numero_vendeur BETWEEN ? AND ?" : ""}
      GROUP BY p.id, p.numero_vendeur, v.nom, v.telephone, v.email, p.est_benevole
      HAVING COUNT(a.id) > 0
      ORDER BY p.numero_vendeur`,
-    [tauxVendeur, editionId],
+    plage ? [tauxVendeur, editionId, plage.debut, plage.fin] : [tauxVendeur, editionId],
   );
 }
 
@@ -77,20 +89,25 @@ function dessinerEnTeteTableau(doc: PDFKit.PDFDocument) {
 // pas seulement vendus) avec le total vendu/invendu et le montant reçu —
 // même formule que l'écran de clôture, pour un document à archiver avec
 // l'enveloppe de chaque vendeur plutôt que la seule étiquette résumée.
-export async function genererPdfClotureVendeurs(editionId: string): Promise<{ base64: string; nomFichier: string }> {
+export async function genererPdfClotureVendeurs(
+  editionId: string,
+  plage?: PlageVendeurs,
+): Promise<{ base64: string; nomFichier: string }> {
   const edition = await queryOne<Edition>("SELECT annee, taux_vendeur FROM editions WHERE id = ?", [editionId]);
   if (!edition) throw new Error("Édition introuvable.");
 
-  const vendeurs = await chargerVendeurs(editionId, Number(edition.taux_vendeur));
+  const vendeurs = await chargerVendeurs(editionId, Number(edition.taux_vendeur), plage);
   if (vendeurs.length === 0) throw new Error("Aucun vendeur à inclure dans ce PDF.");
 
+  // Filtré depuis les participations déjà chargées (pas une 2e fois par
+  // plage/absent) : reste forcément cohérent avec la liste de vendeurs
+  // ci-dessus, quels que soient les filtres appliqués par chargerVendeurs.
+  const placeholders = vendeurs.map(() => "?").join(", ");
   const articles = await query<Article>(
-    `SELECT a.participation_id, a.numero_article, a.nom, a.prix, a.statut
-     FROM articles a
-     JOIN participations p ON p.id = a.participation_id
-     WHERE p.edition_id = ? AND p.numero_vendeur NOT IN (901, 902) AND p.absent = 0
-     ORDER BY a.numero_article`,
-    [editionId],
+    `SELECT participation_id, numero_article, nom, prix, statut FROM articles
+     WHERE participation_id IN (${placeholders})
+     ORDER BY numero_article`,
+    vendeurs.map((v) => v.participation_id),
   );
   const articlesParVendeur = new Map<string, Article[]>();
   for (const a of articles) {
@@ -178,6 +195,8 @@ export async function genererPdfClotureVendeurs(editionId: string): Promise<{ ba
 
   return {
     base64: buffer.toString("base64"),
-    nomFichier: `cloture-vendeurs-${edition.annee}.pdf`,
+    nomFichier: plage
+      ? `cloture-vendeurs-${edition.annee}-${plage.debut}-${plage.fin}.pdf`
+      : `cloture-vendeurs-${edition.annee}.pdf`,
   };
 }

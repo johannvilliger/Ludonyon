@@ -5,6 +5,7 @@ import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
 import { envoyerEtiquettesClotureImpression, envoyerPdfClotureImpression } from "./actions";
 import { ImprimerCentraliseButton } from "./imprimer-centralise-button";
+import { ImprimerPlageForm } from "./imprimer-plage-form";
 import { PdfVendeursButton } from "./pdf-vendeurs-button";
 import { PrintButton } from "./print-button";
 
@@ -34,12 +35,16 @@ export default async function ClotureVentePage() {
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN 1 ELSE 0 END), 0) AS nb_ventes,
        COALESCE(SUM(CASE WHEN a.statut = 'invendu' THEN 1 ELSE 0 END), 0) AS nb_invendus,
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN
-         CASE WHEN p.est_benevole = 1 THEN a.prix ELSE ROUND(a.prix * (1 - ?), 2) END
+         CASE
+           WHEN p.numero_vendeur IN (901, 902) THEN 0
+           WHEN p.est_benevole = 1 THEN a.prix
+           ELSE ROUND(a.prix * (1 - ?), 2)
+         END
        ELSE 0 END), 0) AS montant_du
      FROM participations p
      JOIN vendeurs v ON v.id = p.vendeur_id
      LEFT JOIN articles a ON a.participation_id = p.id
-     WHERE p.edition_id = ? AND p.numero_vendeur NOT IN (901, 902) AND p.absent = 0
+     WHERE p.edition_id = ? AND p.absent = 0
      GROUP BY p.id, p.numero_vendeur, v.nom, p.est_benevole
      HAVING COUNT(a.id) > 0
      ORDER BY p.numero_vendeur`,
@@ -70,6 +75,8 @@ export default async function ClotureVentePage() {
           />
         </div>
       </div>
+
+      <ImprimerPlageForm editionId={edition.id} />
 
       <div className="label-sheet">
         {vendeurs.map((v) => (

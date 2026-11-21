@@ -23,14 +23,20 @@ async function queuerDocumentImpression(nomFichier: string, base64: string): Pro
   ]);
 }
 
-export async function envoyerEtiquettesClotureImpression(editionId: string): Promise<void> {
+export async function envoyerEtiquettesClotureImpression(
+  editionId: string,
+  plage?: { debut: number; fin: number },
+): Promise<void> {
   if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
-  const { base64, nomFichier } = await genererPdfEtiquettesCloture(editionId);
+  const { base64, nomFichier } = await genererPdfEtiquettesCloture(editionId, plage);
   await queuerDocumentImpression(nomFichier, base64);
 }
 
-export async function envoyerPdfClotureImpression(editionId: string): Promise<void> {
+export async function envoyerPdfClotureImpression(
+  editionId: string,
+  plage?: { debut: number; fin: number },
+): Promise<void> {
   if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
-  const { base64, nomFichier } = await genererPdfClotureVendeurs(editionId);
+  const { base64, nomFichier } = await genererPdfClotureVendeurs(editionId, plage);
   await queuerDocumentImpression(nomFichier, base64);
 }
