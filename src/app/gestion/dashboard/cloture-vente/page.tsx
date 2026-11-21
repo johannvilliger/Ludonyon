@@ -3,6 +3,8 @@ import Link from "next/link";
 import { formaterMontant } from "@/lib/argent";
 import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
+import { envoyerEtiquettesClotureImpression, envoyerPdfClotureImpression } from "./actions";
+import { ImprimerCentraliseButton } from "./imprimer-centralise-button";
 import { PdfVendeursButton } from "./pdf-vendeurs-button";
 import { PrintButton } from "./print-button";
 
@@ -58,6 +60,14 @@ export default async function ClotureVentePage() {
         <div className="flex items-center gap-2">
           <PdfVendeursButton editionId={edition.id} />
           <PrintButton />
+          <ImprimerCentraliseButton
+            action={envoyerEtiquettesClotureImpression.bind(null, edition.id)}
+            label="🖨 Étiquettes (centralisé)"
+          />
+          <ImprimerCentraliseButton
+            action={envoyerPdfClotureImpression.bind(null, edition.id)}
+            label="🖨 PDF détaillé (centralisé)"
+          />
         </div>
       </div>
 

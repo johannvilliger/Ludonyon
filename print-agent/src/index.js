@@ -1,6 +1,7 @@
 "use strict";
 
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const { genererTicketsPdf, LONGUEUR_MAX_MM_DEFAUT } = require("./ticket-pdf");
 const { genererEtiquettesPdf } = require("./etiquettes-pdf");
@@ -94,6 +95,30 @@ async function marquerStatutFeuille(config, id, statut) {
   });
 }
 
+// Documents déjà rendus en PDF côté serveur (voir migration 0039) —
+// contrairement aux tickets et aux étiquettes articles, rien n'est
+// reconstruit ici : le PDF base64 reçu est décodé et envoyé tel quel à
+// l'imprimante. Sert pour des documents rares (clôture de vente) imprimés
+// sur la même imprimante à étiquettes que printerNameEtiquettes.
+async function recupererDocumentsEnAttente(config) {
+  const reponse = await fetch(`${config.siteUrl.replace(/\/$/, "")}/api/documents-impression/en-attente`, {
+    headers: { "X-Code-Impression": config.codeImpression },
+  });
+  if (!reponse.ok) {
+    throw new Error(`GET /api/documents-impression/en-attente a répondu ${reponse.status}`);
+  }
+  const donnees = await reponse.json();
+  return donnees.documents;
+}
+
+async function marquerStatutDocument(config, id, statut) {
+  await fetch(`${config.siteUrl.replace(/\/$/, "")}/api/documents-impression/${id}/statut`, {
+    method: "POST",
+    headers: { "X-Code-Impression": config.codeImpression, "Content-Type": "application/json" },
+    body: JSON.stringify({ statut }),
+  });
+}
+
 async function traiterEtiquettesUnTour(config) {
   let feuilles;
   try {
@@ -120,9 +145,38 @@ async function traiterEtiquettesUnTour(config) {
   }
 }
 
+async function traiterDocumentsUnTour(config) {
+  let documents;
+  try {
+    documents = await recupererDocumentsEnAttente(config);
+  } catch (err) {
+    console.error("Erreur de récupération des documents en attente :", err.message);
+    return;
+  }
+
+  for (const document of documents) {
+    console.log(`Document ${document.id} (${document.nomFichier}) — impression…`);
+    const cheminPdf = path.join(os.tmpdir(), `document-${document.id}.pdf`);
+    try {
+      fs.writeFileSync(cheminPdf, Buffer.from(document.pdfBase64, "base64"));
+      await imprimer(cheminPdf, config.printerNameEtiquettes);
+      await marquerStatutDocument(config, document.id, "imprimee");
+      console.log("  -> imprimé.");
+    } catch (err) {
+      console.error("  -> échec :", err && err.message ? err.message : String(err));
+      await marquerStatutDocument(config, document.id, "echec").catch(() => {});
+    } finally {
+      fs.unlink(cheminPdf, () => {});
+    }
+  }
+}
+
 async function traiterUnTour(config) {
   if (config.printerName) await traiterTicketsUnTour(config);
-  if (config.printerNameEtiquettes) await traiterEtiquettesUnTour(config);
+  if (config.printerNameEtiquettes) {
+    await traiterEtiquettesUnTour(config);
+    await traiterDocumentsUnTour(config);
+  }
 }
 
 async function traiterTicketsUnTour(config) {
