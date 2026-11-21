@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function SiteHeader() {
+export function SiteHeader({ masquerLoginBenevole }: { masquerLoginBenevole?: boolean }) {
   const pathname = usePathname();
   // Sur les pages caisse, le logo ne doit pas être cliquable : un clic
   // accidentel en pleine vente ne doit jamais sortir la personne en caisse
@@ -32,7 +32,7 @@ export function SiteHeader() {
         ) : (
           <span className="flex items-center">{logo}</span>
         )}
-        {pathname === "/" && (
+        {pathname === "/" && !masquerLoginBenevole && (
           <Link href="/benevole" className="text-sm font-medium text-zinc-600 hover:underline">
             Login bénévole
           </Link>

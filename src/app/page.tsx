@@ -18,13 +18,29 @@ export default async function Home() {
   const parametres = await queryOne<{
     date_ouverture_troc: string | null;
     message_depot_termine: string | null;
-  }>("SELECT date_ouverture_troc, message_depot_termine FROM parametres_gestion WHERE id = 1");
+    message_fin_troc: string | null;
+  }>("SELECT date_ouverture_troc, message_depot_termine, message_fin_troc FROM parametres_gestion WHERE id = 1");
   // Même règle que /vendeur/nouveau : le dépôt en ligne reste ouvert pendant
   // le dépôt ET la réception, seule la phase caisse (et au-delà) le ferme —
   // avant cette correction, cette page gardait son bouton "Déposer ma
   // liste" quelle que soit la phase, y compris en pleine caisse.
   const edition = await queryOne<{ phase: string }>("SELECT phase FROM editions WHERE active_flag = 1");
   const depotOuvert = edition?.phase === "depot" || edition?.phase === "reception";
+
+  // Page de clôture : ne s'active que si l'édition est en post-vente ET que
+  // ce message a été rempli (voir modifierMessageFinTroc) — vide, la page
+  // garde son affichage habituel même en post-vente. Dépouille tout le
+  // reste (lien "Comment ça marche", guide, assistant) — voir aussi
+  // SiteHeader pour le login bénévole, masqué dans le layout racine.
+  const messageFinTroc = edition?.phase === "post_vente" ? parametres?.message_fin_troc?.trim() : null;
+  if (messageFinTroc) {
+    return (
+      <main className="mx-auto w-full flex max-w-2xl flex-1 flex-col justify-center px-6 py-12">
+        <h1 className="text-4xl font-semibold tracking-tight">Troc de la Ludothèque Nyon Région</h1>
+        <p className="mt-3 whitespace-pre-line text-zinc-600">{messageFinTroc}</p>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto w-full flex max-w-2xl flex-1 flex-col justify-center px-6 py-12">

@@ -299,6 +299,18 @@ export async function modifierMessageDepotTermine(nouveauMessage: string) {
   revalidatePath("/vendeur/nouveau");
 }
 
+// Affiché sur la page d'accueil publique à la place de tout le reste (voir
+// src/app/page.tsx et SiteHeader) une fois l'édition active passée en
+// phase post-vente — tant que ce champ est vide, la page garde son
+// affichage habituel (message_depot_termine), même en post-vente.
+export async function modifierMessageFinTroc(nouveauMessage: string) {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+  const message = nouveauMessage.trim();
+  await query("UPDATE parametres_gestion SET message_fin_troc = ? WHERE id = 1", [message || null]);
+  revalidatePath("/gestion/dashboard");
+  revalidatePath("/");
+}
+
 export async function modifierCodeCaisse(posteId: string, nouveauCode: string) {
   const code = nouveauCode.trim();
   if (!code) throw new Error("Le code ne peut pas être vide.");

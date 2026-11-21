@@ -16,6 +16,7 @@ import {
   modifierDateOuverture,
   modifierDateRecuperation,
   modifierMessageDepotTermine,
+  modifierMessageFinTroc,
   refuserConnexionCaisse,
   validerConnexionCaisse,
   type ModeVerrouillage,
@@ -56,6 +57,7 @@ type Parametres = {
   date_ouverture_troc: string | null;
   date_recuperation_invendus: string | null;
   message_depot_termine: string | null;
+  message_fin_troc: string | null;
   modifications_bloquees: number;
   derniere_sauvegarde_le: string | null;
 };
@@ -103,7 +105,7 @@ export default async function DashboardGestionPage() {
         "SELECT id, annee FROM editions WHERE active_flag IS NULL ORDER BY annee DESC",
       );
   const parametres = await queryOne<Parametres>(
-    "SELECT code_dashboard, code_accueil, code_impression, mode_verrouillage, date_ouverture_troc, date_recuperation_invendus, message_depot_termine, modifications_bloquees, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
+    "SELECT code_dashboard, code_accueil, code_impression, mode_verrouillage, date_ouverture_troc, date_recuperation_invendus, message_depot_termine, message_fin_troc, modifications_bloquees, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
   );
   const postes = await query<PosteLigne>(
     `SELECT
@@ -701,6 +703,28 @@ export default async function DashboardGestionPage() {
             <p className="mt-1 text-xs text-zinc-500">
               Remplace le formulaire « Déposer ma liste » dès que la phase passe en caisse (le dépôt en
               ligne reste actif pendant le dépôt et la réception).
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* Affiché à la place de TOUT le reste de la page d'accueil publique
+          (plus de lien "Comment ça marche", plus de login bénévole — voir
+          SiteHeader) dès que la phase passe en post-vente — mais seulement
+          si ce champ est rempli : vide, la page garde son affichage
+          habituel même en post-vente (message_depot_termine). */}
+      {parametres && (
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Message de fin de troc (post-vente)</h2>
+          <div className="mt-3 rounded-md border border-zinc-200 p-4">
+            <MessageEditor
+              valeurInitiale={parametres.message_fin_troc ?? ""}
+              onSave={modifierMessageFinTroc}
+            />
+            <p className="mt-1 text-xs text-zinc-500">
+              Dès que ce champ est rempli ET que la phase passe en post-vente, la page d&apos;accueil
+              n&apos;affiche plus que le logo, le titre et ce texte — laissez vide pour garder
+              l&apos;affichage habituel.
             </p>
           </div>
         </section>
