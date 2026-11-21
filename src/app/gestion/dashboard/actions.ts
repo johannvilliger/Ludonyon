@@ -175,10 +175,13 @@ export async function cloturerCaisseVide(caisseId: string) {
     throw new Error("Cette caisse a eu du mouvement — elle doit être clôturée depuis son propre poste.");
   }
 
-  await query("UPDATE caisses SET cloturee = 1, montant_cloture = ? WHERE id = ?", [
-    arrondiCentimes(caisse.fond_initial ?? 0),
-    caisseId,
-  ]);
+  // montant_cloture suit la même convention que la clôture normale (voir
+  // ClotureCaisse : "montant réel compté SANS les 250.–") — il se compare
+  // directement à theoriqueCaisse (ventes - vidages, qui exclut aussi le
+  // fonds). Une caisse jamais utilisée a donc 0 ici, jamais fond_initial :
+  // stocker le fonds produisait un écart fantôme de +250.– à l'affichage
+  // (théorique 0 vs compté 250).
+  await query("UPDATE caisses SET cloturee = 1, montant_cloture = 0 WHERE id = ?", [caisseId]);
   if (caisse.poste_caisse_id) {
     await query("UPDATE postes_caisse SET connecte = 0, session_token = NULL, demande_en_attente = 0 WHERE id = ?", [
       caisse.poste_caisse_id,
