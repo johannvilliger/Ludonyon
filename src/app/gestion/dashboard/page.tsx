@@ -206,6 +206,12 @@ export default async function DashboardGestionPage() {
   // compter dans total_du_vendeurs (on le doit au vendeur) mais jamais dans
   // total_encaisse (aucun argent réel collecté pour lui). SUM ignore les
   // NULL, donc total_encaisse reste exact malgré le LEFT JOIN.
+  //
+  // va.remboursee_le IS NULL : un article remboursé PUIS revendu a deux
+  // lignes vente_articles (l'ancienne remboursée jamais supprimée, voir
+  // remboursements/actions.ts, + la nouvelle vente) — sans ce filtre, les
+  // deux matchent le même article via LEFT JOIN et total_encaisse comptait
+  // l'ancienne vente déjà remboursée en plus de la nouvelle.
   const totaux = edition
     ? await queryOne<Totaux>(
         `SELECT
@@ -220,7 +226,7 @@ export default async function DashboardGestionPage() {
          FROM articles a
          JOIN participations p ON p.id = a.participation_id
          JOIN editions e ON e.id = p.edition_id
-         LEFT JOIN vente_articles va ON va.article_id = a.id
+         LEFT JOIN vente_articles va ON va.article_id = a.id AND va.remboursee_le IS NULL
          WHERE p.edition_id = ? AND a.statut = 'vendu'`,
         [edition.id],
       )

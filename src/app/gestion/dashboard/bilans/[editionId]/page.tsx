@@ -103,6 +103,11 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
   // clôture (voir migration 0040, vendu_manuellement) n'a jamais de ligne
   // vente_articles — doit compter dans total_du_vendeurs mais jamais dans
   // total_encaisse (SUM ignore les NULL, donc exact malgré le LEFT JOIN).
+  //
+  // va.remboursee_le IS NULL : un article remboursé PUIS revendu a deux
+  // lignes vente_articles (l'ancienne jamais supprimée, voir
+  // remboursements/actions.ts) — sans ce filtre, total_encaisse comptait
+  // aussi l'ancienne vente déjà remboursée.
   const totaux = await queryOne<Totaux>(
     `SELECT
        COALESCE(SUM(va.prix_encaisse), 0) AS total_encaisse,
@@ -116,7 +121,7 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
      FROM articles a
      JOIN participations p ON p.id = a.participation_id
      JOIN editions e ON e.id = p.edition_id
-     LEFT JOIN vente_articles va ON va.article_id = a.id
+     LEFT JOIN vente_articles va ON va.article_id = a.id AND va.remboursee_le IS NULL
      WHERE p.edition_id = ? AND a.statut = 'vendu'`,
     [editionId],
   );
