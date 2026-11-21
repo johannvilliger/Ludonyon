@@ -163,6 +163,7 @@ export function CaisseScanner({
   const scanEnCoursRef = useRef(false);
   const [derniereVente, setDerniereVente] = useState<DerniereVente | null>(null);
   const [annulationEnCours, setAnnulationEnCours] = useState(false);
+  const [reimpressionEnCours, setReimpressionEnCours] = useState(false);
   const [ventesOuvertes, setVentesOuvertes] = useState(ventesOuvertesInitial);
 
   // Repoll régulier de la phase : si l'admin bascule l'édition en phase
@@ -345,6 +346,23 @@ export function CaisseScanner({
     inputRef.current?.focus();
   }
 
+  // Rattrape une case "Ticket papier" oubliée à l'encaissement — réutilise
+  // queuerTicketPapier telle quelle (déjà pensée pour recalculer le contenu
+  // depuis la vente la plus récente de cette caisse, jamais depuis l'écran).
+  // Ne fonctionne donc que pour LA dernière vente : si une autre a eu lieu
+  // depuis, il faut passer par l'historique de caisse.
+  async function handleReimprimerTicket() {
+    setReimpressionEnCours(true);
+    setErreur(null);
+    try {
+      await queuerTicketPapier(caisseId, numero);
+      setConfirmation("Ticket mis en file d'impression.");
+    } catch {
+      setErreur("Connexion perdue — réessayez, le ticket n'a pas été mis en file.");
+    }
+    setReimpressionEnCours(false);
+  }
+
   async function handleAnnulerDerniereVente() {
     if (
       !window.confirm(
@@ -429,14 +447,24 @@ export function CaisseScanner({
               Dernière vente : {derniereVente.articles.length} article{derniereVente.articles.length > 1 ? "s" : ""}{" "}
               — {formaterMontant(derniereVente.total)}
             </span>
-            <button
-              type="button"
-              onClick={handleAnnulerDerniereVente}
-              disabled={annulationEnCours}
-              className="shrink-0 rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-600 hover:border-red-400 hover:bg-red-50 disabled:opacity-50"
-            >
-              {annulationEnCours ? "…" : "Annuler cette vente"}
-            </button>
+            <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={handleReimprimerTicket}
+                disabled={reimpressionEnCours}
+                className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium hover:border-zinc-400 disabled:opacity-50"
+              >
+                {reimpressionEnCours ? "…" : "🖨 Réimprimer le ticket"}
+              </button>
+              <button
+                type="button"
+                onClick={handleAnnulerDerniereVente}
+                disabled={annulationEnCours}
+                className="rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-600 hover:border-red-400 hover:bg-red-50 disabled:opacity-50"
+              >
+                {annulationEnCours ? "…" : "Annuler cette vente"}
+              </button>
+            </div>
           </div>
           {derniereVente.quittanceEnAttente && (
             <p className="mt-1 text-xs text-zinc-500">
