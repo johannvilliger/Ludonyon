@@ -27,9 +27,10 @@ const STATUT_LABELS: Record<string, string> = {
 export type PlageVendeurs = { debut: number; fin: number };
 
 // Même requête (mêmes totaux) que l'écran de clôture des vendeurs
-// (cloture-vente/page.tsx). 901/902 (Ludothèque, Dons Ludothèque) inclus —
-// jamais rien ne leur est dû (voir estVendeurSpecial), d'où le cas
-// particulier dans montant_du plutôt qu'une exclusion de la liste.
+// (cloture-vente/page.tsx). 901/902 (Ludothèque, Dons Ludothèque) traités
+// comme n'importe quel vendeur bénévole (prix plein dû) : "Bénéfice" ne
+// doit représenter QUE la commission à 10% (achat + vente), jamais la
+// recette brute d'un de ces deux numéros spéciaux.
 async function chargerVendeurs(
   editionId: string,
   tauxVendeur: number,
@@ -46,8 +47,7 @@ async function chargerVendeurs(
        COALESCE(SUM(CASE WHEN a.statut = 'invendu' THEN 1 ELSE 0 END), 0) AS nb_invendus,
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN
          CASE
-           WHEN p.numero_vendeur IN (901, 902) THEN 0
-           WHEN p.est_benevole = 1 THEN a.prix
+           WHEN p.numero_vendeur IN (901, 902) OR p.est_benevole = 1 THEN a.prix
            ELSE ROUND(a.prix * (1 - ?), 2)
          END
        ELSE 0 END), 0) AS montant_du

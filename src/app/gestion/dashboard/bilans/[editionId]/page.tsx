@@ -113,8 +113,7 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
        COALESCE(SUM(va.prix_encaisse), 0) AS total_encaisse,
        COALESCE(SUM(
          CASE
-           WHEN p.numero_vendeur IN (901, 902) THEN 0
-           WHEN p.est_benevole = 1 THEN a.prix
+           WHEN p.numero_vendeur IN (901, 902) OR p.est_benevole = 1 THEN a.prix
            ELSE ROUND(a.prix * (1 - e.taux_vendeur), 2)
          END
        ), 0) AS total_du_vendeurs

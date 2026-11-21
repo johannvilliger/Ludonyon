@@ -85,13 +85,12 @@ function dessinerEtiquetteCloture(doc: PDFKit.PDFDocument, v: VendeurCloture, xM
   }
 }
 
-// Même requête que l'écran de clôture (cloture-vente/page.tsx) : 901/902
-// exclus, ils ne reçoivent jamais d'argent physique donc pas d'étiquette
-// enveloppe. Génère une planche A4 continue (40 étiquettes/page, sans case
-// réservée comme pour les étiquettes articles) avec un saut de page propre
-// toutes les 40 étiquettes — contrairement à l'écran actuel (grille CSS
-// continue imprimée via le navigateur), qui ne réapplique jamais la marge
-// de la planche au-delà de la 1re feuille A4.
+// Même requête que l'écran de clôture (cloture-vente/page.tsx), 901/902
+// inclus (voir plus bas). Génère une planche A4 continue (40 étiquettes/
+// page, sans case réservée comme pour les étiquettes articles) avec un
+// saut de page propre toutes les 40 étiquettes — contrairement à l'écran
+// actuel (grille CSS continue imprimée via le navigateur), qui ne
+// réapplique jamais la marge de la planche au-delà de la 1re feuille A4.
 export async function genererPdfEtiquettesCloture(
   editionId: string,
   plage?: { debut: number; fin: number },
@@ -102,9 +101,9 @@ export async function genererPdfEtiquettesCloture(
   );
   if (!edition) throw new Error("Édition introuvable.");
 
-  // 901/902 (Ludothèque, Dons Ludothèque) inclus — jamais rien ne leur est
-  // dû (voir estVendeurSpecial), d'où le cas particulier dans montant_du
-  // plutôt qu'une exclusion de la liste.
+  // 901/902 (Ludothèque, Dons Ludothèque) traités comme n'importe quel
+  // vendeur bénévole (prix plein dû) : "Bénéfice" ne doit représenter que
+  // la commission à 10%, jamais la recette brute de ces deux numéros.
   const vendeurs = await query<VendeurCloture>(
     `SELECT
        p.numero_vendeur,
@@ -113,8 +112,7 @@ export async function genererPdfEtiquettesCloture(
        COALESCE(SUM(CASE WHEN a.statut = 'invendu' THEN 1 ELSE 0 END), 0) AS nb_invendus,
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN
          CASE
-           WHEN p.numero_vendeur IN (901, 902) THEN 0
-           WHEN p.est_benevole = 1 THEN a.prix
+           WHEN p.numero_vendeur IN (901, 902) OR p.est_benevole = 1 THEN a.prix
            ELSE ROUND(a.prix * (1 - ?), 2)
          END
        ELSE 0 END), 0) AS montant_du

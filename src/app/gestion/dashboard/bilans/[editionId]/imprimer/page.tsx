@@ -32,8 +32,10 @@ export default async function ImprimerBilanVendeursPage({
   if (!edition) notFound();
 
   // Montant reçu par le vendeur (ce qu'il touche dans son enveloppe) : même
-  // règle que la clôture de vente — rien pour 901/902 (pas de vrai vendeur
-  // derrière), prix plein pour un bénévole, prix moins la part du troc sinon.
+  // règle que la clôture de vente — prix plein pour un bénévole ET pour
+  // 901/902 (Ludothèque, Dons Ludothèque, traités comme des bénévoles :
+  // "Bénéfice" ne représente que la commission à 10%), prix moins la part
+  // du troc sinon.
   const vendeurs = await query<VendeurLigne>(
     `SELECT
        p.numero_vendeur,
@@ -45,8 +47,7 @@ export default async function ImprimerBilanVendeursPage({
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN 1 ELSE 0 END), 0) AS nb_vendus,
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN
          CASE
-           WHEN p.numero_vendeur IN (901, 902) THEN 0
-           WHEN p.est_benevole = 1 THEN a.prix
+           WHEN p.numero_vendeur IN (901, 902) OR p.est_benevole = 1 THEN a.prix
            ELSE ROUND(a.prix * (1 - ?), 2)
          END
        ELSE 0 END), 0) AS montant_recu

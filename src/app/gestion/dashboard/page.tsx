@@ -212,14 +212,18 @@ export default async function DashboardGestionPage() {
   // remboursements/actions.ts, + la nouvelle vente) — sans ce filtre, les
   // deux matchent le même article via LEFT JOIN et total_encaisse comptait
   // l'ancienne vente déjà remboursée en plus de la nouvelle.
+  //
+  // 901/902 (Ludothèque, Dons Ludothèque) traités comme n'importe quel
+  // vendeur bénévole (prix plein dû), jamais comme du bénéfice gratuit :
+  // "Bénéfice" ne doit représenter QUE la commission à 10% (achat + vente),
+  // rien d'autre.
   const totaux = edition
     ? await queryOne<Totaux>(
         `SELECT
            COALESCE(SUM(va.prix_encaisse), 0) AS total_encaisse,
            COALESCE(SUM(
              CASE
-               WHEN p.numero_vendeur IN (901, 902) THEN 0
-               WHEN p.est_benevole = 1 THEN a.prix
+               WHEN p.numero_vendeur IN (901, 902) OR p.est_benevole = 1 THEN a.prix
                ELSE ROUND(a.prix * (1 - e.taux_vendeur), 2)
              END
            ), 0) AS total_du_vendeurs
