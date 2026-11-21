@@ -4,14 +4,24 @@ import { useState, useTransition } from "react";
 import { messageMotInterdit, motInterdit } from "@/lib/articles-interdits";
 import { LONGUEUR_MAX_NOM } from "@/lib/validation-articles";
 import {
+  annulerCorrectionManuelle,
   deplacerArticle,
   envoyerMessageVendeurAction,
+  marquerVenduManuellement,
   modifierArticleDashboard,
   rechercherVendeurParNumero,
   supprimerArticleDashboard,
 } from "./actions";
 
-type Article = { id: string; numero_article: number; nom: string; prix: number; statut: string };
+type Article = {
+  id: string;
+  numero_article: number;
+  nom: string;
+  prix: number;
+  statut: string;
+  vendu_manuellement: number;
+  note_correction: string | null;
+};
 
 const STATUT_LABELS: Record<string, string> = {
   non_recu: "Non reçu",
@@ -53,7 +63,46 @@ function ArticleRow({
   const [supprimePending, startSupprimer] = useTransition();
   const [supprime, setSupprime] = useState(false);
 
-  const verrouille = article.statut === "vendu" || article.statut === "invendu";
+  const [afficherCorrection, setAfficherCorrection] = useState(false);
+  const [noteCorrection, setNoteCorrection] = useState("");
+  const [erreurCorrection, setErreurCorrection] = useState<string | null>(null);
+  const [correctionPending, startCorrection] = useTransition();
+  const [statutCorrige, setStatutCorrige] = useState<"vendu" | "invendu" | null>(null);
+
+  const statutActuel = statutCorrige ?? article.statut;
+  const venduManuellement = statutCorrige === "vendu" || (statutCorrige === null && Boolean(article.vendu_manuellement));
+  const verrouille = statutActuel === "vendu" || statutActuel === "invendu";
+
+  function confirmerCorrection() {
+    const noteTrim = noteCorrection.trim();
+    if (!noteTrim) {
+      setErreurCorrection("Une note est obligatoire.");
+      return;
+    }
+    startCorrection(async () => {
+      setErreurCorrection(null);
+      try {
+        await marquerVenduManuellement(article.id, participationId, noteTrim);
+        setStatutCorrige("vendu");
+        setAfficherCorrection(false);
+      } catch (err) {
+        setErreurCorrection(err instanceof Error ? err.message : "Échec de la correction.");
+      }
+    });
+  }
+
+  function annulerCorrection() {
+    if (!window.confirm("Annuler cette correction manuelle ? L'article repasse invendu.")) return;
+    startCorrection(async () => {
+      setErreurCorrection(null);
+      try {
+        await annulerCorrectionManuelle(article.id, participationId);
+        setStatutCorrige("invendu");
+      } catch (err) {
+        setErreurCorrection(err instanceof Error ? err.message : "Échec de l'annulation.");
+      }
+    });
+  }
   const mot = nom.trim() ? motInterdit(nom) : null;
   const tropLong = nom.trim().length > LONGUEUR_MAX_NOM;
   const prixInvalide = prix.trim() === "" || Number(prix) <= 0;
@@ -150,8 +199,8 @@ function ArticleRow({
               : "w-20 shrink-0 rounded border border-zinc-300 px-2 py-1 text-sm disabled:bg-zinc-100"
           }
         />
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUT_STYLES[article.statut] ?? "bg-zinc-100 text-zinc-600"}`}>
-          {STATUT_LABELS[article.statut] ?? article.statut}
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUT_STYLES[statutActuel] ?? "bg-zinc-100 text-zinc-600"}`}>
+          {statutActuel === "vendu" && venduManuellement ? "Vendu (correction)" : (STATUT_LABELS[statutActuel] ?? statutActuel)}
         </span>
         {!verrouille && (
           <button
@@ -245,6 +294,70 @@ function ArticleRow({
         </div>
       )}
       {erreurDeplacement && <p className="mt-1 text-xs text-red-600">{erreurDeplacement}</p>}
+
+      {/* Correction de clôture : un invendu retrouvé manquant au contrôle
+          physique peut être crédité manuellement, avec une note
+          obligatoire — jamais une vraie vente (voir marquerVenduManuellement).
+          Réversible tant que personne n'a reclôturé par-dessus. */}
+      {statutActuel === "invendu" && (
+        <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2">
+          {!afficherCorrection ? (
+            <button
+              type="button"
+              onClick={() => setAfficherCorrection(true)}
+              className="rounded border border-amber-300 px-2 py-1 text-xs font-medium text-amber-800 hover:border-amber-400"
+            >
+              Marquer vendu manuellement (retrouvé manquant)
+            </button>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={noteCorrection}
+                onChange={(e) => setNoteCorrection(e.target.value)}
+                placeholder="Pourquoi ? (obligatoire)"
+                className="min-w-0 flex-1 rounded border border-zinc-300 px-2 py-1 text-xs"
+              />
+              <button
+                type="button"
+                disabled={correctionPending || !noteCorrection.trim()}
+                onClick={confirmerCorrection}
+                className="shrink-0 rounded bg-amber-700 px-2 py-1 text-xs font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+              >
+                {correctionPending ? "…" : "Confirmer"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAfficherCorrection(false);
+                  setErreurCorrection(null);
+                }}
+                className="shrink-0 rounded border border-zinc-300 px-2 py-1 text-xs hover:border-zinc-400"
+              >
+                Annuler
+              </button>
+            </div>
+          )}
+          {erreurCorrection && <p className="mt-1 text-xs text-red-600">{erreurCorrection}</p>}
+        </div>
+      )}
+
+      {statutActuel === "vendu" && venduManuellement && (
+        <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
+          <p>
+            Correction manuelle{article.note_correction ? ` — ${article.note_correction}` : ""}
+            {statutCorrige === "vendu" && !article.note_correction ? ` — ${noteCorrection}` : ""}
+          </p>
+          <button
+            type="button"
+            disabled={correctionPending}
+            onClick={annulerCorrection}
+            className="mt-1 rounded border border-blue-300 px-2 py-1 text-xs font-medium text-blue-800 hover:border-blue-400 disabled:opacity-50"
+          >
+            {correctionPending ? "…" : "↩ Annuler la correction"}
+          </button>
+          {erreurCorrection && <p className="mt-1 text-xs text-red-600">{erreurCorrection}</p>}
+        </div>
+      )}
     </li>
   );
 }

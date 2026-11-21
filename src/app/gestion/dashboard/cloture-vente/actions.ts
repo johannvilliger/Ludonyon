@@ -7,9 +7,10 @@ import { dashboardEstConnecte } from "@/lib/gestion";
 
 export async function telechargerPdfClotureVendeurs(
   editionId: string,
+  plage?: { debut: number; fin: number },
 ): Promise<{ base64: string; nomFichier: string }> {
   if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
-  return genererPdfClotureVendeurs(editionId);
+  return genererPdfClotureVendeurs(editionId, plage);
 }
 
 // Met un PDF déjà rendu en file d'attente print-agent (voir migration 0039)

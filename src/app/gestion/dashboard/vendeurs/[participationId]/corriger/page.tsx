@@ -3,6 +3,7 @@ import Link from "next/link";
 import { query, queryOne } from "@/lib/db";
 import { dashboardEstConnecte } from "@/lib/gestion";
 import { CorrigerVendeur } from "./corriger-vendeur";
+import { TelechargerFichePdfButton } from "./telecharger-fiche-pdf-button";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,15 @@ type Participation = {
   nom_vendeur: string;
   email: string | null;
 };
-type Article = { id: string; numero_article: number; nom: string; prix: number; statut: string };
+type Article = {
+  id: string;
+  numero_article: number;
+  nom: string;
+  prix: number;
+  statut: string;
+  vendu_manuellement: number;
+  note_correction: string | null;
+};
 
 function genererMessageParDefaut(numeroVendeur: number, articles: Article[]): string {
   const lignes = articles.length
@@ -47,7 +56,8 @@ export default async function CorrigerPage({
   if (!participation) notFound();
 
   const articles = await query<Article>(
-    "SELECT id, numero_article, nom, prix, statut FROM articles WHERE participation_id = ? ORDER BY numero_article",
+    `SELECT id, numero_article, nom, prix, statut, vendu_manuellement, note_correction
+     FROM articles WHERE participation_id = ? ORDER BY numero_article`,
     [participationId],
   );
 
@@ -57,12 +67,16 @@ export default async function CorrigerPage({
         ← Vendeurs
       </Link>
 
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-        Corriger — Vendeur #{participation.numero_vendeur} — {participation.nom_vendeur}
-      </h1>
+      <div className="mt-2 flex items-start justify-between gap-4">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          Corriger — Vendeur #{participation.numero_vendeur} — {participation.nom_vendeur}
+        </h1>
+        <TelechargerFichePdfButton editionId={participation.edition_id} numeroVendeur={participation.numero_vendeur} />
+      </div>
       <p className="mt-2 text-sm text-zinc-500">
         Les articles déjà vendus ou invendus sont verrouillés — on ne corrige jamais une vente déjà
-        encaissée.
+        encaissée. Un article invendu retrouvé manquant au contrôle physique peut être corrigé en vendu
+        manuellement plus bas.
       </p>
 
       <CorrigerVendeur

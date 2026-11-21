@@ -198,6 +198,12 @@ export default async function DashboardGestionPage() {
   const nbArticlesRefuses = Number(statutsArticles?.refuses ?? 0);
   const nbArticlesTotal = Number(statutsArticles?.total ?? 0);
 
+  // LEFT JOIN vente_articles (pas INNER) : un article marqué vendu "à la
+  // main" lors d'une correction de clôture (voir migration 0040,
+  // vendu_manuellement) n'a jamais de ligne vente_articles derrière — doit
+  // compter dans total_du_vendeurs (on le doit au vendeur) mais jamais dans
+  // total_encaisse (aucun argent réel collecté pour lui). SUM ignore les
+  // NULL, donc total_encaisse reste exact malgré le LEFT JOIN.
   const totaux = edition
     ? await queryOne<Totaux>(
         `SELECT
@@ -209,12 +215,11 @@ export default async function DashboardGestionPage() {
                ELSE ROUND(a.prix * (1 - e.taux_vendeur), 2)
              END
            ), 0) AS total_du_vendeurs
-         FROM vente_articles va
-         JOIN ventes v ON v.id = va.vente_id
-         JOIN articles a ON a.id = va.article_id
+         FROM articles a
          JOIN participations p ON p.id = a.participation_id
-         JOIN editions e ON e.id = v.edition_id
-         WHERE v.edition_id = ? AND a.statut = 'vendu'`,
+         JOIN editions e ON e.id = p.edition_id
+         LEFT JOIN vente_articles va ON va.article_id = a.id
+         WHERE p.edition_id = ? AND a.statut = 'vendu'`,
         [edition.id],
       )
     : null;

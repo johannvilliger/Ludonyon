@@ -107,6 +107,53 @@ export async function deplacerArticle(
   revalidatePath(`/gestion/dashboard/vendeurs/${participationIdSource}/corriger`);
 }
 
+// Correction de clôture : un objet marqué invendu mais retrouvé manquant au
+// contrôle physique (vendu sans avoir été scanné à la caisse). Jamais une
+// vraie vente (pas de ligne vente_articles) — juste un crédit manuel au
+// vendeur. vendu_manuellement (migration 0040) distingue ce cas d'une
+// vraie vente encaissée et permet d'annuler la correction proprement.
+export async function marquerVenduManuellement(articleId: string, participationId: string, note: string) {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+
+  const noteTrim = note.trim();
+  if (!noteTrim) throw new Error("Une note est obligatoire pour une correction manuelle.");
+
+  const article = await queryOne<{ statut: string }>("SELECT statut FROM articles WHERE id = ?", [articleId]);
+  if (!article) throw new Error("Article introuvable.");
+  if (article.statut !== "invendu") {
+    throw new Error("Seul un article marqué invendu peut être corrigé en vendu manuellement.");
+  }
+
+  await query("UPDATE articles SET statut = 'vendu', vendu_manuellement = 1, note_correction = ? WHERE id = ?", [
+    noteTrim,
+    articleId,
+  ]);
+
+  revalidatePath(`/gestion/dashboard/vendeurs/${participationId}/corriger`);
+}
+
+// Annule une correction manuelle (reclic, erreur) — vendu_manuellement = 1
+// garantit qu'aucune ligne vente_articles n'existe derrière, donc rien à
+// annuler côté caisse : un simple retour à invendu suffit.
+export async function annulerCorrectionManuelle(articleId: string, participationId: string) {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+
+  const article = await queryOne<{ vendu_manuellement: number }>(
+    "SELECT vendu_manuellement FROM articles WHERE id = ?",
+    [articleId],
+  );
+  if (!article) throw new Error("Article introuvable.");
+  if (!article.vendu_manuellement) {
+    throw new Error("Cet article n'est pas une correction manuelle — rien à annuler ici.");
+  }
+
+  await query("UPDATE articles SET statut = 'invendu', vendu_manuellement = 0, note_correction = NULL WHERE id = ?", [
+    articleId,
+  ]);
+
+  revalidatePath(`/gestion/dashboard/vendeurs/${participationId}/corriger`);
+}
+
 export async function envoyerMessageVendeurAction(participationId: string, message: string) {
   if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
 
