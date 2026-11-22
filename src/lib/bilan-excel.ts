@@ -28,6 +28,7 @@ async function chargerVendeurs(editionId: string, tauxVendeur: number): Promise<
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN 1 ELSE 0 END), 0) AS nb_vendus,
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN
          CASE
+           WHEN va.id IS NOT NULL AND va.prix_encaisse = 0 THEN 0
            WHEN p.numero_vendeur IN (901, 902) OR p.est_benevole = 1 THEN a.prix
            ELSE ROUND(a.prix * (1 - ?), 2)
          END
@@ -35,6 +36,7 @@ async function chargerVendeurs(editionId: string, tauxVendeur: number): Promise<
      FROM participations p
      JOIN vendeurs v ON v.id = p.vendeur_id
      LEFT JOIN articles a ON a.participation_id = p.id
+     LEFT JOIN vente_articles va ON va.article_id = a.id AND va.remboursee_le IS NULL
      WHERE p.edition_id = ?
      GROUP BY p.id, p.numero_vendeur, v.nom, v.telephone, v.email, p.est_benevole
      ORDER BY p.numero_vendeur`,

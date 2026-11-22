@@ -108,11 +108,16 @@ export default async function BilanEditionPage({ params }: { params: Promise<{ e
   // lignes vente_articles (l'ancienne jamais supprimée, voir
   // remboursements/actions.ts) — sans ce filtre, total_encaisse comptait
   // aussi l'ancienne vente déjà remboursée.
+  //
+  // Un objet donné GRATUITEMENT à un acheteur bénévole (prix_encaisse = 0,
+  // uniquement possible pour 901/902) ne doit jamais rien devoir — jamais
+  // confondu avec une correction manuelle (va.id NULL ci-dessus).
   const totaux = await queryOne<Totaux>(
     `SELECT
        COALESCE(SUM(va.prix_encaisse), 0) AS total_encaisse,
        COALESCE(SUM(
          CASE
+           WHEN va.id IS NOT NULL AND va.prix_encaisse = 0 THEN 0
            WHEN p.numero_vendeur IN (901, 902) OR p.est_benevole = 1 THEN a.prix
            ELSE ROUND(a.prix * (1 - e.taux_vendeur), 2)
          END

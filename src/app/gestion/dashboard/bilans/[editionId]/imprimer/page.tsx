@@ -35,7 +35,9 @@ export default async function ImprimerBilanVendeursPage({
   // règle que la clôture de vente — prix plein pour un bénévole ET pour
   // 901/902 (Ludothèque, Dons Ludothèque, traités comme des bénévoles :
   // "Bénéfice" ne représente que la commission à 10%), prix moins la part
-  // du troc sinon.
+  // du troc sinon. Exception : un objet donné GRATUITEMENT à un acheteur
+  // bénévole (prix_encaisse = 0) ne doit jamais rien devoir — jamais
+  // confondu avec une correction manuelle (va.id NULL, migration 0040).
   const vendeurs = await query<VendeurLigne>(
     `SELECT
        p.numero_vendeur,
@@ -47,6 +49,7 @@ export default async function ImprimerBilanVendeursPage({
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN 1 ELSE 0 END), 0) AS nb_vendus,
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN
          CASE
+           WHEN va.id IS NOT NULL AND va.prix_encaisse = 0 THEN 0
            WHEN p.numero_vendeur IN (901, 902) OR p.est_benevole = 1 THEN a.prix
            ELSE ROUND(a.prix * (1 - ?), 2)
          END
@@ -54,6 +57,7 @@ export default async function ImprimerBilanVendeursPage({
      FROM participations p
      JOIN vendeurs v ON v.id = p.vendeur_id
      LEFT JOIN articles a ON a.participation_id = p.id
+     LEFT JOIN vente_articles va ON va.article_id = a.id AND va.remboursee_le IS NULL
      WHERE p.edition_id = ?
      GROUP BY p.id, p.numero_vendeur, v.nom, v.telephone, v.email, p.est_benevole
      ORDER BY p.numero_vendeur`,

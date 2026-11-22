@@ -216,13 +216,18 @@ export default async function DashboardGestionPage() {
   // 901/902 (Ludothèque, Dons Ludothèque) traités comme n'importe quel
   // vendeur bénévole (prix plein dû), jamais comme du bénéfice gratuit :
   // "Bénéfice" ne doit représenter QUE la commission à 10% (achat + vente),
-  // rien d'autre.
+  // rien d'autre. Exception : un objet donné GRATUITEMENT à un acheteur
+  // bénévole (prix_encaisse = 0, uniquement possible pour 901/902) ne doit
+  // jamais rien devoir — jamais confondu avec une correction manuelle
+  // (va.id NULL ci-dessus), où le prix plein reste dû malgré l'absence de
+  // vraie vente.
   const totaux = edition
     ? await queryOne<Totaux>(
         `SELECT
            COALESCE(SUM(va.prix_encaisse), 0) AS total_encaisse,
            COALESCE(SUM(
              CASE
+               WHEN va.id IS NOT NULL AND va.prix_encaisse = 0 THEN 0
                WHEN p.numero_vendeur IN (901, 902) OR p.est_benevole = 1 THEN a.prix
                ELSE ROUND(a.prix * (1 - e.taux_vendeur), 2)
              END

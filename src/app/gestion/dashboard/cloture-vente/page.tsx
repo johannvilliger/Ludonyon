@@ -27,6 +27,10 @@ export default async function ClotureVentePage() {
   const edition = await queryOne<Edition>("SELECT id, annee, taux_vendeur FROM editions WHERE active_flag = 1");
   if (!edition) redirect("/gestion/dashboard");
 
+  // Un objet donné GRATUITEMENT à un acheteur bénévole (901/902
+  // uniquement, prix_encaisse = 0) ne doit jamais rien devoir — jamais
+  // confondu avec une correction manuelle (va.id NULL, migration 0040), où
+  // le prix plein reste dû malgré l'absence de vraie vente.
   const vendeurs = await query<VendeurLigne>(
     `SELECT
        p.numero_vendeur,
@@ -36,6 +40,7 @@ export default async function ClotureVentePage() {
        COALESCE(SUM(CASE WHEN a.statut = 'invendu' THEN 1 ELSE 0 END), 0) AS nb_invendus,
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN
          CASE
+           WHEN va.id IS NOT NULL AND va.prix_encaisse = 0 THEN 0
            WHEN p.numero_vendeur IN (901, 902) OR p.est_benevole = 1 THEN a.prix
            ELSE ROUND(a.prix * (1 - ?), 2)
          END
@@ -43,6 +48,7 @@ export default async function ClotureVentePage() {
      FROM participations p
      JOIN vendeurs v ON v.id = p.vendeur_id
      LEFT JOIN articles a ON a.participation_id = p.id
+     LEFT JOIN vente_articles va ON va.article_id = a.id AND va.remboursee_le IS NULL
      WHERE p.edition_id = ? AND p.absent = 0
      GROUP BY p.id, p.numero_vendeur, v.nom, p.est_benevole
      HAVING COUNT(a.id) > 0

@@ -104,6 +104,10 @@ export async function genererPdfEtiquettesCloture(
   // 901/902 (Ludothèque, Dons Ludothèque) traités comme n'importe quel
   // vendeur bénévole (prix plein dû) : "Bénéfice" ne doit représenter que
   // la commission à 10%, jamais la recette brute de ces deux numéros.
+  // Exception : un objet donné GRATUITEMENT à un acheteur bénévole
+  // (prix_encaisse = 0, voir estVendeurSpecial) ne doit jamais rien devoir —
+  // jamais confondu avec une correction manuelle (va.id NULL, migration
+  // 0040), où le prix plein reste dû malgré l'absence de vraie vente.
   const vendeurs = await query<VendeurCloture>(
     `SELECT
        p.numero_vendeur,
@@ -112,6 +116,7 @@ export async function genererPdfEtiquettesCloture(
        COALESCE(SUM(CASE WHEN a.statut = 'invendu' THEN 1 ELSE 0 END), 0) AS nb_invendus,
        COALESCE(SUM(CASE WHEN a.statut = 'vendu' THEN
          CASE
+           WHEN va.id IS NOT NULL AND va.prix_encaisse = 0 THEN 0
            WHEN p.numero_vendeur IN (901, 902) OR p.est_benevole = 1 THEN a.prix
            ELSE ROUND(a.prix * (1 - ?), 2)
          END
@@ -119,6 +124,7 @@ export async function genererPdfEtiquettesCloture(
      FROM participations p
      JOIN vendeurs v ON v.id = p.vendeur_id
      LEFT JOIN articles a ON a.participation_id = p.id
+     LEFT JOIN vente_articles va ON va.article_id = a.id AND va.remboursee_le IS NULL
      WHERE p.edition_id = ? AND p.absent = 0
        ${plage ? "AND p.numero_vendeur BETWEEN ? AND ?" : ""}
      GROUP BY p.id, p.numero_vendeur, v.nom, p.est_benevole
