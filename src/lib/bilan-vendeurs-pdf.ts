@@ -14,7 +14,14 @@ type VendeurLigne = {
   nb_invendus: number;
   montant_du: number;
 };
-type Article = { participation_id: string; numero_article: number; nom: string; prix: number; statut: string };
+type Article = {
+  participation_id: string;
+  numero_article: number;
+  nom: string;
+  prix: number;
+  statut: string;
+  gratuit: number;
+};
 
 const STATUT_LABELS: Record<string, string> = {
   non_recu: "Non reçu",
@@ -112,11 +119,19 @@ export async function genererPdfClotureVendeurs(
   // Filtré depuis les participations déjà chargées (pas une 2e fois par
   // plage/absent) : reste forcément cohérent avec la liste de vendeurs
   // ci-dessus, quels que soient les filtres appliqués par chargerVendeurs.
+  // gratuit : un bénévole a pris l'objet sans payer (901/902 uniquement,
+  // voir estVendeurSpecial) — même détection que chargerVendeurs ci-dessus
+  // (une vraie ligne de vente à prix_encaisse = 0, jamais confondue avec
+  // une correction manuelle sans ligne du tout).
   const placeholders = vendeurs.map(() => "?").join(", ");
   const articles = await query<Article>(
-    `SELECT participation_id, numero_article, nom, prix, statut FROM articles
-     WHERE participation_id IN (${placeholders})
-     ORDER BY numero_article`,
+    `SELECT
+       a.participation_id, a.numero_article, a.nom, a.prix, a.statut,
+       (va.id IS NOT NULL AND va.prix_encaisse = 0) AS gratuit
+     FROM articles a
+     LEFT JOIN vente_articles va ON va.article_id = a.id AND va.remboursee_le IS NULL
+     WHERE a.participation_id IN (${placeholders})
+     ORDER BY a.numero_article`,
     vendeurs.map((v) => v.participation_id),
   );
   const articlesParVendeur = new Map<string, Article[]>();
@@ -177,11 +192,16 @@ export async function genererPdfClotureVendeurs(
         doc.font(police);
       }
 
+      const gratuit = Boolean(a.gratuit);
       const y = doc.y;
       doc.text(String(a.numero_article).padStart(2, "0"), COL.numero, y);
       doc.text(a.nom, COL.nom, y, { width: largeurNom });
-      doc.text(`${a.prix}.–`, COL.prix, y);
-      doc.text(STATUT_LABELS[a.statut] ?? a.statut, COL.statut, y);
+      // Prix affiché barré + "Gratuit" à la place du statut : un bénévole a
+      // pris l'objet sans payer (901/902 uniquement), rien n'est dû pour
+      // lui — jamais visible autrement dans ce tableau, qui n'affiche que
+      // le prix catalogue, pas ce qui a été réellement encaissé.
+      doc.text(`${a.prix}.–`, COL.prix, y, gratuit ? { strike: true } : undefined);
+      doc.text(gratuit ? "Gratuit" : (STATUT_LABELS[a.statut] ?? a.statut), COL.statut, y);
       doc.y = y + hauteurLigne + 4;
     }
     doc.font("Helvetica");
