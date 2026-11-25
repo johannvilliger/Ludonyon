@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { EtiquetteArticleNom } from "@/components/EtiquetteArticleNom";
+import { formaterMontant } from "@/lib/argent";
+import { prixAfficheEtiquette } from "@/lib/etiquettes-articles-impression";
 import { PrintButton } from "./print-button";
 
 // Planche Herma 4357 (voir globals.css) : 4 colonnes x 10 lignes, 40
@@ -19,10 +21,12 @@ export function GenerateurEtiquettes({
   numeroVendeur,
   articles,
   special,
+  tauxAchat,
 }: {
   numeroVendeur: number;
   articles: Article[];
   special: boolean;
+  tauxAchat: number;
 }) {
   const premierNonImprime = articles.find((a) => !a.dejaImprimee)?.numeroArticle ?? articles[0].numeroArticle;
   const dernier = articles[articles.length - 1].numeroArticle;
@@ -160,7 +164,7 @@ export function GenerateurEtiquettes({
                       </div>
                       <span className="label__item">art. {String(article.numeroArticle).padStart(2, "0")}</span>
                     </div>
-                    <div className="label__price">{article.prix}.–</div>
+                    <div className="label__price">{formaterMontant(prixAfficheEtiquette(article.prix, tauxAchat))}</div>
                     <div className="label__row label__row--bottom">
                       <EtiquetteArticleNom nom={article.nom} />
                       <div className="qr-wrap" dangerouslySetInnerHTML={{ __html: article.svg }} />

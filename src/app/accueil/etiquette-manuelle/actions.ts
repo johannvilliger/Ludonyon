@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { nouvelId, query, queryOne } from "@/lib/db";
 import { accueilEstConnecte } from "@/lib/gestion";
 import type { CaseEtiquette, ContenuEtiquettesArticles } from "@/lib/etiquettes-articles-impression";
+import { prixAfficheEtiquette } from "@/lib/etiquettes-articles-impression";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 
 // Planche Herma 4357 : 4 colonnes x 10 lignes — même constante que côté
@@ -14,6 +15,10 @@ export type ArticleEtiquette = {
   numeroArticle: number;
   nom: string;
   prix: number;
+  // Prix réel de vente (prix catalogue + majoration acheteur) : à afficher
+  // sur l'étiquette à la place de `prix`, qui lui reste le prix catalogue
+  // brut encodé dans le QR (voir prixAfficheEtiquette).
+  prixAffiche: number;
   svg: string;
 };
 
@@ -28,7 +33,9 @@ export async function rechercherArticlePourEtiquette(
 ): Promise<RechercheEtiquetteResult> {
   if (!(await accueilEstConnecte())) throw new Error("Non autorisé.");
 
-  const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1");
+  const edition = await queryOne<{ id: string; taux_achat: number }>(
+    "SELECT id, taux_achat FROM editions WHERE active_flag = 1",
+  );
   if (!edition) return { ok: false, error: "Aucune édition active actuellement." };
 
   const participation = await queryOne<{ id: string }>(
@@ -52,7 +59,13 @@ export async function rechercherArticlePourEtiquette(
 
   return {
     ok: true,
-    article: { numeroArticle: article.numero_article, nom: article.nom, prix: article.prix, svg },
+    article: {
+      numeroArticle: article.numero_article,
+      nom: article.nom,
+      prix: article.prix,
+      prixAffiche: prixAfficheEtiquette(article.prix, Number(edition.taux_achat)),
+      svg,
+    },
   };
 }
 
@@ -75,7 +88,9 @@ export async function envoyerEtiquetteManuellePourImpression(
     return { error: "Position invalide." };
   }
 
-  const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1");
+  const edition = await queryOne<{ id: string; taux_achat: number }>(
+    "SELECT id, taux_achat FROM editions WHERE active_flag = 1",
+  );
   if (!edition) return { error: "Aucune édition active actuellement." };
 
   const participation = await queryOne<{ id: string }>(
@@ -103,6 +118,7 @@ export async function envoyerEtiquetteManuellePourImpression(
     telephone: null,
     special: estVendeurSpecial(numeroVendeur),
     avecContact: false,
+    tauxAchat: Number(edition.taux_achat),
     cases,
   };
 

@@ -19,6 +19,7 @@ export function EnvoyerImpressionButton({
   telephone,
   special,
   cases,
+  tauxAchat,
 }: {
   code: string;
   numeroVendeur: number;
@@ -26,6 +27,7 @@ export function EnvoyerImpressionButton({
   telephone: string | null;
   special: boolean;
   cases: CaseEtiquette[];
+  tauxAchat: number;
 }) {
   const [pending, startTransition] = useTransition();
   const [envoye, setEnvoye] = useState(false);
@@ -41,7 +43,7 @@ export function EnvoyerImpressionButton({
     setErreur(null);
     startTransition(async () => {
       try {
-        await envoyerEtiquettesImpression(code, { numeroVendeur, nomVendeur, telephone, special, cases });
+        await envoyerEtiquettesImpression(code, { numeroVendeur, nomVendeur, telephone, special, cases, tauxAchat });
         setEnvoye(true);
       } catch (err) {
         setErreur(err instanceof Error ? err.message : "Échec de l'envoi.");

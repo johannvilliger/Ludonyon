@@ -108,6 +108,7 @@ export async function creerListeAccueil(_prevState: FormState, formData: FormDat
         nomVendeur: nom,
         telephone,
         special: estVendeurSpecial(numeroVendeurAttribue),
+        tauxAchat: Number(edition.taux_achat),
         cases,
       };
       await conn.query(

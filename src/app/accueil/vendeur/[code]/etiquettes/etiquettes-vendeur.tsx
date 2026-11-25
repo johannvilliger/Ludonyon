@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { EtiquetteArticleNom, nomTropLongPourEtiquetteNormale } from "@/components/EtiquetteArticleNom";
 import { EtiquetteTexteSeul } from "@/components/EtiquetteTexteSeul";
+import { formaterMontant } from "@/lib/argent";
 import type { CaseEtiquette } from "@/lib/etiquettes-articles-impression";
+import { prixAfficheEtiquette } from "@/lib/etiquettes-articles-impression";
 import { EnvoyerImpressionButton } from "./envoyer-impression-button";
 import { PrintButton } from "./print-button";
 
@@ -29,6 +31,7 @@ export function EtiquettesVendeur({
   telephone,
   special,
   labels,
+  tauxAchat,
 }: {
   code: string;
   numeroVendeur: number;
@@ -36,6 +39,7 @@ export function EtiquettesVendeur({
   telephone: string | null;
   special: boolean;
   labels: Label[];
+  tauxAchat: number;
 }) {
   const [options, setOptions] = useState<Record<number, Options>>({});
   const [nomsLongs, setNomsLongs] = useState<Set<number>>(new Set());
@@ -116,7 +120,7 @@ export function EtiquettesVendeur({
           </div>
           <span className="label__item">art. {String(l.numero_article).padStart(2, "0")}</span>
         </div>
-        <div className="label__price">{l.prix}.–</div>
+        <div className="label__price">{formaterMontant(prixAfficheEtiquette(l.prix, tauxAchat))}</div>
         <div className="label__row label__row--bottom">
           <EtiquetteArticleNom nom={l.nom} />
           {/* le SVG est produit par la librairie `qrcode` côté serveur à partir
@@ -141,6 +145,7 @@ export function EtiquettesVendeur({
             telephone={telephone}
             special={special}
             cases={cases}
+            tauxAchat={tauxAchat}
           />
           <PrintButton />
         </div>

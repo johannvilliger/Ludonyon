@@ -53,8 +53,23 @@ const TEXTE_SEUL_LIGNE_HAUTEUR = 1.12;
 const CHEMIN_LOGO_MEEPLE = path.join(__dirname, "..", "assets", "meeple.png");
 const LOGO_DISPONIBLE = fs.existsSync(CHEMIN_LOGO_MEEPLE);
 
-function formaterPrix(prix) {
-  return `${prix}.–`;
+// Convention suisse : "24.–" si rond, "24.80" si centimes — même règle que
+// formaterMontant côté app principale (src/lib/argent.ts).
+function formaterPrix(valeur) {
+  const centimes = Math.round(valeur * 100);
+  const francs = Math.trunc(centimes / 100);
+  const reste = centimes % 100;
+  return reste === 0 ? `${francs}.–` : `${francs}.${String(reste).padStart(2, "0")}`;
+}
+
+// Prix réel de vente imprimé sur l'étiquette (prix catalogue + majoration
+// acheteur) — jamais utilisé pour le QR, qui doit toujours encoder le prix
+// catalogue brut (caseArticle.prix) pour matcher articles.prix à la caisse
+// (voir rechercherArticle, caisse/[numero]/actions.ts). 0.10 en secours si
+// une feuille déjà en file au moment du déploiement n'a pas encore ce champ.
+function prixAffiche(prix, tauxAchat) {
+  const taux = typeof tauxAchat === "number" ? tauxAchat : 0.1;
+  return Math.round(prix * (1 + taux) * 100) / 100;
 }
 
 function pad2(n) {
@@ -235,7 +250,7 @@ function dessinerEtiquetteArticle(doc, contenu, caseArticle, xMm, yMm) {
   // Prix : occupe la bande du milieu, centré.
   const yPrixHaut = yMm + PAD_MM + BANDE_HAUT_MM;
   const hauteurBandePrix = CELL_HAUTEUR_MM - 2 * PAD_MM - BANDE_HAUT_MM - BANDE_BAS_MM;
-  const texte = formaterPrix(caseArticle.prix);
+  const texte = formaterPrix(prixAffiche(caseArticle.prix, contenu.tauxAchat));
   const largeurPrix = largeurTexteMm(doc, texte, 8, "Helvetica-Bold");
   doc
     .font("Helvetica-Bold")

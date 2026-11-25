@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { EtiquetteArticleNom } from "@/components/EtiquetteArticleNom";
+import { formaterMontant } from "@/lib/argent";
 import { estVendeurSpecial } from "@/lib/vendeurs-speciaux";
 import { rechercherArticlePourEtiquette, type ArticleEtiquette } from "./actions";
 import { EnvoyerImpressionButton } from "./envoyer-impression-button";
@@ -125,7 +126,7 @@ export function EtiquetteManuelleForm() {
                         </div>
                         <span className="label__item">art. {String(article.numeroArticle).padStart(2, "0")}</span>
                       </div>
-                      <div className="label__price">{article.prix}.–</div>
+                      <div className="label__price">{formaterMontant(article.prixAffiche)}</div>
                       <div className="label__row label__row--bottom">
                         <EtiquetteArticleNom nom={article.nom} />
                         <div className="qr-wrap" dangerouslySetInnerHTML={{ __html: article.svg }} />

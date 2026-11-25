@@ -12,11 +12,12 @@ export default async function EtiquettesBenevolePage() {
   const session = await benevoleConnecte();
   if (!session) redirect("/benevole");
 
-  const participation = await queryOne<{ id: string }>(
-    `SELECT p.id FROM participations p JOIN editions e ON e.id = p.edition_id
+  const participation = await queryOne<{ id: string; taux_achat: number }>(
+    `SELECT p.id, e.taux_achat FROM participations p JOIN editions e ON e.id = p.edition_id
      WHERE p.vendeur_id = ? AND e.active_flag = 1`,
     [session.vendeurId],
   );
+  const tauxAchat = Number(participation?.taux_achat ?? 0.1);
 
   // Un article refusé est repris par le vendeur et jamais mis en vente :
   // pas la peine de gâcher une étiquette (même exclusion que les autres
@@ -61,6 +62,7 @@ export default async function EtiquettesBenevolePage() {
           numeroVendeur={session.numeroFixe}
           articles={articles}
           special={estVendeurSpecial(session.numeroFixe)}
+          tauxAchat={tauxAchat}
         />
       )}
     </main>

@@ -86,7 +86,9 @@ export async function envoyerEtiquettesPlage(numeroDebut: number, numeroFin: num
     return { ok: false, error: "Plage invalide : entrez deux numéros de vendeur (début ≤ fin)." };
   }
 
-  const edition = await queryOne<{ id: string }>("SELECT id FROM editions WHERE active_flag = 1");
+  const edition = await queryOne<{ id: string; taux_achat: number }>(
+    "SELECT id, taux_achat FROM editions WHERE active_flag = 1",
+  );
   if (!edition) return { ok: false, error: "Aucune édition active." };
 
   const participations = await query<ParticipationPlage>(
@@ -138,6 +140,7 @@ export async function envoyerEtiquettesPlage(numeroDebut: number, numeroFin: num
         nomVendeur: p.nom_vendeur,
         telephone: p.telephone,
         special: estVendeurSpecial(p.numero_vendeur),
+        tauxAchat: Number(edition.taux_achat),
         cases,
       };
 

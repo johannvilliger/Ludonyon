@@ -27,6 +27,11 @@ export default async function EtiquettesPage({
 
   const special = estVendeurSpecial(participation.numero_vendeur);
 
+  const edition = await queryOne<{ taux_achat: number }>(
+    "SELECT taux_achat FROM editions WHERE active_flag = 1",
+  );
+  const tauxAchat = Number(edition?.taux_achat ?? 0.1);
+
   // Un article refusé (mauvais état / sale / cassé) est repris par le
   // vendeur et jamais mis en vente : pas la peine de gâcher une étiquette.
   const articles = await query<Article>(
@@ -65,6 +70,7 @@ export default async function EtiquettesPage({
         telephone={participation.telephone}
         special={special}
         labels={labels}
+        tauxAchat={tauxAchat}
       />
     </main>
   );
