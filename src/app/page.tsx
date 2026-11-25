@@ -3,6 +3,7 @@ import Image from "next/image";
 import { AssistantTroc } from "@/components/AssistantTroc";
 import { CompteARebours } from "@/components/CompteARebours";
 import { queryOne } from "@/lib/db";
+import { inscriptionsFermees } from "@/lib/gestion";
 import { enregistrerVisite } from "@/lib/visites";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,8 @@ export default async function Home() {
   // avant cette correction, cette page gardait son bouton "Déposer ma
   // liste" quelle que soit la phase, y compris en pleine caisse.
   const edition = await queryOne<{ phase: string }>("SELECT phase FROM editions WHERE active_flag = 1");
-  const depotOuvert = edition?.phase === "depot" || edition?.phase === "reception";
+  const depotOuvert =
+    (edition?.phase === "depot" || edition?.phase === "reception") && !(await inscriptionsFermees());
 
   // Page de clôture : ne s'active que si l'édition est en post-vente ET que
   // ce message a été rempli (voir modifierMessageFinTroc) — vide, la page

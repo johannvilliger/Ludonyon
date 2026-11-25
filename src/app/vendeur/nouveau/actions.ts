@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { assignerNumeroVendeur, nouveauCode, nouvelId, queryOne, withTransaction } from "@/lib/db";
 import { envoyerCopieListeAdmin, envoyerEmailConfirmationListe } from "@/lib/email";
 import { emailValide } from "@/lib/email-format";
+import { inscriptionsFermees } from "@/lib/gestion";
 import { formaterTelephone, telephoneValide } from "@/lib/telephone";
 import { urlAbsolue } from "@/lib/url";
 import { erreurArticles } from "@/lib/validation-articles";
@@ -55,6 +56,13 @@ export async function soumettreListe(_prevState: FormState, formData: FormData):
 
   const erreurArticle = erreurArticles(articles);
   if (erreurArticle) return { error: erreurArticle };
+
+  // Fermeture manuelle des inscriptions (voir page.tsx et migration 0042),
+  // vérifiée ici aussi : la page ne suffit pas à elle seule à bloquer une
+  // soumission envoyée directement à cette action.
+  if (await inscriptionsFermees()) {
+    return { error: "Les inscriptions en ligne sont fermées pour le moment." };
+  }
 
   // Le dépôt en ligne reste ouvert pendant la réception sur place (un
   // vendeur peut encore arriver et remplir sa liste depuis son téléphone) —

@@ -24,7 +24,9 @@ const COLONNES = 4;
 const LIGNES = 10;
 const NB_ETIQUETTES = COLONNES * LIGNES; // 40
 const PAD_MM = 2.2;
-const QR_MM = 8.5;
+// Agrandi de 8,5 à 10mm (voir globals.css) : aide l'autofocus des appareils
+// photo en caisse à accrocher le QR code plus facilement.
+const QR_MM = 10;
 const LOGO_INLINE_MM = 3.7;
 const LOGO_CONTACT_MM = 5;
 
@@ -32,13 +34,14 @@ const LOGO_CONTACT_MM = 5;
 // label__row--bottom) : la bande du milieu (prix) occupe le reste —
 // l'exacte répartition flexbox du navigateur n'est pas reproduite à la
 // perfection, mais ces deux bandes sont dimensionnées sur leur contenu
-// dominant (logo 3.7mm en haut, QR 8.5mm en bas), comme en CSS.
+// dominant (logo 3.7mm en haut, QR 10mm en bas), comme en CSS.
 const BANDE_HAUT_MM = LOGO_INLINE_MM;
 const BANDE_BAS_MM = QR_MM;
 
 const NOM_TAILLE_MAX_MM = 3.4;
 const NOM_TAILLE_MIN_MM = 2.2;
-const NOM_LARGEUR_MM = 34.6;
+// 48,5mm - 2×2,2mm de padding - 10mm de QR - ~1mm d'espace ≈ 33,1mm.
+const NOM_LARGEUR_MM = 33.1;
 const NOM_LIGNE_HAUTEUR = 1.08;
 
 const TEXTE_SEUL_TAILLE_MAX_MM = 4;
@@ -208,7 +211,7 @@ function dessinerEtiquetteArticle(doc, contenu, caseArticle, xMm, yMm) {
   doc
     .font("Courier")
     .fontSize(pt(2.2))
-    .fillColor("#8a8a8a")
+    .fillColor("#000")
     .text(texteItem, pt(innerX + innerLargeur - largeurItem), pt(y + (LOGO_INLINE_MM - 2.2) / 2), {
       lineBreak: false,
     });

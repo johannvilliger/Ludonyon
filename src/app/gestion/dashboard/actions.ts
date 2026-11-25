@@ -261,6 +261,18 @@ export async function basculerModificationsBloquees(bloquees: boolean) {
   revalidatePath("/vendeur/modifier");
 }
 
+// Ferme les NOUVELLES inscriptions (/vendeur/nouveau), indépendamment de la
+// phase — pour fixer une heure limite de dépôt sans attendre la phase
+// "caisse". Les listes déjà soumises ne sont jamais concernées (voir
+// basculerModificationsBloquees pour ça).
+export async function basculerInscriptionsFermees(fermees: boolean) {
+  if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
+  await query("UPDATE parametres_gestion SET inscriptions_fermees = ? WHERE id = 1", [fermees ? 1 : 0]);
+  revalidatePath("/gestion/dashboard");
+  revalidatePath("/vendeur/nouveau");
+  revalidatePath("/");
+}
+
 export async function relancerTicketsEchec() {
   if (!(await dashboardEstConnecte())) throw new Error("Non autorisé.");
   await query("UPDATE etiquettes_impression SET statut = 'en_attente' WHERE statut = 'echec'");

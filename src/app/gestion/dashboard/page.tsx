@@ -31,6 +31,7 @@ import { EditionForm } from "./edition-form";
 import { EditionPanel } from "./edition-panel";
 import { LienAccesButton } from "./lien-acces-button";
 import { MessageEditor } from "./message-editor";
+import { InscriptionsFermeesButton } from "./inscriptions-fermees-button";
 import { ModificationsBloqueesButton } from "./modifications-bloquees-button";
 import { PhaseButton } from "./phase-button";
 import { PurgerFileAttenteButton } from "./purger-file-attente-button";
@@ -59,6 +60,7 @@ type Parametres = {
   message_depot_termine: string | null;
   message_fin_troc: string | null;
   modifications_bloquees: number;
+  inscriptions_fermees: number;
   derniere_sauvegarde_le: string | null;
 };
 type PosteLigne = {
@@ -105,7 +107,7 @@ export default async function DashboardGestionPage() {
         "SELECT id, annee FROM editions WHERE active_flag IS NULL ORDER BY annee DESC",
       );
   const parametres = await queryOne<Parametres>(
-    "SELECT code_dashboard, code_accueil, code_impression, mode_verrouillage, date_ouverture_troc, date_recuperation_invendus, message_depot_termine, message_fin_troc, modifications_bloquees, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
+    "SELECT code_dashboard, code_accueil, code_impression, mode_verrouillage, date_ouverture_troc, date_recuperation_invendus, message_depot_termine, message_fin_troc, modifications_bloquees, inscriptions_fermees, derniere_sauvegarde_le FROM parametres_gestion WHERE id = 1",
   );
   const postes = await query<PosteLigne>(
     `SELECT
@@ -698,6 +700,20 @@ export default async function DashboardGestionPage() {
           <h2 className="text-lg font-medium">Gel des listes vendeurs</h2>
           <div className="mt-3 rounded-md border border-zinc-200 p-4">
             <ModificationsBloqueesButton bloquees={Boolean(parametres.modifications_bloquees)} />
+          </div>
+        </section>
+      )}
+
+      {/* Ferme les NOUVELLES inscriptions (/vendeur/nouveau), indépendamment
+          de la phase — pour fixer une heure limite de dépôt sans attendre
+          la phase "caisse" (voir inscriptionsFermees dans src/lib/gestion.ts
+          et migration 0042). Les listes déjà soumises ne sont jamais
+          concernées (voir le gel ci-dessus pour ça). */}
+      {parametres && (
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Inscriptions en ligne</h2>
+          <div className="mt-3 rounded-md border border-zinc-200 p-4">
+            <InscriptionsFermeesButton fermees={Boolean(parametres.inscriptions_fermees)} />
           </div>
         </section>
       )}

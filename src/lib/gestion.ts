@@ -79,6 +79,17 @@ export async function modificationsBloquees(): Promise<boolean> {
   return Boolean(parametres?.modifications_bloquees);
 }
 
+// Bouton dashboard indépendant de la phase : ferme les NOUVELLES
+// inscriptions (/vendeur/nouveau) sans toucher aux listes déjà soumises —
+// l'inverse de modificationsBloquees, qui ne bloque que l'édition d'une
+// liste existante, jamais les nouvelles soumissions.
+export async function inscriptionsFermees(): Promise<boolean> {
+  const parametres = await queryOne<{ inscriptions_fermees: number }>(
+    "SELECT inscriptions_fermees FROM parametres_gestion WHERE id = 1",
+  );
+  return Boolean(parametres?.inscriptions_fermees);
+}
+
 export async function posteCaisseAutorise(numero: number): Promise<{ posteId: string } | null> {
   const jar = await cookies();
   const token = jar.get(COOKIE_CAISSE)?.value;

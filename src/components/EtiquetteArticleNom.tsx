@@ -10,7 +10,9 @@ import { compterLignes, largeurTexteMm } from "@/lib/etiquette-texte-mesure";
 // de même longueur en minuscules.
 const TAILLE_MAX_MM = 3.4;
 const TAILLE_MIN_MM = 2.2;
-const LARGEUR_UTILE_MM = 34.6;
+// 48,5mm - 2×2,2mm de padding - 10mm de QR - ~1mm d'espace (QR agrandi de
+// 8,5 à 10mm pour aider l'autofocus des caméras, voir globals.css).
+const LARGEUR_UTILE_MM = 33.1;
 
 // Un nom qui, même à la taille plancher, a besoin de plus de 2 lignes sera
 // coupé par -webkit-line-clamp — utilisé pour proposer une étiquette

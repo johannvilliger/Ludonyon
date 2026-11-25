@@ -130,7 +130,7 @@ body {
 
 .label__item {
   font: 500 2.2mm/1 "Courier New", monospace;
-  color: #8a8a8a;
+  color: #000;
 }
 
 /* Nom de l'article, coin bas-gauche de l'étiquette. La taille de police
@@ -139,9 +139,9 @@ body {
    si besoin (retour naturel dans max-width). Au-delà de 2 lignes même à la
    taille plancher, coupure avec « … » — filet de sécurité pour un nom
    extrême, pas le cas normal. Largeur dispo : 48,5mm - 2×2,2mm de padding
-   - 8,5mm de QR - ~1mm d'espace ≈ 34,6mm. */
+   - 10mm de QR - ~1mm d'espace ≈ 33,1mm. */
 .label__name {
-  max-width: 34.6mm;
+  max-width: 33.1mm;
   font-weight: 700;
   font-family: Arial, sans-serif;
   line-height: 1.08;
@@ -233,9 +233,11 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Agrandi de 8,5 à 10mm : aide l'autofocus des appareils photo en caisse à
+   accrocher le QR code plus facilement. */
 .qr-wrap {
-  width: 8.5mm;
-  height: 8.5mm;
+  width: 10mm;
+  height: 10mm;
 }
 
 .qr-wrap svg {

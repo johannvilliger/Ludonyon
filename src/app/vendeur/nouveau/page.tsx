@@ -1,4 +1,5 @@
 import { queryOne } from "@/lib/db";
+import { inscriptionsFermees } from "@/lib/gestion";
 import { NouvelleListeForm } from "./nouvelle-liste-form";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +14,12 @@ export default async function NouvelleListePage() {
   // — mais avant cette correction, la page continuait à l'afficher
   // normalement même en pleine caisse, laissant croire à tort qu'un dépôt
   // était encore possible.
+  //
+  // inscriptionsFermees : fermeture manuelle indépendante de la phase (voir
+  // migration 0042) — une heure limite de dépôt sans attendre la caisse.
   const edition = await queryOne<{ phase: string }>("SELECT phase FROM editions WHERE active_flag = 1");
-  if (edition?.phase === "depot" || edition?.phase === "reception") return <NouvelleListeForm />;
+  const fermees = await inscriptionsFermees();
+  if (!fermees && (edition?.phase === "depot" || edition?.phase === "reception")) return <NouvelleListeForm />;
 
   const parametres = await queryOne<{ message_depot_termine: string | null }>(
     "SELECT message_depot_termine FROM parametres_gestion WHERE id = 1",

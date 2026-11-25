@@ -31,6 +31,15 @@ const STATUT_LABELS: Record<string, string> = {
   refuse: "Refusé",
 };
 
+// Mêmes teintes que les badges de statut déjà utilisés ailleurs dans
+// l'appli (voir STATUT_ARTICLE_STYLES, accueil/vendeur/[code]/page.tsx) :
+// bleu pour vendu, ambre pour invendu — pour repérer d'un coup d'œil ce qui
+// a rapporté de l'argent sans avoir à lire chaque ligne.
+const STATUT_COULEURS: Record<string, string> = {
+  vendu: "#1d4ed8",
+  invendu: "#b45309",
+};
+
 export type PlageVendeurs = { debut: number; fin: number };
 
 // Même requête (mêmes totaux) que l'écran de clôture des vendeurs
@@ -123,6 +132,10 @@ export async function genererPdfClotureVendeurs(
   // voir estVendeurSpecial) — même détection que chargerVendeurs ci-dessus
   // (une vraie ligne de vente à prix_encaisse = 0, jamais confondue avec
   // une correction manuelle sans ligne du tout).
+  //
+  // statut != 'refuse' : un objet refusé a été repris par le vendeur à
+  // l'accueil, jamais présenté en salle — rien à archiver avec l'enveloppe,
+  // juste du bruit sur cette liste pensée pour la clôture.
   const placeholders = vendeurs.map(() => "?").join(", ");
   const articles = await query<Article>(
     `SELECT
@@ -130,7 +143,7 @@ export async function genererPdfClotureVendeurs(
        (va.id IS NOT NULL AND va.prix_encaisse = 0) AS gratuit
      FROM articles a
      LEFT JOIN vente_articles va ON va.article_id = a.id AND va.remboursee_le IS NULL
-     WHERE a.participation_id IN (${placeholders})
+     WHERE a.participation_id IN (${placeholders}) AND a.statut != 'refuse'
      ORDER BY a.numero_article`,
     vendeurs.map((v) => v.participation_id),
   );
@@ -168,9 +181,9 @@ export async function genererPdfClotureVendeurs(
 
     dessinerEnTeteTableau(doc);
 
-    // Invendus (et tout ce qui n'est pas vendu, ex. refusé) d'abord par
-    // ordre d'article, puis les vendus — mis en évidence en gras pour
-    // repérer d'un coup d'œil ce qui a effectivement rapporté de l'argent.
+    // Invendus d'abord par ordre d'article, puis les vendus — mis en
+    // évidence en gras et en couleur (voir STATUT_COULEURS) pour repérer
+    // d'un coup d'œil ce qui a effectivement rapporté de l'argent.
     const liste = [...(articlesParVendeur.get(v.participation_id) ?? [])].sort((a, b) => {
       const rangA = a.statut === "vendu" ? 1 : 0;
       const rangB = b.statut === "vendu" ? 1 : 0;
@@ -180,16 +193,17 @@ export async function genererPdfClotureVendeurs(
     doc.fontSize(9);
     for (const a of liste) {
       const police = a.statut === "vendu" ? "Helvetica-Bold" : "Helvetica";
-      doc.font(police);
+      const couleur = STATUT_COULEURS[a.statut] ?? "#000";
+      doc.font(police).fillColor(couleur);
 
       // Passage à la page suivante avant la ligne si elle n'entre plus,
       // avec un nouvel en-tête de tableau pour rester lisible.
       const hauteurLigne = Math.max(doc.heightOfString(a.nom, { width: largeurNom }), 12);
       if (doc.y + hauteurLigne > doc.page.height - MARGE) {
         doc.addPage();
-        doc.fontSize(9).font(police);
+        doc.fontSize(9).font(police).fillColor(couleur);
         dessinerEnTeteTableau(doc);
-        doc.font(police);
+        doc.font(police).fillColor(couleur);
       }
 
       const gratuit = Boolean(a.gratuit);
@@ -204,7 +218,7 @@ export async function genererPdfClotureVendeurs(
       doc.text(gratuit ? "Gratuit" : (STATUT_LABELS[a.statut] ?? a.statut), COL.statut, y);
       doc.y = y + hauteurLigne + 4;
     }
-    doc.font("Helvetica");
+    doc.font("Helvetica").fillColor("#000");
 
     if (doc.y + 20 > doc.page.height - MARGE) doc.addPage();
     doc.moveDown(0.8);
