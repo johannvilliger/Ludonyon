@@ -1,4 +1,5 @@
 import { formaterMontant } from "@/lib/argent";
+import { ActionsQuittanceVente } from "@/app/gestion/dashboard/historique/[numero]/actions-quittance-vente";
 import type { LigneHistorique } from "@/lib/historique";
 
 function formatHeure(dateStr: string): string {
@@ -6,7 +7,12 @@ function formatHeure(dateStr: string): string {
   return d.toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit" });
 }
 
-export function HistoriqueCaisse({ lignes }: { lignes: LigneHistorique[] }) {
+// avecActions : n'affiche "Quittance par email" / "Imprimer" que depuis le
+// dashboard (gestion/dashboard/historique/[numero]/page.tsx) — jamais depuis
+// la page caisse elle-même (caisse/[numero]/historique/page.tsx), qui
+// n'exige qu'une autorisation de poste de caisse, pas dashboardEstConnecte
+// (voir les deux actions dans ./historique/[numero]/actions.ts).
+export function HistoriqueCaisse({ lignes, avecActions }: { lignes: LigneHistorique[]; avecActions?: boolean }) {
   if (lignes.length === 0) {
     return <p className="mt-3 text-sm text-zinc-500">Aucune transaction pour l&apos;instant.</p>;
   }
@@ -26,16 +32,19 @@ export function HistoriqueCaisse({ lignes }: { lignes: LigneHistorique[] }) {
       <ul className="mt-2 divide-y divide-zinc-200 rounded-md border border-zinc-200">
         {lignes.map((l) =>
           l.type === "vente" ? (
-            <li key={`vente-${l.id}`} className="flex items-center justify-between px-4 py-3 text-sm">
-              <span>
-                {formatHeure(l.createdAt)} — {l.nbArticles} article{l.nbArticles > 1 ? "s" : ""}
-                {l.acheteurBenevole ? (
-                  <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
-                    acheteur bénévole
-                  </span>
-                ) : null}
-              </span>
-              <span className="font-mono">{formaterMontant(l.total)}</span>
+            <li key={`vente-${l.id}`} className="px-4 py-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span>
+                  {formatHeure(l.createdAt)} — {l.nbArticles} article{l.nbArticles > 1 ? "s" : ""}
+                  {l.acheteurBenevole ? (
+                    <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
+                      acheteur bénévole
+                    </span>
+                  ) : null}
+                </span>
+                <span className="font-mono">{formaterMontant(l.total)}</span>
+              </div>
+              {avecActions && <ActionsQuittanceVente venteId={l.id} />}
             </li>
           ) : (
             <li key={`vidage-${l.id}`} className="flex items-center justify-between bg-red-50 px-4 py-3 text-sm">

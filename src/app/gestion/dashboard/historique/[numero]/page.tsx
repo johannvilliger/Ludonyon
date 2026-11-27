@@ -31,7 +31,7 @@ export default async function HistoriqueDashboardPage({ params }: { params: Prom
       </Link>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">Historique — Caisse {numeroInt}</h1>
       {!caisse && <p className="mt-3 text-sm text-zinc-500">Pas encore de caisse pour cette édition.</p>}
-      {caisse && <HistoriqueCaisse lignes={lignes} />}
+      {caisse && <HistoriqueCaisse lignes={lignes} avecActions />}
     </main>
   );
 }
